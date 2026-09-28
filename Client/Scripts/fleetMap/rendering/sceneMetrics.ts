@@ -51,6 +51,9 @@ export const sceneMetrics = Object.freeze({
   // takes in the layout and the area that picks it are the badge's size.
   truckSize: 24,
   truckStandingSize: 20,
+  // The dark map's instrument marks: a standing truck as large as a moving
+  // one (the owner, September 27).
+  truckDarkSize: 24,
   truckHitSize: 28,
   truckClusterRadius: 64,
   truckClusterMaxZoom: 12,

@@ -49,9 +49,10 @@ const engineOn = '#16a34a';
 const engineQuiet = '#94a3b8';
 const ringQuiet = '#64748b';
 const body = '#1e293b';
+const bodyDeep = '#16324d';
 // The dark map's instrument marks: the lit top of the glass body, the halo
 // and the spine.
-const bodyLit = '#24476a';
+const bodyLit = '#3a6d99';
 const halo = '#22d3ee';
 const spine = '#67e8f9';
 
@@ -101,15 +102,15 @@ export function truckIcon(engine: unknown, speed = 0) {
         : reading === 'off'
           ? `stroke="${engineQuiet}" stroke-width="2"`
           : `stroke="${engineQuiet}" stroke-width="2" stroke-dasharray="3 2"`;
-    const glass = `<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${bodyLit}"/><stop offset="1" stop-color="${body}"/></linearGradient></defs>`;
+    const glass = `<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${bodyLit}"/><stop offset="1" stop-color="${bodyDeep}"/></linearGradient></defs>`;
     const shape =
       motion === 'moving'
         ? `
-<path d="${silhouette}" fill="none" stroke="${halo}" stroke-opacity="0.45" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="${silhouette}" fill="none" stroke="${halo}" stroke-opacity="0.75" stroke-width="5" stroke-linejoin="round"/>
 <path d="${silhouette}" fill="url(#b)" ${edge} stroke-linejoin="round"/>
 <path d="M13 6.5 L13 17.5" stroke="${spine}" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.9"/>`
         : `
-<circle cx="13" cy="13" r="11" fill="none" stroke="${halo}" stroke-opacity="0.45" stroke-width="4.5"/>
+<circle cx="13" cy="13" r="11" fill="none" stroke="${halo}" stroke-opacity="0.75" stroke-width="5"/>
 <circle cx="13" cy="13" r="11" fill="url(#b)" ${edge}/>
 <circle cx="13" cy="13" r="4.2" fill="none" stroke="${spine}" stroke-width="1.3" stroke-opacity="0.9"/>
 <circle cx="13" cy="13" r="1.3" fill="${spine}"/>`;

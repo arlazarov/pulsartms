@@ -5,6 +5,7 @@ import { truckHitIcon, truckIcon, truckState } from './truckAppearance.ts';
 import { markerAnchor } from './markerAnchor.ts';
 import { clusterText } from './truckLabelLayout.ts';
 import { memoizeLast } from './layerCache.ts';
+import { isLightMap } from './stopAppearance.ts';
 import { labelPlate, plateHeight, plateText } from './labelPlates.ts';
 import { sceneMetrics as metrics, labelSubLayers } from './sceneMetrics.ts';
 
@@ -129,9 +130,11 @@ export function createVehicleLayers({
               getPixelOffset: (t: Truck) => t.markerOffset ?? [0, 0],
               getIcon: (t: Truck) => truckIcon(t.engine, t.speed),
               getSize: (t: Truck) =>
-                (truckState(t.engine, t.speed) === 'moving'
-                  ? metrics.truckSize
-                  : metrics.truckStandingSize) *
+                (!isLightMap()
+                  ? metrics.truckDarkSize
+                  : truckState(t.engine, t.speed) === 'moving'
+                    ? metrics.truckSize
+                    : metrics.truckStandingSize) *
                 (t.unit === hoveredTruck && !t.selected
                   ? metrics.truckHoverScale
                   : 1),

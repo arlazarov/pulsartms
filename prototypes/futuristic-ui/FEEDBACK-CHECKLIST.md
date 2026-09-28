@@ -36,7 +36,7 @@ visual inspection only, never acceptance.
 | Layers menu: Fuel stations, Traffic, Next loads; no Map animation option | Built |
 | Map animation always on (sonar, route glow, direction marks, radar), also under the system's reduced motion | Built |
 | No map legend; weather attribution kept | Built, Seen |
-| Truck marks, dark map: engine-edge marks as HUD instruments (glass body lit from the nose, cyan halo instead of white casing, cyan spine / core) | Built (correction: the engine-edge design belongs to dark, not light) |
+| Truck marks, dark map: engine-edge marks as HUD instruments with more contrast against the dark map (brighter glass body, strong cyan halo, cyan spine / core); standing as large as moving, moving size unchanged (24 px) | Built |
 | Truck marks, light map: classic green arrow moving, green / grey circle standing | Built |
 | Truck number and "N trucks" cluster tags: HUD plates (clipped corners, fine accent outline, edge ticks, glass sheen), both themes; icons, counts, clustering and picking unchanged | Built |
 | Sonar: four thin compact rings, slow, brighter ink on light map | Built, Seen dark (light ink not yet seen) |
@@ -46,7 +46,7 @@ visual inspection only, never acceptance.
 | Unselected later routes: fine dashes with the softer glow | Built (not yet seen) |
 | Travelled road as a HUD trace: fine instrument-ink line over a faint halo, no white casing; empty miles dashed | Built |
 | Selected P / D / fuel: HUD reticle with four ticks and soft glow | Built |
-| Direction motion, constant: a steady stream of light tracers (bright head, fading tail, faint glow) flows without pause along the current and later roads, 150 px apart at any zoom, about 60 px/s; brightest on the chosen road. Arrows, river streaks and a lone periodic pulse were rejected | Built |
+| Direction motion, constant, like electric current: dense short charges (38 px apart, about 120 px/s) with short tails and a slight flicker over a fine steady glowing wire, on the current and later roads, brightest on the chosen one. Arrows, river streaks, a lone pulse and sparse tracers were rejected | Built |
 | P / D on the map or in the chain (current and later loads): one press opens it, zoom kept (an off-screen stop is panned into view); a double press centres it at zoom 15, satellite by the zoom rule; Follow ends on a camera move | Built |
 | Passed (completed) stops openable from chain and map | Open |
 

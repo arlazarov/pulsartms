@@ -344,11 +344,12 @@ type FlowPath = {
   scale: number;
 };
 const flowPaths = new WeakMap<object, FlowPath>();
-// Screen pixels: between tracers, a tracer's head and its tail.
-const tracerSpacing = 150;
-const tracerHead = 10;
-const tracerTail = 110;
-const tracerLimit = 400;
+// Screen pixels: between charges, a charge's head and its tail. Dense and
+// quick, so the road reads as current, not as a few sparks.
+const tracerSpacing = 38;
+const tracerHead = 6;
+const tracerTail = 30;
+const tracerLimit = 1500;
 
 function flowPath(data: unknown): FlowPath | null {
   if (!data || typeof data !== 'object') return null;
@@ -452,23 +453,30 @@ function flowLayers(
     hint = start;
     return piece;
   };
-  // The tail in steps of rising light towards the head.
-  const steps = [0.06, 0.12, 0.2, 0.32, 0.48, 0.68];
+  // The tail in steps of rising light towards the head; each charge
+  // flickers a little, as current does.
+  const steps = [0.12, 0.3, 0.55];
+  const tick = Math.floor(phase * 3);
+  const flicker = (k: number) => {
+    const x = Math.sin(k * 12.9898 + tick * 78.233) * 43758.5453;
+    return 0.55 + 0.45 * (x - Math.floor(x));
+  };
   const tails: { piece: number[][]; alpha: number }[] = [];
-  const heads: { piece: number[][] }[] = [];
+  const heads: { piece: number[][]; alpha: number }[] = [];
   const first = Math.max(0, Math.floor(range[0] / spacing) - 1);
   for (let k = first; k < first + tracerLimit; k++) {
     const head = (k + phase) * spacing;
     if (head - tail > Math.min(range[1], path.total)) break;
+    const spark = flicker(k);
     steps.forEach((alpha, index) => {
       const piece = cut(
         head - tail + (index * tail) / steps.length,
         head - tail + ((index + 1) * tail) / steps.length,
       );
-      if (piece) tails.push({ piece, alpha });
+      if (piece) tails.push({ piece, alpha: alpha * spark });
     });
     const tip = cut(head - headLength, head);
-    if (tip) heads.push({ piece: tip });
+    if (tip) heads.push({ piece: tip, alpha: spark });
   }
   const light = isLightMap();
   const core = light ? [255, 255, 255] : [224, 252, 255];
@@ -483,6 +491,15 @@ function flowLayers(
     parameters: { depthCompare: 'always' },
   };
   return [
+    // The charged wire under the current: a fine steady core of light.
+    new PathLayer({
+      ...shared,
+      id: `${line.id}-tracer-wire`,
+      data: line.data,
+      getPath: (piece: unknown) => piece,
+      getColor: [...core, Math.round(80 * strength)],
+      getWidth: 1.25,
+    }),
     new PathLayer({
       ...shared,
       id: `${line.id}-tracer-tail`,
@@ -491,21 +508,27 @@ function flowLayers(
         ...core,
         Math.round(255 * row.alpha * strength),
       ],
-      getWidth: 2.5,
+      getWidth: 2.25,
     }),
     new PathLayer({
       ...shared,
       id: `${line.id}-tracer-glow`,
       data: heads,
-      getColor: [...glow, Math.round(120 * strength)],
-      getWidth: 10,
+      getColor: (row: { alpha: number }) => [
+        ...glow,
+        Math.round(120 * strength * row.alpha),
+      ],
+      getWidth: 8,
     }),
     new PathLayer({
       ...shared,
       id: `${line.id}-tracer-head`,
       data: heads,
-      getColor: [...core, Math.round(255 * strength)],
-      getWidth: 3.5,
+      getColor: (row: { alpha: number }) => [
+        ...core,
+        Math.round(255 * strength * row.alpha),
+      ],
+      getWidth: 3,
     }),
   ];
 }
