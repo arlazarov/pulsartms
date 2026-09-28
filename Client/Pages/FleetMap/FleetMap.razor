@@ -238,9 +238,11 @@
                28): what the card is about under the truck it belongs to,
                and Back in one fixed place beside the close. *@
             <div class="fleet-map-inspector__identity">
-                <span class="fleet-map-inspector__eyebrow">@(SelectedTruck is { } owner
-                    ? $"Truck {owner.UnitNumber}" : "\u00a0")</span>
-                <strong class="fleet-map-inspector__title">@InspectorTitle</strong>
+                <span class="fleet-map-inspector__eyebrow"
+                    >@(SelectedTruck is { } owner
+                        ? $"Truck {owner.UnitNumber}" : "\u00a0")</span>
+                <strong class="fleet-map-inspector__title"
+                    >@InspectorTitle</strong>
             </div>
             @* The truck's fuel closes back to the truck; it has no Back. *@
             @if (HasTruckInspection
