@@ -76,6 +76,12 @@
     background: ui.theme(accent, 0.1);
     box-shadow: inset 0 0 0 1px ui.theme(accent, 0.42);
   }
+  // In daylight a clear cyan tint, not a grey-teal wash (the owner,
+  // September 27).
+  :root[data-theme='light'] .sidebar__nav a.active {
+    background: ui.theme(selected);
+    box-shadow: inset 0 0 0 1px ui.theme(selection-border);
+  }
   .sidebar__nav a.active::before {
     content: '';
     position: absolute;

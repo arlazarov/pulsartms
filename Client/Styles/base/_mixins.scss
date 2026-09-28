@@ -197,27 +197,17 @@
   // cool shadow and a faint cyan halo - the dark panel's parts in daylight.
   :root[data-theme='light'] & {
     border-color: fn.theme(accent, 0.34);
-    background: linear-gradient(
-      180deg,
-      fn.theme(surface, 0.94),
-      fn.theme(surface-soft, 0.82)
-    );
+    // Pure white, not a grey glass (the owner, September 27).
+    background: fn.theme(surface, 0.98);
     box-shadow:
       inset 0 1px 0 fn.theme(surface),
       0 0 0 1px fn.theme(accent, 0.06),
       0 14px 34px fn.theme(shadow, 0.12),
       0 0 22px fn.theme(accent, 0.1);
+    // Fine, quiet corner ticks: bold ones fought the rounded corners.
     &::before,
     &::after {
-      border-color: fn.theme(accent, 0.8);
-    }
-    &::before {
-      border-top-width: 2px;
-      border-left-width: 2px;
-    }
-    &::after {
-      border-right-width: 2px;
-      border-bottom-width: 2px;
+      border-color: fn.theme(accent, 0.4);
     }
   }
 }
@@ -238,11 +228,7 @@
   :root[data-theme='light'] & {
     // Clean white glass: opaque enough, and not saturating, so the map's
     // colours do not tint it.
-    background: linear-gradient(
-      180deg,
-      fn.theme(surface, 0.93),
-      fn.theme(surface-soft, 0.86)
-    );
+    background: fn.theme(surface, 0.97);
     backdrop-filter: blur(18px) saturate(1);
     box-shadow:
       inset 0 1px 0 fn.theme(surface),
@@ -277,6 +263,19 @@
     12px 2px,
     2px 12px;
   background-repeat: no-repeat;
+
+  // In daylight only the line of light: the corner brackets clashed with
+  // the rounded rims (the owner, September 27).
+  :root[data-theme='light'] & {
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      fn.theme(accent, 0.55),
+      transparent
+    );
+    background-position: top;
+    background-size: 100% 1px;
+  }
 }
 
 // A HUD label: small, spaced capitals in the muted ink.

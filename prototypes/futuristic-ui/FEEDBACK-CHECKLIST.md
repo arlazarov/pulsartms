@@ -14,7 +14,7 @@ visual inspection only, never acceptance.
 | Top bar: brand, section / page, theme, clock, account | Built, Seen dark/light |
 | Rail of destinations, glass panels with corner ticks, canvas glows | Built, Seen |
 | Dark is the default theme; no white flash at start | Built (client start); server "never chosen" is Dispatch's |
-| Light theme in the same class as dark: bright canvas (no grey) with a fine instrument grid; clean white glass panels (no map tint) with a cyan rim, bold ticks and cool shadow; Google's light road map quieted to cool steel (satellite untouched, trucks and routes keep their colours); later trip cards a solid rim with a colour bar | Built, Seen light 1100 px |
+| Light theme in the same class as dark: bright canvas, no grey and no grid; pure white panels with a cyan rim, fine quiet corner ticks and a cool shadow; inner blocks keep only the line of light (no corner brackets); active rail item a clear cyan tint; Google's light road map quieted to cool steel (satellite untouched, trucks and routes keep their colours); later trip cards a solid rim with a colour bar | Built, Seen light 1100 px |
 | Truck panel as tall as its content; the map shows beneath it | Built, Seen |
 | Light theme roads: a finer crisp line of the trip's colour in a faint haze, no white casing; only the chosen road glows, softly; the flow grains carry no glow. Light basemap in Google's full colours, no filter (grey, dimmed and desaturated versions were rejected) | Built |
 | Light chain: trips strung on a fine line through filled step tokens; white tiles with a straight colour line along the top (clear of the corners), soft-tint phase chips; chosen trip rimmed in its colour, softly lit and lifted | Built |

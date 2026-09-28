@@ -45,34 +45,6 @@
       ),
       ui.theme(canvas);
     background-attachment: fixed;
-    // In daylight the canvas is bright with a fine instrument grid and
-    // cyan light, so the white glass stands on it as the dark glass stands
-    // on the night (the owner, September 27).
-    :root[data-theme='light'] & {
-      background:
-        radial-gradient(
-          75rem 37.5rem at 20% -10%,
-          ui.theme(accent, 0.2),
-          transparent 60%
-        ),
-        radial-gradient(
-          56rem 31rem at 110% 110%,
-          ui.theme(route-next, 0.12),
-          transparent 60%
-        ),
-        repeating-linear-gradient(
-          0deg,
-          ui.theme(accent, 0.05) 0 1px,
-          transparent 1px 40px
-        ),
-        repeating-linear-gradient(
-          90deg,
-          ui.theme(accent, 0.05) 0 1px,
-          transparent 1px 40px
-        ),
-        ui.theme(canvas);
-      background-attachment: fixed;
-    }
 
     &__content {
       grid-area: main;

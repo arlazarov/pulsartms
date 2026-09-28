@@ -589,24 +589,8 @@
   .fleet-map-inspector[data-inspector-mode='stop'],
   .fleet-map-inspector[data-inspector-mode='nextstop'] {
     .fleet-route-popup--stop {
-      position: relative;
+      @include ui.hud-frame;
       padding: ui.pg(md) ui.pg(sm) 0;
-      background:
-        linear-gradient(
-            90deg,
-            transparent,
-            ui.theme(accent, 0.55),
-            transparent
-          )
-          top / 100% 1px no-repeat,
-        linear-gradient(ui.theme(accent), ui.theme(accent)) top left / 12px
-          2px no-repeat,
-        linear-gradient(ui.theme(accent), ui.theme(accent)) top left / 2px
-          12px no-repeat,
-        linear-gradient(ui.theme(accent), ui.theme(accent)) top right / 12px
-          2px no-repeat,
-        linear-gradient(ui.theme(accent), ui.theme(accent)) top right / 2px
-          12px no-repeat;
     }
   }
 }
