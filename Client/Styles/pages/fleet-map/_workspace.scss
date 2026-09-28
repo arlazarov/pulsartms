@@ -985,6 +985,17 @@
     max-width: none;
     justify-self: stretch;
   }
+  // A station's quote is a narrower card, kept at the column's right edge
+  // (the owner, September 27).
+  .fleet-map-stage
+    > .fleet-map-info-reserved.fleet-map-inspector[data-inspector-mode='fuel']:not(
+      :has(.fleet-station-popup--planned)
+    ) {
+    width: min(100%, #{ui.size(map-fuel-quote)});
+    min-width: 0;
+    max-width: 100%;
+    justify-self: end;
+  }
   // The list is as tall as its trucks; the map shows beneath it.
   .fleet-map-stage > .fleet-truck-list:not(.is-collapsed) {
     align-self: start;
