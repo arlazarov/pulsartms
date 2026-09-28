@@ -975,6 +975,16 @@
     @include ui.tempered-glass;
     z-index: 1;
   }
+  // Whatever card the panel shows - truck, stop, station - it fills its
+  // column to the right edge; the floating card's own widths do not apply
+  // here (the owner, September 27).
+  .fleet-map-stage
+    > .fleet-map-info-reserved.fleet-map-inspector[data-inspector-mode] {
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    justify-self: stretch;
+  }
   .fleet-map-info-reserved {
     // No scrollbar lane: the head reaches the panel's right edge; the
     // panel still scrolls by wheel, touch and keyboard.

@@ -171,16 +171,6 @@
 // (the owner, September 27): a pump emblem at its name, a lit frame, HUD
 // labels.
 @include ui.above(fleet-docked) {
-  // The docked panel's column is the card's width, whatever the quote: it
-  // no longer shrinks to its content (the owner, September 27).
-  .fleet-map-info-reserved
-    .fleet-map-inspector[data-inspector-mode='fuel']:not(
-      :has(.fleet-station-popup--planned)
-    ) {
-    width: auto;
-    min-width: 0;
-    max-width: none;
-  }
   .fleet-map-inspector[data-inspector-mode='fuel'] {
     .fleet-station-popup {
       @include ui.hud-frame;
