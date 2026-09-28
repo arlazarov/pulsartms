@@ -42,12 +42,11 @@ test('the days keep three aligned columns under the prices, and the prices keep 
   );
 });
 
-test('ordinary fuel inspector fits its quote without changing truck or planned fuel layout', () => {
-  assert.match(css, /min-width: min\(100%, var\(--size-map-fuel-quote\)\);/);
-  assert.match(
-    css,
-    /\.fleet-map-inspector\[data-inspector-mode=fuel\]:not\(:has\(\.fleet-station-popup--planned\)\)\s*\{[^}]*width: fit-content;[^}]*max-width: min\(100%,\s*var\(--size-map-fuel-card\)\);/,
-  );
+test('an ordinary fuel quote keeps its own reading inside the one card box', () => {
+  // The quote no longer sizes the card (the owner, September 28: the
+  // panel's edges must not move between choices); its content still reads
+  // as one column.
+  assert.doesNotMatch(css, /width: fit-content;/);
   assert.match(
     css,
     /\.fleet-map-inspector\[data-inspector-mode=fuel\]:not\(:has\(\.fleet-station-popup--planned\)\) \.fleet-map-inspector__native\s*\{[^}]*container-type: normal;/,
@@ -58,10 +57,6 @@ test('ordinary fuel inspector fits its quote without changing truck or planned f
   );
 });
 
-// Drawn, the list and the line of days kept the same two edges. Built, the
-// list was as narrow as its longest name while the days ran the width of the
-// card, and the band behind the price being paid was a name and a figure with
-// a gap between them.
 test('the price list keeps the edges the days keep, and its band is one band', () => {
   assert.match(
     css,
@@ -99,19 +94,11 @@ test('single-day quotes retain the ordinary fuel inspector sizing', () => {
   );
 });
 
-test('a stop, a next stop and a planned fuel stop share one bounded width', () => {
-  // One width for every card that is a place and a plan for it: a stop, a
-  // stop on a load still to come, and a planned fuel stop.
-  assert.match(
-    css,
-    /\[data-inspector-mode=stop\],[^{]*\[data-inspector-mode=nextstop\],[^{]*\[data-inspector-mode=fuel\]:has\(\.fleet-station-popup--planned\)\s*\{\s*width: min\(100%, var\(--size-map-stop-inspector\)\);/,
-  );
-  // One height too, at least: a card that grew when its details arrived
-  // moved the map twice (the owner, September 26).
-  assert.match(
-    css,
-    /\[data-inspector-mode=stop\],[^{]*\[data-inspector-mode=nextstop\],[^{]*\[data-inspector-mode=fuel\]\s*\{\s*min-height: min\(var\(--size-map-stop-inspector-height\), 45%\);/,
-  );
+test('a stop, a next stop and a station use the one card box', () => {
+  // No card sizes itself by what it shows: the stage owns one box
+  // (the owner, September 28).
+  assert.doesNotMatch(css, /var\(--size-map-stop-inspector\)/);
+  assert.doesNotMatch(css, /min-height: min\(/);
   // The days stand under the prices they are about, which puts them in the
   // half of the card that is about the place - by being inside it, not by
   // being sent to a column.

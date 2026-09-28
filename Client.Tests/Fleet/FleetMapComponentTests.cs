@@ -72,8 +72,8 @@ public sealed class FleetMapComponentTests
       parts.Where(x => hasNext || x != "fleet-truck-next"),
       component
         .Find(".fleet-map-inspector")
-        .Children.SelectMany<IElement, IElement>(
-          x => x.ClassList.Contains("fleet-truck-panel") ? x.Children : [x]
+        .Children.SelectMany<IElement, IElement>(x =>
+          x.ClassList.Contains("fleet-truck-panel") ? x.Children : [x]
         )
         .Select(x => x.ClassList[0] ?? "")
         .Where(parts.Contains)
@@ -104,7 +104,7 @@ public sealed class FleetMapComponentTests
     Assert.Empty(
       component.FindAll("#fleet-map-details .fleet-map-inspector__actions")
     );
-    Assert.Single(component.FindAll(".fleet-map-mobile-summary__toggle"));
+    Assert.Empty(component.FindAll(".fleet-map-mobile-summary__toggle"));
     Assert.Empty(component.FindAll(".fleet-map-truck-info__more"));
   }
 
@@ -118,10 +118,11 @@ public sealed class FleetMapComponentTests
       .Single(x => x.TextContent == term)
       .NextElementSibling!;
 
+  // The truck card is always open, on a phone too: no Details / Hide
+  // details toggle and no closed state (the owner, September 28). A phone
+  // keeps the card to half the map and scrolls it inside.
   [Fact]
-  // The closed state is the wide card's: a phone's styles keep the card
-  // open whole and hide the toggle (September 26).
-  public async Task TruckDetailsStartCollapsedAndToggleWithoutReloading()
+  public async Task TruckDetailsAreAlwaysOpenWithoutAToggle()
   {
     using var fixture = new SelectionFixture();
     var component = fixture.Render();
@@ -134,47 +135,11 @@ public sealed class FleetMapComponentTests
     );
 
     var inspector = component.Find(".fleet-map-inspector");
-    var toggle = component.Find(".fleet-map-mobile-summary__toggle");
-    Assert.Contains("is-mobile-collapsed", inspector.ClassList);
-    Assert.Equal("false", toggle.GetAttribute("aria-expanded"));
-    var closed = component.Find(".fleet-map-inspector__header").InnerHtml;
-
-    await toggle.ClickAsync(new MouseEventArgs());
-
-    Assert.Contains("is-mobile-expanded", inspector.ClassList);
-    Assert.Equal("true", toggle.GetAttribute("aria-expanded"));
-    // The header is what stays on screen either way, so opening the card may
-    // not rewrite a word of it: the toggle holds both "Details" and "Hide
-    // details" in one cell and only swaps which is hidden, so its width,
-    // and the row beside it, stay put.
-    // Blazor renumbers its event handler ids on every render; they are not
-    // on screen, so they are not part of what must stay the same.
-    static string Visible(string html) =>
-      System.Text.RegularExpressions.Regex.Replace(
-        html,
-        "\\sblazor:[a-z]+=\"\\d+\"|\\saria-hidden=\"(?:true|false)\"",
-        ""
-      );
-    Assert.Equal(
-      Visible(
-        closed.Replace("aria-expanded=\"false\"", "aria-expanded=\"true\"")
-      ),
-      Visible(component.Find(".fleet-map-inspector__header").InnerHtml)
-    );
-    Assert.Equal(
-      "Hide details",
-      toggle
-        .QuerySelector(
-          ".fleet-map-mobile-summary__toggle-words > [aria-hidden='false']"
-        )!
-        .TextContent
-    );
-    Assert.Equal(
-      ["Details", "Hide details"],
-      toggle
-        .QuerySelectorAll(".fleet-map-mobile-summary__toggle-words > span")
-        .Select(word => word.TextContent)
-    );
+    Assert.Empty(component.FindAll(".fleet-map-mobile-summary__toggle"));
+    Assert.DoesNotContain("is-mobile-collapsed", inspector.ClassList);
+    Assert.DoesNotContain("is-mobile-expanded", inspector.ClassList);
+    Assert.Single(component.FindAll(".fleet-truck-facts"));
+    Assert.Single(component.FindAll(".fleet-truck-clocks .driver-hours"));
   }
 
   // The plan card in edit is the plan card: closing the editor opened from
@@ -1046,9 +1011,7 @@ public sealed class FleetMapComponentTests
     // cells; the head's rows, the duty-and-rest line and the load link
     // went with the old card (the owner, September 27). The recap and the
     // Open load button stay off the card.
-    Assert.Single(
-      component.FindAll(".fleet-truck-panel > .fleet-truck-facts")
-    );
+    Assert.Single(component.FindAll(".fleet-truck-panel > .fleet-truck-facts"));
     Assert.NotEmpty(TruckFact(component, "Trailer").TextContent.Trim());
     Assert.NotEmpty(TruckFact(component, "Duty").TextContent.Trim());
     Assert.Empty(component.FindAll(".fleet-map-inspector__hours"));
@@ -2269,6 +2232,41 @@ public sealed class FleetMapComponentTests
     Assert.Single(fixture.Js.Calls, call => call.Name == "createFleetMap");
   }
 
+  // Another card parks the truck panel instead of hiding it: display: none
+  // replayed the same truck's arrival on the way back (Dispatch, September
+  // 28). Parked, it is inert, so neither focus nor a reader reaches it.
+  [Theory]
+  [InlineData("stop")]
+  [InlineData("fuel")]
+  [InlineData("next-stop")]
+  public async Task AnotherCardParksTheTruckPanelWithoutHidingIt(string kind)
+  {
+    using var fixture = new SelectionFixture();
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, c => c.Name == "setTrucks")
+    );
+    var truck = fixture.TruckA.ToString();
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(truck)
+    );
+    var panel = component.Find(".fleet-truck-panel");
+    Assert.False(panel.ClassList.Contains("is-parked"));
+    Assert.False(panel.HasAttribute("inert"));
+    await component.InvokeAsync(
+      () => component.Instance.OnMapInspectorChanged(kind, truck, 10)
+    );
+    panel = component.Find(".fleet-truck-panel");
+    Assert.True(panel.ClassList.Contains("is-parked"));
+    Assert.True(panel.HasAttribute("inert"));
+    Assert.False(panel.HasAttribute("hidden"));
+    await component.Find(".fleet-map-inspector__back").ClickAsync(new());
+    panel = component.Find(".fleet-truck-panel");
+    Assert.False(panel.ClassList.Contains("is-parked"));
+    Assert.False(panel.HasAttribute("inert"));
+    Assert.False(panel.HasAttribute("hidden"));
+  }
+
   // Back to truck goes somewhere; closing leaves the map clear. A stop
   // opened from the map offered only the first, so the only way out of it
   // was through the truck card.
@@ -2807,6 +2805,52 @@ public sealed class FleetMapComponentTests
         Assert.Equal(
           "Copied",
           component.Find(".fleet-truck-facts__copied").TextContent
+        )
+    );
+  }
+
+  // The next stop's Appointment copies the window it shows with its zone,
+  // not the ETA beside it (the owner, September 28).
+  [Fact]
+  public async Task TheNextStopCopiesItsAppointmentWindowAndZone()
+  {
+    using var fixture = new SelectionFixture();
+    var plan = fixture.Plan(fixture.TruckA).State!.Plan!;
+    var pickup = new PlanStop(
+      Guid.NewGuid(),
+      "Pickup",
+      "Webster, NY",
+      1,
+      new(43, -77)
+    )
+    {
+      Job = "Pick Up",
+      ScheduledDate = new(2026, 9, 28),
+      ScheduledTime = new(8, 0),
+      ScheduledTime2 = new(13, 0),
+      AppointmentTimeZoneId = "America/New_York",
+    };
+    plan.Stops = [pickup];
+    plan.Tracking.NextStopId = pickup.Id;
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, call => call.Name == "setTrucks")
+    );
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(fixture.TruckA.ToString())
+    );
+    await component.InvokeAsync(
+      () => component.Find(".fleet-truck-next__copy").Click()
+    );
+    var copied = fixture.Js.Calls.Last(call =>
+      call.Name == "navigator.clipboard.writeText"
+    );
+    Assert.Equal("Sep 28 · 08:00 AM – 01:00 PM EDT", copied.Args![0]);
+    component.WaitForAssertion(
+      () =>
+        Assert.Equal(
+          "Copied",
+          component.Find(".fleet-truck-next__copied").TextContent
         )
     );
   }
@@ -4995,9 +5039,7 @@ public sealed class FleetMapComponentTests
     );
     Assert.Equal(
       previousCurrentEta,
-      component
-        .Find(".fleet-truck-next__eta .arrival-estimate")
-        .OuterHtml
+      component.Find(".fleet-truck-next__eta .arrival-estimate").OuterHtml
     );
     Assert.Equal(
       previousFutureEta,

@@ -256,6 +256,14 @@
   &__field {
     min-width: 0;
   }
+  // The appointment's hours copy it; "Copied" floats at the row's end.
+  &__appointment {
+    position: relative;
+  }
+  &__copied {
+    top: 0;
+    right: 0;
+  }
   // Every fact is the same two cells sharing one label column: the
   // appointment used to put its label on a line of its own, which read as a
   // different kind of thing from the ETA directly under it.

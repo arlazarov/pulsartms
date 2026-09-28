@@ -103,6 +103,20 @@ public partial class NextLoadDetailsCard
       ?.Stops.Count > 0;
 
   private string Appointment => StopAppointmentDisplay.Format(Stop);
+
+  // What the Appointment copies: the window as shown, with the zone it is
+  // read in when the stop's forecast or source names one. No booking,
+  // nothing to copy.
+  private string? AppointmentCopy =>
+    Stop is { } stop && Appointment != "—"
+      ? StopTimeZoneLabel.ForAppointment(
+        stop,
+        Eta?.Stops.FirstOrDefault(value => value.StopId == stop.Id)?.TimeZoneId
+      )
+        is { } zone
+        ? $"{Appointment} {zone}"
+        : Appointment
+      : null;
   private string StopPosition =>
     $"Load stop {StopIndex + 1} of "
     + Math.Max(Route.StopCount, Route.Stops.Count);

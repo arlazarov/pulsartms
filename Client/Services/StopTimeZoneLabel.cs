@@ -1,3 +1,5 @@
+using Client.Models.DTO.Planning;
+
 namespace Client.Services;
 
 // The short name read beside a stop's local time. North American zones go
@@ -17,6 +19,20 @@ public static class StopTimeZoneLabel
     [TimeSpan.FromHours(-9)] = "AK",
     [TimeSpan.FromHours(-10)] = "H",
   };
+
+  // The zone a stop's booking is written in: the forecast for that same
+  // stop knows the stop's zone; failing that, the source's own. None
+  // known, none said.
+  public static string? ForAppointment(PlanStop stop, string? forecastZoneId) =>
+    stop.ScheduledDate is { } date
+      ? For(
+        string.IsNullOrWhiteSpace(forecastZoneId)
+          ? stop.AppointmentTimeZoneId
+          : forecastZoneId,
+        date,
+        stop.ScheduledTime
+      )
+      : null;
 
   public static string? For(string? zoneId, DateOnly date, TimeOnly? time)
   {

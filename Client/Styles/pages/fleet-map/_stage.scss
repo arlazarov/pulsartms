@@ -11,16 +11,21 @@
   isolation: isolate;
 }
 
+// One box whatever the card shows (truck, stop, station, fuel plan) and
+// whenever its answers arrive: the same width, height and place at each
+// width of the screen, so choosing another truck or stop, or a late read,
+// never moves its edges; what does not fit scrolls inside, and what is
+// still loading has its room already (the owner, September 28).
 .fleet-map-info-reserved {
   position: absolute;
   top: min(#{ui.pg(md)}, var(--map-inspector-side-gap, 0px));
   left: 0;
   right: 0;
-  width: min(100%, #{ui.size(map-inspector)});
+  width: min(100%, #{ui.size(map-compact-inspector)});
   margin-inline: auto;
   z-index: ui.layer(map-inspector);
   min-height: 0;
-  max-height: 55%;
+  height: 55%;
   overflow: auto;
   overscroll-behavior: contain;
   background: ui.theme(surface);
@@ -58,12 +63,6 @@
     min-height: 50dvh;
   }
   .fleet-map-inspector {
-    &[data-inspector-mode='fuel']:has(.fleet-station-popup--planned),
-    &[data-inspector-mode='fuel']:not(:has(.fleet-station-popup--planned)) {
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-    }
     &__header {
       padding: 0 ui.pg(sm);
     }
@@ -76,6 +75,6 @@
     }
   }
   .fleet-map-info-reserved {
-    max-height: 50%;
+    height: 50%;
   }
 }

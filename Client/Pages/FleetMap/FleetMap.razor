@@ -207,10 +207,9 @@
     </div>
     <section class="fleet-map-info-reserved fleet-map-inspector
                     @(InspectorVisible ? "has-selection" : "")
-                    @(MapOverlayOpen ? "is-overlaid" : "")
-                    @(_mobileTruckDetailsOpen
-                        ? "is-mobile-expanded" : "is-mobile-collapsed")"
+                    @(MapOverlayOpen ? "is-overlaid" : "")"
              aria-label="Map information"
+             inert="@MapOverlayOpen"
              data-inspector-mode="@_inspectorMode.ToString().ToLowerInvariant()"
              @onkeydown="OnInspectorKeyDownAsync"
              @onkeydown:stopPropagation="true">
@@ -267,28 +266,6 @@
            map used to offer only "Back to truck", which is a different
            thing: it goes somewhere, and closing leaves the map clear. *@
         <div class="fleet-map-inspector__controls">
-            @if (_inspectorMode == MapInspectorMode.Truck)
-            {
-                @* Says what it does. A bare chevron was too faint to be found;
-                   both words sit in one cell, so opening does not change the
-                   button's width and move the row beside it. A phone's card
-                   has no room for a closed state: there the card is open
-                   whole and this button is not shown (September 26). *@
-                <button type="button"
-                        class="btn btn--small fleet-map-mobile-summary__toggle"
-                        aria-expanded="@(_mobileTruckDetailsOpen
-                            ? "true" : "false")"
-                        aria-controls="fleet-map-details"
-                        @onclick="ToggleMobileTruckDetails">
-                    <span class="fleet-map-mobile-summary__toggle-words">
-                        <span aria-hidden="@(_mobileTruckDetailsOpen
-                            ? "true" : "false")">Details</span>
-                        <span aria-hidden="@(_mobileTruckDetailsOpen
-                            ? "false" : "true")">Hide details</span>
-                    </span>
-                    <ActionIcon Kind="chevron-down" />
-                </button>
-            }
             @if (_inspectorMode is MapInspectorMode.FuelPlan
                 or MapInspectorMode.FuelStations)
             {
@@ -312,11 +289,14 @@
             @* The truck as the workspace concept draws it: the next stop,
                eight facts in bordered cells and the driver's clocks. Its
                actions are in the map's bar; its trips are the chain's cards.
-               Kept mounted while a truck is selected and hidden in the other
+               Kept mounted while a truck is selected and parked in the other
                views, so the truck's readings (the weather) are not fetched
-               again on the way back. *@
-            <div class="fleet-truck-panel"
-                 hidden="@(_inspectorMode != MapInspectorMode.Truck)">
+               again on the way back. Parked, not hidden: display: none
+               would replay its arrival on the way back; inert keeps it out
+               of focus and the accessibility tree. *@
+            <div class="fleet-truck-panel
+                        @(_inspectorMode != MapInspectorMode.Truck ? "is-parked" : "")"
+                 inert="@(_inspectorMode != MapInspectorMode.Truck)">
             @* Where the truck is going next, when it gets there and how
                far it still has to drive (the owner, September 27): the
                route's own forecast and distance, read here too. *@
@@ -355,12 +335,17 @@
                         {
                             <span class="arrival-estimate__appointment fleet-truck-next__booking"><span
                                 class="fleet-truck-next__term">Appointment</span>
-                                <strong class="fleet-truck-next__hours">
+                                <CopyValue Value="@HeadAppointmentText(booked)"
+                                    Scope="(_activeTruckId, booked.Id)"
+                                    Class="fleet-truck-next__copy"
+                                    StatusClass="fleet-truck-next__copied"
+                                    Title="@($"Copy appointment: {HeadAppointmentText(booked)}")"
+                                    ><strong class="fleet-truck-next__hours">
                                     @foreach (var line in HeadAppointmentLines(booked))
                                     {
                                         <span>@line</span>
                                     }
-                                </strong>
+                                </strong></CopyValue>
                             </span>
                         }
                         <ArrivalEstimate
@@ -431,21 +416,14 @@
                         else
                         {
                             @* The text itself copies the full address. *@
-                            <dd><button type="button"
-                                class="fleet-truck-facts__copy"
-                                title="Copy location: @panelTruck.FormattedLocation"
-                                @onclick="() => CopyLocationAsync(panelTruck.FormattedLocation)"
-                                >@LocationSummary(panelTruck.FormattedLocation)</button></dd>
+                            <dd><CopyValue Value="@panelTruck.FormattedLocation"
+                                Scope="panelTruck.TruckId"
+                                Class="fleet-truck-facts__copy"
+                                StatusClass="fleet-truck-facts__copied"
+                                Title="@($"Copy location: {panelTruck.FormattedLocation}")"
+                                >@LocationSummary(panelTruck.FormattedLocation)</CopyValue></dd>
                         }
                     </div>
-                    @if (!string.IsNullOrWhiteSpace(panelTruck.FormattedLocation))
-                    {
-                        @if (_locationCopy is { } copyStatus
-                            && _locationCopyTruck == panelTruck.TruckId)
-                        {
-                            <span class="fleet-truck-facts__copied" role="status">@copyStatus</span>
-                        }
-                    }
                 </div>
             </dl>
             <div class="fleet-truck-clocks" @key="(2, panelTruck.TruckId)">

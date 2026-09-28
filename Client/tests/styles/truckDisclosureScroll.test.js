@@ -15,7 +15,7 @@ test('mobile truck panels scroll normally within the bounded map inspector', () 
   const mobile = css.slice(css.indexOf('@media (width < 768px)'));
   const rule = mobile.match(/\.fleet-map-info-reserved\s*\{([^}]*)\}/);
   assert.ok(rule);
-  assert.match(rule[1], /max-height: 50%;/);
+  assert.match(rule[1], /height: 50%;/);
   assert.match(css, /\.fleet-map-info-reserved\s*\{[^}]*overflow: auto;/);
   assert.doesNotMatch(rule[1], /overflow(?:-y)?: (?:hidden|clip);/);
   assert.doesNotMatch(mobile, /scrollbar-width: none;/);
@@ -24,25 +24,9 @@ test('mobile truck panels scroll normally within the bounded map inspector', () 
     css,
     /\.fleet-map-info-content\s*\{[^}]*position: absolute/,
   );
-  // The closed state belongs to the floating card (below the docked
-  // layout): its details close; a narrow card (a phone) also closes the
-  // facts and clocks (the owner, September 27).
-  assert.match(
-    css,
-    new RegExp(
-      String.raw`@media \(width < 1100px\)\s*\{\s*` +
-        `${selector}\\.is-mobile-collapsed \\.fleet-map-info-content` +
-        String.raw`\s*\{\s*display: none;`,
-    ),
-  );
-  assert.match(
-    css,
-    new RegExp(
-      String.raw`@container map-truck-card \(width < 40rem\)\s*\{\s*` +
-        `${selector}\\.is-mobile-collapsed \\.fleet-truck-facts,` +
-        String.raw`[\s\S]*?\.fleet-truck-clocks\s*\{\s*display: none;`,
-    ),
-  );
+  // No closed state: the card is always open and scrolls inside (the
+  // owner, September 28).
+  assert.doesNotMatch(css, /is-mobile-collapsed/);
   assert.match(css, /\.fleet-map-info-content > div\s*\{\s*flex-shrink: 0;/);
   assert.match(
     mobile,

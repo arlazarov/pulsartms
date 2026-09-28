@@ -9,11 +9,10 @@ const css = compileString(
   "@use 'shared/driver-status'; @use 'shared/trucks'; @use 'pages/fleet-map/route-info'; @use 'pages/fleet-map/stage'; @use 'pages/fleet-map/inspector'; @use 'pages/fleet-map/layout'; @use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
   { loadPaths },
 ).css;
-// The truck card is these four files; the rest of the inspector folder is
+// The truck card is these two files; the rest of the inspector folder is
 // the shell every card shares and the other modes' own rules.
 const compact = compileString(
   "@use 'pages/fleet-map/inspector/card';" +
-    " @use 'pages/fleet-map/inspector/hours-line';" +
     " @use 'pages/fleet-map/inspector/narrow';",
   { loadPaths },
 ).css;
@@ -38,7 +37,7 @@ test('map information caps its top gap by actual side clearance rather than view
   );
   assert.match(
     css,
-    /\.fleet-map-info-reserved\s*\{[^}]*width: min\(100%,\s*var\(--size-map-inspector\)\);\s*margin-inline: auto;/,
+    /\.fleet-map-info-reserved\s*\{[^}]*width: min\(100%,\s*var\(--size-map-compact-inspector\)\);\s*margin-inline: auto;/,
   );
   assert.match(
     css,
@@ -64,7 +63,7 @@ test('map information caps its top gap by actual side clearance rather than view
     /\.fleet-map-info-content\s*\{[^}]*display: flex;[^}]*flex-direction: column;/,
   );
   const mobilePanel = css.match(
-    /\.fleet-map-info-reserved\s*\{(\s*max-height: 50%;[^}]+)\}/,
+    /\.fleet-map-info-reserved\s*\{(\s*height: 50%;[^}]*)\}/,
   );
   assert.ok(
     mobilePanel,

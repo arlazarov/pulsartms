@@ -225,8 +225,6 @@ public partial class FleetMap
       && truck == _activeTruckId;
     _trip = (load.Id, load.ExecutionLegId);
     _tripStop = stop;
-    if (stop is not null)
-      _mobileTruckDetailsOpen = true;
     if (IsCurrentTrip(load))
     {
       await _map.InvokeVoidAsync("clearNextLoadSelection");
@@ -331,8 +329,6 @@ public partial class FleetMap
       route is not null && stopIndex >= 0 && stopIndex < route.Stops.Count
         ? route.Stops[stopIndex].Id
         : null;
-    if (_tripStop is not null)
-      _mobileTruckDetailsOpen = true;
     return InvokeAsync(StateHasChanged);
   }
 
@@ -392,46 +388,4 @@ public partial class FleetMap
     : StopAddressLines.Create(location).Locality is { Length: > 0 } locality
       ? locality
     : location;
-
-  // The panel's location, copied whole through the page's clipboard call.
-  // "Copied" is said only once the browser took it; a refusal says so.
-  private string? _locationCopy;
-  private Guid? _locationCopyTruck;
-  private int _locationCopyVersion;
-
-  private async Task CopyLocationAsync(string location)
-  {
-    var version = ++_locationCopyVersion;
-    var truck = _activeTruckId;
-    string status;
-    try
-    {
-      await JS.InvokeVoidAsync("navigator.clipboard.writeText", location);
-      status = "Copied";
-    }
-    catch (JSException)
-    {
-      status = "Could not copy";
-    }
-    // A copy that finishes after another truck was chosen says nothing on
-    // that truck's card.
-    if (_disposed || version != _locationCopyVersion || truck != _activeTruckId)
-      return;
-    _locationCopy = status;
-    _locationCopyTruck = truck;
-    StateHasChanged();
-    try
-    {
-      await Task.Delay(TimeSpan.FromSeconds(2), _lifetime.Token);
-    }
-    catch (OperationCanceledException)
-    {
-      return;
-    }
-    if (!_disposed && version == _locationCopyVersion)
-    {
-      _locationCopy = null;
-      StateHasChanged();
-    }
-  }
 }

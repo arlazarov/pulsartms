@@ -1,0 +1,6 @@
+<button type="button" class="copy-value @Class" title="@Title"
+    @onclick="CopyAsync">@ChildContent</button>@if (_status is { } status)
+{
+    <span class="copy-value__status @StatusClass"
+        role="status">@status</span>
+}

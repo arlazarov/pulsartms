@@ -3,7 +3,6 @@
 // The truck card itself: how wide it is, the width everything on it reads,
 // and the head that names the truck.
 .fleet-map-inspector[data-inspector-mode='truck'] {
-  width: min(100%, #{ui.size(map-compact-inspector)});
   // Everything on this card - its head and its body - changes shape at one
   // width, and it is the card's own. The head used to read the window
   // instead, in a stylesheet of its own, so the two halves of the same card
@@ -37,8 +36,8 @@
     gap: ui.pg(xs) ui.pg(sm);
     min-width: 0;
   }
-  // The toggle and the close, with a hairline between them so the one
-  // that opens the card is never taken for the one that shuts it.
+  // The close. The card is always open: a phone has no Details toggle
+  // (the owner, September 28).
   // The controls may give way to the unit: at enlarged text the close
   // wraps under Details instead of running past the card.
   .fleet-map-inspector__controls {
@@ -48,14 +47,15 @@
     justify-content: flex-end;
     align-items: center;
     gap: ui.pg(sm);
-    > .fleet-map-mobile-summary__toggle {
-      padding-inline-end: ui.pg(sm);
-      box-shadow: 1px 0 0 0 ui.theme(border-subtle);
-    }
   }
   .fleet-map-inspector__title {
     @include ui.overlay-title;
     display: block;
     margin-right: 0;
+  }
+  @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {
+    .fleet-map-inspector__header {
+      gap: ui.pg(sm);
+    }
   }
 }
