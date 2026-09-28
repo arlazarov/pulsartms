@@ -985,6 +985,11 @@
     max-width: none;
     justify-self: stretch;
   }
+  // The list is as tall as its trucks; the map shows beneath it.
+  .fleet-map-stage > .fleet-truck-list:not(.is-collapsed) {
+    align-self: start;
+    max-height: 100%;
+  }
   // A chosen truck's panel is as tall as what it says; the map shows
   // beneath it. The empty state keeps the column.
   .fleet-map-stage

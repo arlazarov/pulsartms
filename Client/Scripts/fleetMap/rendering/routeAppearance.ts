@@ -288,7 +288,7 @@ export function routeGlowLayers(
       updateTriggers: { getColor: [step, chosen] },
     });
   const tier = light
-    ? { wide: 24, near: 11, wideAlpha: 52, nearAlpha: 104 }
+    ? { wide: 16, near: 7, wideAlpha: 28, nearAlpha: 64 }
     : { wide: 20, near: 9, wideAlpha: 38, nearAlpha: 80 };
   cached.cachedGlowKey = key;
   cached.cachedGlowData = line.data;

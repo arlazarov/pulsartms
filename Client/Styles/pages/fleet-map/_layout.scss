@@ -23,11 +23,13 @@
   z-index: ui.layer(map-legend);
   align-self: end;
   justify-self: start;
-  padding: ui.pg(hair) ui.pg(xs);
-  border-radius: ui.radius(sm);
-  background: ui.theme(surface, 0.8);
-  color: ui.theme(text-secondary);
+  // A quiet credit line, not a plate floating on the map.
+  padding: 0;
+  background: none;
+  color: ui.theme(text-muted);
   font-size: ui.fs(micro);
+  letter-spacing: 0.04em;
+  text-shadow: 0 0 6px ui.theme(canvas);
 }
 
 .fleet-map-page {
@@ -85,13 +87,12 @@
 }
 
 // The light road map in the workspace's key (the owner, September 27):
-// Google's pastel greens and blues quieted to cool steel, a trace of blue
-// kept on the water. Only Google's own layer is filtered - the trucks,
+// Google's pastel greens and blues quieted to neutral steel, a trace of
+// blue kept on the water. Only Google's own layer is filtered - the trucks,
 // roads and marks are drawn above it and keep their colours - and never
 // the satellite imagery.
 :root[data-theme='light'] #fleet-map:not(.is-satellite) .gm-style {
-  filter: grayscale(0.82) sepia(0.12) hue-rotate(175deg) brightness(1.03)
-    contrast(0.94);
+  filter: grayscale(0.88) brightness(1.04) contrast(0.95);
 }
 #fleet-map .gm-style {
   transition: filter 300ms ease;
