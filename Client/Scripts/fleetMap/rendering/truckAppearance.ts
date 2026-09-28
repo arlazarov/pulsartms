@@ -51,8 +51,9 @@ const ringQuiet = '#64748b';
 const body = '#1e293b';
 // The dark map's instrument marks: the glass body by engine state, the
 // casing and the spine.
-const glassOn = { lit: '#ecfdf5', deep: '#6ee7a0' };
-const glassOff = { lit: '#ffffff', deep: '#c7d2e0' };
+const glassOn = { lit: '#dcfce7', deep: '#4ade80' };
+const glassOff = { lit: '#cffafe', deep: '#22d3ee' };
+const glassUnknown = { lit: '#f1f5f9', deep: '#94a3b8' };
 const offGlow = '#22d3ee';
 const ringOn = '#4ade80';
 const casing = '#020617';
@@ -89,7 +90,7 @@ function lightTruckIcon(engine: unknown, speed: number) {
 // The dark map's marks: the engine-edge truck drawn as an instrument that
 // stands out from the dark ground (the owner, September 27: dark bodies
 // sank into the map) - a bright glass body in a dark casing with a fine
-// dark spine or core, green with a green glow while the engine runs, pale
+// dark spine or core, green with a green glow while the engine runs, cyan
 // with a cyan glow while it is off.
 export function truckIcon(engine: unknown, speed = 0) {
   if (isLightMap()) return lightTruckIcon(engine, speed);
@@ -106,10 +107,11 @@ export function truckIcon(engine: unknown, speed = 0) {
           ? `stroke="${engineQuiet}" stroke-width="2"`
           : `stroke="${engineQuiet}" stroke-width="2" stroke-dasharray="3 2"`;
     // The engine is told by the whole mark, not a thin edge alone: running,
-    // green glass with a green glow; off or unknown, pale glass with a cyan
+    // green glass with a green glow; off, bright cyan glass with a cyan
     // glow, so a standing truck with its engine off still stands out from
-    // the dark map (unknown keeps its dashed edge).
-    const tone = reading === 'on' ? glassOn : glassOff;
+    // the dark map; unknown, grey glass with a dashed edge.
+    const tone =
+      reading === 'on' ? glassOn : reading === 'off' ? glassOff : glassUnknown;
     const glass = `<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${tone.lit}"/><stop offset="1" stop-color="${tone.deep}"/></linearGradient></defs>`;
     // The engine's colour, bright, for the glow and the sight ring.
     const ring = reading === 'on' ? ringOn : offGlow;
@@ -125,8 +127,8 @@ export function truckIcon(engine: unknown, speed = 0) {
           // a soft glow around a pale glass core, so it reads as a truck
           // and not as a map button.
           `
-<circle cx="13" cy="13" r="12.4" fill="none" stroke="${ring}" stroke-opacity="0.35" stroke-width="3"/>
-<circle cx="13" cy="13" r="12.4" fill="none" stroke="${ring}" stroke-width="1.4"/>
+<circle cx="13" cy="13" r="12.4" fill="none" stroke="${ring}" stroke-opacity="0.45" stroke-width="3.4"/>
+<circle cx="13" cy="13" r="12.4" fill="none" stroke="${ring}" stroke-width="2"/>
 <circle cx="13" cy="13" r="8.6" fill="none" stroke="${casing}" stroke-opacity="0.9" stroke-width="3"/>
 <circle cx="13" cy="13" r="8.6" fill="url(#b)" ${edge}/>
 <circle cx="13" cy="13" r="2.2" fill="${spine}"/>`;
