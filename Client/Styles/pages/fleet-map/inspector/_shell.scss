@@ -4,18 +4,9 @@
 // it carries. A truck, a stop, a next stop and a planned fuel stop are all
 // this card with different content, in one box (the stage owns its size).
 .fleet-map-inspector {
+  container: map-card / inline-size;
   &[data-inspector-mode='nextstop'] {
-    container: next-stop-inspection / inline-size;
-    // Back stands in the title's row, beside the close (the owner,
-    // September 27: a row of its own under the title wasted the room
-    // beside it).
-    .fleet-map-inspector__header {
-      flex-wrap: nowrap;
-    }
-    .fleet-map-inspector__back,
-    .fleet-map-inspector__controls {
-      flex-shrink: 0;
-    }
+    container: next-stop-inspection map-card / inline-size;
     @container next-stop-inspection (width < #{ui.breakpoint(map-next-stop-tight)}) {
       .fleet-map-inspector__header {
         position: static;
@@ -23,30 +14,36 @@
     }
   }
   &[data-inspector-mode='fuel']:not(:has(.fleet-station-popup--planned)) {
-    .fleet-map-inspector__header {
-      flex-wrap: wrap;
-    }
     .fleet-map-inspector__native {
       container-type: normal;
     }
   }
 
+  // One head for every card - truck, stop, next stop, station, fuel
+  // (the owner, September 28): what the card is about, its eyebrow over
+  // its title, at the left; Back in one fixed slot right beside the close,
+  // wherever the card has one. Only the title gives way.
   &__header {
     position: sticky;
     top: 0;
     z-index: ui.layer(raised);
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas: 'identity back controls';
     align-items: center;
-    gap: ui.pg(sm);
+    gap: ui.pg(xs) ui.pg(sm);
     padding: ui.pg(xs) ui.pg(md);
     background: ui.theme(surface);
     border-bottom: 1px solid ui.theme(border-subtle);
   }
-  // A title gives way before the head's actions do.
+  &__identity {
+    grid-area: identity;
+    display: grid;
+    min-width: 0;
+  }
   &__title {
     @include ui.overlay-title;
-    margin-right: auto;
+    display: block;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -70,18 +67,26 @@
       background: ui.theme(surface-soft);
     }
   }
-  // Enlarged text wraps the controls onto a line of their own rather
-  // than pushing the close past the panel.
   &__controls {
+    grid-area: controls;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: ui.pg(xs);
-    min-width: 0;
-    margin-left: auto;
   }
   &__back {
-    margin-left: auto;
+    grid-area: back;
+  }
+  // A narrow head (enlarged text on a phone) puts Back under the title,
+  // still at the right, rather than crowding the close.
+  @container map-card (width < #{ui.breakpoint(map-card-head-stacked)}) {
+    &__header {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas:
+        'identity controls'
+        'back back';
+    }
+    &__back {
+      justify-self: end;
+    }
   }
   &__native,
   &__body {

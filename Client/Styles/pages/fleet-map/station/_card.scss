@@ -176,13 +176,10 @@
       @include ui.hud-frame;
       padding-top: ui.pg(md);
     }
-    // Room past the pump's sight ring before the name, and under it
+    // The pump is the card head's emblem; the name keeps room under it
     // before the address (the owner, September 28).
     .fleet-station-popup__title {
-      display: flex;
-      align-items: center;
       margin-bottom: ui.pg(md);
-      @include ui.hud-emblem(fuel, 2.25rem, $ring-gap: ui.pg(lg));
     }
     .fleet-station-popup__plan-label,
     .fleet-station-popup__day-label {

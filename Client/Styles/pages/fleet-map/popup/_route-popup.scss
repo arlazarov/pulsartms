@@ -123,9 +123,7 @@
         ui.theme(hud-glow),
         ui.theme(accent) 80%
       );
-      box-shadow:
-        0 0 0 3px ui.theme(hud-glow, 0.18),
-        0 0 16px ui.theme(hud-glow, 0.45);
+      box-shadow: none;
       color: ui.theme(on-accent);
     }
     &.is-done {

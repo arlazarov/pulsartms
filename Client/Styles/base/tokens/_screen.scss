@@ -37,6 +37,9 @@ $screen-places: (
   map-fuel-halves: 34rem,
   station-price-days-stacked: 20rem,
   map-next-stop-tight: 18rem,
+  // A card head narrower than this puts Back under the title (enlarged
+  // text on a phone), so the title, Back and the close never crowd.
+  map-card-head-stacked: 20rem,
   map-toolbar-stacked: 14rem,
   // A stop card narrower than this stacks its place over its facts.
   stop-card-stacked: 34rem,

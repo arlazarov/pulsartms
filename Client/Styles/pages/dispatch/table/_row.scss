@@ -111,9 +111,14 @@
     font-size: ui.fs(small);
     font-weight: 600;
   }
-  // Today is lit, as the workspace lights what is current.
+  // Today is lit, as the workspace lights what is current; in daylight
+  // its accent rim and tint say so without a halo (the owner, September
+  // 28).
   .dispatch-table__day-group.is-today .dispatch-table__day-chip {
     box-shadow: 0 0 14px color-mix(in srgb, var(--day-fill) 40%, transparent);
+    :root[data-theme='light'] & {
+      box-shadow: none;
+    }
   }
   .dispatch-table__day-count {
     float: inline-end;

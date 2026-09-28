@@ -578,6 +578,7 @@
   border-radius: ui.radius(md);
   background-color: ui.theme(surface);
   :root[data-theme='light'] & {
+    background-color: ui.theme(surface, 0.5);
     --facts-rim: #{ui.theme(selection-border, 0.9)};
     --facts-line: #{ui.theme(selection-border, 0.7)};
     --facts-icon: #{ui.theme(hud-line)};
@@ -779,23 +780,45 @@
   }
 }
 
-// The truck panel's head as the stop cards are drawn (the owner,
-// September 27): a truck emblem beside the unit.
+// Every docked card's head carries its one emblem in the same place and
+// size (the owner, September 28): the truck, a stop's pin, the pump. On
+// the head itself: it stays sticky. No rule under it: a straight line
+// over the rounded blocks below read as a seam (the owner, September 27).
+// The emblem clears the glass's corner tick, as the words do.
 @include ui.above(fleet-docked) {
-  .fleet-map-inspector[data-inspector-mode='truck'] {
-    // On the head itself: it stays sticky, and its grid is untouched. No
-    // rule under it: a straight line right over the facts' rounded
-    // corners read as a seam (the owner, September 27).
-    .fleet-map-inspector__header {
-      border-bottom-color: transparent;
-      @include ui.hud-emblem(truck, 2.75rem, sticky);
-      // Clear of the glass's corner tick, as the words were.
-      padding-top: ui.pg(md);
-      padding-bottom: ui.pg(sm);
-      padding-left: calc(2.75rem + #{ui.pg(lg)} + #{ui.pg(sm)} + #{ui.pg(md)});
-      &::before,
+  .fleet-map-inspector {
+    $emblem: (
+      truck: truck,
+      stop: stop,
+      nextstop: stop,
+      fuel: fuel,
+      fuelplan: fuel,
+      fuelstations: fuel,
+    );
+    @each $mode, $glyph in $emblem {
+      &[data-inspector-mode='#{$mode}'] .fleet-map-inspector__header {
+        padding-top: ui.pg(md);
+        padding-bottom: ui.pg(sm);
+        border-bottom-color: transparent;
+        @include ui.hud-emblem(
+          $glyph,
+          2.75rem,
+          sticky,
+          $inset: calc(#{ui.pg(lg)} + #{ui.pg(sm)})
+        );
+      }
+    }
+    // The emblem is the head's: in the stop card below, the stop's letter
+    // is a small badge beside what happens there, as on the map.
+    .fleet-route-popup__number {
+      inline-size: ui.size(popup-stop-badge);
+      block-size: ui.size(popup-stop-badge);
+      align-self: center;
+      border-width: 1px;
+      box-shadow: none;
+      font-size: ui.fs(small);
       &::after {
-        left: calc(#{ui.pg(lg)} + #{ui.pg(sm)});
+        content: none;
       }
     }
   }
@@ -806,7 +829,7 @@
 .fleet-map-inspector {
   // Docked, the unit reads as the panel's title, as large as the concept's.
   @include ui.above(fleet-docked) {
-    &[data-inspector-mode='truck'] .fleet-map-inspector__title {
+    .fleet-map-inspector__title {
       font-size: ui.fs(heading);
       font-weight: 700;
       letter-spacing: 0.01em;
@@ -817,6 +840,8 @@
     color: ui.theme(text-muted);
     font-size: ui.fs(caption);
     font-weight: 600;
+    // Its own line height, so every card's title sits on one baseline.
+    line-height: 1.25;
     letter-spacing: 0.14em;
     text-transform: uppercase;
     :root[data-theme='light'] & {
@@ -1132,18 +1157,17 @@
       background:
         linear-gradient(currentColor, currentColor) top center /
           calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
-        ui.theme(surface);
-      box-shadow: 0 2px 8px ui.theme(shadow, 0.06);
+        ui.theme(surface, 0.55);
+      box-shadow: none;
     }
     .fleet-trip-chain .is-selected .fleet-trip-chain__card {
       border-color: color-mix(in srgb, currentColor 60%, transparent);
       background:
         linear-gradient(currentColor, currentColor) top center /
           calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
-        ui.theme(surface);
-      box-shadow:
-        0 0 14px color-mix(in srgb, currentColor 18%, transparent),
-        0 6px 16px ui.theme(shadow, 0.1);
+        ui.theme(surface, 0.55);
+      // Chosen by its rim, not a glow (the owner, September 28).
+      box-shadow: 0 1px 3px ui.theme(shadow, 0.08);
     }
     .fleet-trip-chain__phase {
       border: 0;
@@ -1309,5 +1333,31 @@
       max-width: 100%;
       margin: 0;
     }
+  }
+}
+
+// Daylight frost inside the map's glass (the owner, September 28): the
+// floating card, every card's sticky head and the list's column head are
+// the same translucent glass, not opaque white panels over it; the head
+// blurs what scrolls under it so its words stay crisp.
+:root[data-theme='light'] {
+  .fleet-map-info-reserved {
+    @include ui.light-glass;
+  }
+  .fleet-map-inspector__header,
+  .fleet-truck-list__columns {
+    background: ui.theme(surface, 0.5);
+    backdrop-filter: blur(12px);
+  }
+  // No decorative glow in daylight (the owner, September 28): a pressed
+  // chip, a running Follow, a focused search and today's price read by
+  // their rim and tint; a focus keeps its fine ring.
+  .fleet-map-toolbar .search-input input:focus,
+  .fleet-map-motion__chip[aria-pressed='true'],
+  .fleet-map-controls__button[aria-pressed='true'] {
+    box-shadow: 0 0 0 1px ui.theme(accent, 0.3);
+  }
+  .fleet-station-popup__day.is-current {
+    box-shadow: none;
   }
 }

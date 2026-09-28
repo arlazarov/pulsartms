@@ -78,7 +78,9 @@ test('one map inspector retains hidden content and gives native and future detai
   assert.doesNotMatch(css, /\[hidden\]\s*\{\s*display: none/);
   assert.match(
     css,
-    /\.fleet-map-inspector__header\s*\{\s*position: sticky;\s*top: 0;[^}]*display: flex;/,
+    // One head for every card (the owner, September 28): a grid with
+    // Back in a fixed slot beside the close.
+    /\.fleet-map-inspector__header\s*\{\s*position: sticky;\s*top: 0;[^}]*display: grid;[^}]*grid-template-areas: "identity back controls";/,
   );
   assert.match(
     css,
