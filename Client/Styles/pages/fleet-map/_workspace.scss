@@ -1217,3 +1217,23 @@
   }
 }
 
+// Arc Reactor (the owner's choice for the light theme, September 27):
+// white glass with bright cyan light, and deep navy bars carrying the
+// panel heads - the dark theme's night, worn as a band.
+:root[data-theme='light'] {
+  .fleet-truck-list__header {
+    @include ui.navy-head;
+    h2 {
+      color: ui.theme(text);
+    }
+  }
+  .fleet-map-info-reserved .fleet-map-inspector__header {
+    @include ui.navy-head;
+  }
+  .fleet-truck-list,
+  .fleet-map-info-reserved,
+  .fleet-trip-chain {
+    border-color: ui.clr('cyan', 400, 0.8);
+  }
+}
+

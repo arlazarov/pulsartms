@@ -1,6 +1,7 @@
 @use 'sass:map';
 @use 'tokens' as vars;
 @use 'functions' as fn;
+@use 'themes';
 
 @mixin overlay-title {
   color: fn.theme(text);
@@ -358,5 +359,26 @@ $hud-glyphs: (
   :root[data-theme='light'] &::after {
     background: fn.theme(on-accent);
   }
+}
+
+// A region drawn in the dark theme's colours inside the light theme: the
+// Arc Reactor light theme's deep navy bars (the owner, September 27).
+// Every role the region's controls read flips with it, so its buttons,
+// text and icons need no rules of their own.
+@mixin dark-scope {
+  color-scheme: dark;
+  @each $name, $value in themes.$dark-roles {
+    --ui-#{$name}: #{$value};
+  }
+  color: fn.theme(text);
+}
+
+// A panel's head as a navy bar across its top, rounded with the panel.
+@mixin navy-head {
+  @include dark-scope;
+  border-radius: calc(#{fn.radius(panel)} - 1px)
+    calc(#{fn.radius(panel)} - 1px) 0 0;
+  border-bottom: 1px solid fn.clr('cyan', 400, 0.55);
+  background: fn.clr(night, 900);
 }
 

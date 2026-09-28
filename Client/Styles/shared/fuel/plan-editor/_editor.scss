@@ -141,3 +141,7 @@
   }
 }
 
+:root[data-theme='light'] .fuel-plan-editor__header {
+  @include ui.navy-head;
+}
+
