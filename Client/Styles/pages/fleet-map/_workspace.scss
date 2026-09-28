@@ -469,20 +469,23 @@
     linear-gradient(ui.theme(accent), ui.theme(accent)) top center /
       calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
     ui.theme(accent, 0.05);
+  // What is left drops under the label when the line has no room for
+  // both (enlarged text, or miles and kilometres together).
   &__head {
     display: flex;
+    flex-wrap: wrap;
     align-items: baseline;
     justify-content: space-between;
-    gap: ui.pg(sm);
+    gap: 0 ui.pg(sm);
   }
   &__label {
     @include ui.hud-label;
     color: ui.theme(accent);
   }
   &__left {
+    min-width: 0;
     color: ui.theme(text-secondary);
     font-size: ui.fs(small);
-    white-space: nowrap;
     strong {
       color: ui.theme(text);
       font-size: ui.fs(subtitle);
@@ -609,6 +612,8 @@
       user-select: text;
     }
   }
+  // A place name longer than a narrow cell at enlarged text breaks
+  // inside itself rather than pushing the facts sideways.
   &__copy {
     padding: 0;
     border: 0;
@@ -616,6 +621,7 @@
     color: inherit;
     font: inherit;
     text-align: left;
+    overflow-wrap: anywhere;
     cursor: copy;
     &:hover,
     &:focus-visible {
@@ -648,12 +654,13 @@
     &__fact {
       flex-direction: column;
       gap: ui.pg(xs);
-      padding-inline: ui.pg(sm);
+      padding-inline: ui.pg(xs);
       > svg {
         margin-top: 0;
       }
     }
     dt {
+      letter-spacing: 0;
       hyphens: auto;
       overflow-wrap: break-word;
     }
@@ -1274,5 +1281,22 @@
   }
   .fleet-trip-chain {
     grid-area: chain;
+  }
+  // At enlarged text on a narrow screen the tool bar wraps into rows that
+  // covered the floating card's head and facts: the stage takes the
+  // screen's height (the page scrolls), the bar a row of its own above
+  // the map, every button in view, and the card starts below it.
+  @container fleet-page (width < #{ui.breakpoint(map-tools-apart)}) {
+    .fleet-map-stage {
+      min-height: 100dvh;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-areas: 'tools' 'map' 'chain';
+    }
+    .fleet-map-controls {
+      grid-area: tools;
+      align-self: start;
+      max-width: 100%;
+      margin: 0;
+    }
   }
 }

@@ -146,11 +146,12 @@ mounted, full-sized and independently interactive, and leave background
 controls accessible. Trucks are always shown; there is no manual
 truck-layer visibility toggle. While editing fuel, show only the edited
 truck; restore all trucks when editing ends, including empty drafts. On a
-phone the editor takes the card's whole width and at most 85% of the map
-(September 28): it keeps its frame, the list scrolling between the totals
-and the footer, so Calculate automatically, Cancel and Save stay in view.
-At half the map the list had no room and a whole-card scroll pushed the
-footer out of the card. The map strip under the editor stays interactive,
+phone the editor takes the card's whole width and at most 90% of the map
+(more room for the opened stop, the owner, September 28). The editor
+keeps its frame, the list scrolling between the totals and the footer,
+so Calculate automatically, Cancel and Save stay in view. The map does
+not grow for it: a taller stage made the page scroll under the map.
+The map strip under the editor stays interactive,
 so a station can still be picked there, and the map pans under it; there
 are no Route / Fuel / Map tabs any more. The older paragraph below describes the
 retired two-column card.
@@ -1303,9 +1304,9 @@ The map key names the current route, Next loads (colour by load) and
 Empty miles as the orange dash.
 
 On phones the map stage keeps at least half the screen (`50dvh`; the page
-scrolls past the toolbar for it) and the floating panel may take half of
-the stage - the map is what the page is for; opened Details may take
-85% of it - so the card scrolls for the rest and the fuel plan's
+scrolls past the toolbar for it) and the floating panel may take
+half of the stage - the map is what the page is for; opened Details may
+take 85% of it - so the card scrolls for the rest and the fuel plan's
 Stations, Edit plan and Send actions stay within reach by scrolling the
 panel rather than vanishing under its own heading.
 

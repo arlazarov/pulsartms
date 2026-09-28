@@ -52,7 +52,8 @@
   // fuel plan showed nothing but its own heading. The stage keeps half the
   // screen at least - the page scrolls past the toolbar for it - and the
   // panel half of that: the map is what the page is for, and the card
-  // scrolls for the rest.
+  // scrolls for the rest. A full-screen stage made the page scroll under
+  // the map as it was used, so the map moved.
   .fleet-map-stage {
     min-height: 50dvh;
   }
