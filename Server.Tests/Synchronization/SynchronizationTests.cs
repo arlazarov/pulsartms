@@ -164,6 +164,21 @@ public class SynchronizationTests
       await EventuallyAsync(
         () => feed.Cursors.Count >= 2 && telemetry.Current?.Trucks.Count == 1
       );
+      // This binary marks the lease it holds, so a newer one does not
+      // take it for a binary from before audit F27 - nor does it itself.
+      Assert.StartsWith(
+        IPreviousBinary.Marker,
+        await fixture
+          .Db.SynchronizationCheckpoints.AsNoTracking()
+          .Where(x => x.Id == SynchronizationStore.Id)
+          .Select(x => x.Owner)
+          .SingleAsync()
+      );
+      Assert.False(
+        await new PreviousBinary(fixture.Db, TimeProvider.System).RunsAsync(
+          default
+        )
+      );
       await worker.StopAsync(default);
     }
     Assert.Equal(1, sender.CatalogCalls);

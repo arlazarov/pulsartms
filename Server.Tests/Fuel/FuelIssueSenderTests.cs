@@ -52,6 +52,29 @@ public sealed class FuelIssueSenderTests
     Assert.Empty(f.Transport.Sent);
   }
 
+  // A binary from before audit F27 still runs during a release: the send
+  // is refused with a retry, before anything is recorded or sent - not
+  // reported as done - and goes once that binary has stopped.
+  [Fact]
+  public async Task ASendWhileThePreviousBinaryRunsIsHeldNotLost()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    var (hold, previous) = TestSendHold.With(new(true), clock);
+    f.Hold = hold;
+    var shown = await f.CurrentAsync(First, fill: true);
+
+    var held = await f.SendAsync(Request(shown), shown);
+
+    Assert.Equal(503, held.Status);
+    Assert.Empty(f.Transport.Sent);
+    Assert.Empty(await f.Db.DriverMessages.AsNoTracking().ToListAsync());
+    previous.Runs = false;
+    clock.Advance(SendHold.Recheck);
+    Assert.Equal(200, (await f.SendAsync(Request(shown), shown)).Status);
+    Assert.Single(f.Transport.Sent);
+  }
+
   [Fact]
   public async Task OnlyTheAttemptConstraintIsAnExpectedAdmissionConflict()
   {
@@ -517,6 +540,7 @@ public sealed class FuelIssueSenderTests
   {
     public required PlanningRefreshFixture Refresh { get; init; }
     public FakeDriverMessaging Transport { get; } = new();
+    public SendHold Hold { get; set; } = TestSendHold.Open();
     public Guid Truck { get; private set; }
     public Guid Dispatch { get; private set; }
     public Guid Driver { get; private set; }
@@ -706,6 +730,7 @@ public sealed class FuelIssueSenderTests
             company,
             Time
           ),
+          Hold,
           NullLogger<DriverTextDelivery>.Instance
         ),
         new FuelIssueRecords(
@@ -737,6 +762,7 @@ public sealed class FuelIssueSenderTests
           Refresh.Services.GetRequiredService<ICurrentCompany>(),
           Time
         ),
+        Hold,
         NullLogger<DriverTextDelivery>.Instance
       );
 

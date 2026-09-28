@@ -90,6 +90,14 @@ public sealed class OutboundMessageOperation(
   {
     await ReapAsync(ct);
     await ReconcileAsync(ct);
+    // Queued replies wait while a binary from before audit F27 runs.
+    await using (var holding = scopes.CreateAsyncScope())
+      if (
+        await holding
+          .ServiceProvider.GetRequiredService<SendHold>()
+          .HeldAsync(ct)
+      )
+        return 0;
     List<Guid> due;
     var now = clock.GetUtcNow().UtcDateTime;
     await using (var scope = scopes.CreateAsyncScope())

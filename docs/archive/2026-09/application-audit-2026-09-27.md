@@ -1688,30 +1688,60 @@ one finishes its requests and runs its background work until it stops
 
 So no path ends silently, but the second loses the status itself - a
 failure is shown as "delivery unknown", not as failed with its code -
-because WhatsApp offers no status query. It needs a webhook in flight
-at the switch for a message sent in the seconds before it. The steps
-make that window empty rather than accept it:
+because WhatsApp offers no status query.
+
+Correction (root's review of b541431e): the first version closed that
+window with a send freeze and a read-only check that nothing was in
+flight before moving traffic. A snapshot cannot close it: the previous
+binary's outbox, or a dispatcher, can send a moment after it. The window
+is now closed by the new binary itself (`SendHold`): it sends nothing to
+the provider while a binary from before F27 runs. It recognises one by
+the synchronization loop's lease - held now by an owner without the
+marker every binary from this one on writes (`IPreviousBinary`), read
+from that one checkpoint row. The previous binary releases the lease when
+it stops (a dead one's runs out within three minutes); the hold is asked
+again every five seconds and, once released, never holds again in that
+process. Meanwhile queued replies wait in the outbox, and a direct fuel
+send is refused with 503 before anything is recorded ("send again in a
+minute"), so nothing is lost and nothing is reported as sent. Tests:
+`ReleaseSendHoldTests`, `AQueuedReplyWaitsWhileThePreviousBinaryRuns`,
+`ASendWhileThePreviousBinaryRunsIsHeldNotLost`, the marked owner in the
+synchronization worker test; removing the fuel-sender case, the
+delivery's or the outbox's hold, the row filter or the marker fails them
+(diagnostic-dqlNf7; a sticky-release mutation is equivalent - a released
+hold never asks again). Messaging, fuel and synchronization groups
+green.
+
+What the hold guarantees: no message this binary sends can have a
+status dropped by the previous binary, because while the previous
+binary can still receive webhooks this binary sends nothing. What it
+does not change: statuses of messages the previous binary sends itself
+that reach it before it saves the id - the F27 race of that binary,
+present every minute it runs and ended by the release, not caused by it.
+Its assumptions: the previous revision runs the synchronization loop
+(production runs every role on its one instance), and its lease is not
+lost while it runs (it renews every 45 seconds for three minutes).
+
+Cutover steps, with the hold in place:
 
 0. Owner, before the release: confirm where the business number's
-   webhooks go. On 2026-09-25 a WABA-level override sent them to the demo
-   company's URL; if that still holds, the switch touches no production
-   status. No change to the Meta configuration is part of this plan.
-1. Send freeze for the switch, about two minutes: dispatchers send no
-   replies or fuel texts. Automatic fuel sending, where enabled, runs in
-   the previous binary's background until it stops, so step 2 checks it.
-2. Immediately before moving traffic, read only: no reply queued or
-   sending, no fuel text sending in the last two minutes, and the count
-   of kept statuses (migration 78's table). Anything in flight: wait
-   and read again.
-3. Move traffic; wait for the previous revision's shutdown
-   (`TrafficShutDown` true and its last log line); end the freeze.
-4. Two minutes after: `messaging.kept-status-unapplied` has no finding
-   (reconciled), nor `messaging.outbound-overdue` or the two fuel
-   hand-over rules; `api/diagnostics/background` shows the outbox
-   progressing. The audit runs every ten minutes; its on-demand run is
-   an Admin action and part of the authorized release, not of this plan.
+   webhooks go (on 2026-09-25 a WABA-level override sent them to the demo
+   company). No change to the Meta configuration is part of this plan.
+1. Before moving traffic, read only: the synchronization lease is held,
+   unexpired, by an unmarked owner - the previous binary - so the hold
+   will engage. If it is not, stop: the hold would not see that binary.
+2. Move traffic. The new binary holds its sends: replies queue, a fuel
+   send answers 503. Dispatchers are told the wait lasts until the
+   previous revision has stopped - normally seconds, three minutes at
+   most after a crash.
+3. Wait for the previous revision's shutdown (`TrafficShutDown` true and
+   its last log line); read only: the lease is now free or marked, and
+   `api/diagnostics/background` shows the outbox progressing and the
+   queued replies sent.
+4. Two minutes after: `messaging.kept-status-unapplied` has no finding,
+   nor `messaging.outbound-overdue` or the two fuel hand-over rules.
 5. Thirty minutes after: `messaging.accepted-without-status` lists no
-   message sent in the switch window; any it lists is told to the
+   message sent around the switch; any it lists is told to the
    dispatcher as delivery unknown.
 
 Rollback undoes this: the previous binary has neither the kept statuses

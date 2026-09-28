@@ -17,6 +17,7 @@ public sealed class DriverTextDelivery(
   ICurrentCompany company,
   TimeProvider time,
   EarlyDeliveryStatuses early,
+  SendHold hold,
   ILogger<DriverTextDelivery> logger
 ) : IDriverTextDelivery
 {
@@ -117,6 +118,8 @@ public sealed class DriverTextDelivery(
     }
     if (await messaging.BusinessNumberAsync(ct) is not { } number)
       return new(DriverTextResult.NotConfigured, null);
+    if (await hold.HeldAsync(ct))
+      return new(DriverTextResult.Held, null);
     if (request.Id == Guid.Empty)
       request.Id = Guid.NewGuid();
     request.CompanyId =

@@ -156,6 +156,12 @@ public sealed class FuelIssueSender(
           "The channel can no longer deliver to this driver. Nothing was "
             + "sent. Refresh the recipient or pass the plan on by hand."
         );
+      case DriverTextResult.Held:
+        return new(
+          503,
+          "Sending is paused while the previous release stops. Nothing was "
+            + "sent; send again in a minute."
+        );
       case DriverTextResult.NumberChanged:
         return new(
           409,

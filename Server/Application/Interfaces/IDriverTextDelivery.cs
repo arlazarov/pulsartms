@@ -73,6 +73,10 @@ public enum DriverTextResult
   Accepted,
   Unknown,
   Rejected,
+
+  // Not recorded and not sent: a binary from before audit F27 still runs
+  // during a release (SendHold). Sending again after it stops sends.
+  Held,
 }
 
 // Attempt: the row this call recorded, when it recorded one, or the earlier

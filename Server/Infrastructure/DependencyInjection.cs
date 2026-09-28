@@ -214,6 +214,7 @@ public static class DependencyInjection
     services.AddScoped<IFuelDiscountProvider, BvdFuelDiscountProvider>();
 
     services.AddScoped<ISynchronizationStore, SynchronizationStore>();
+    services.AddScoped<IPreviousBinary, PreviousBinary>();
     services.AddHostedService<
       ApplicationWorker<IFleetSynchronizationOperation>
     >();

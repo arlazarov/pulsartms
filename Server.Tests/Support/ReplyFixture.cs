@@ -35,6 +35,7 @@ internal sealed class ReplyFixture : IAsyncDisposable
   public OutboxSignal Signal { get; } = new();
   public ManualTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
   public TestCompany Company { get; } = new();
+  public TestSendHold.Previous Previous { get; } = new(false);
   public AppDbContext Db => sync.Db;
   public OutboundMessageOperation Worker =>
     new(
@@ -76,6 +77,9 @@ internal sealed class ReplyFixture : IAsyncDisposable
     collection.AddLogging();
     collection.AddScoped<KeptStatusReconciliation>();
     collection.AddSingleton<KeptStatusRetries>();
+    collection.AddSingleton(f.Previous);
+    collection.AddSingleton<IPreviousBinary>(f.Previous);
+    collection.AddSingleton<SendHold>();
     f.services = collection.BuildServiceProvider();
     foreach (var name in new[] { "me", "colleague" })
       f.Db.Users.Add(

@@ -1,5 +1,6 @@
 using System.Data.Common;
 using Application.Features.Messaging.Background;
+using Application.Features.Messaging.Services;
 using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Microsoft.EntityFrameworkCore;
@@ -98,6 +99,32 @@ public sealed class OutboxReconciliationTests
     await worker.RunOnceAsync(default);
 
     Assert.Equal(1, worker.Reconciling);
+  }
+
+  // Root: while a binary from before audit F27 runs, a queued reply waits
+  // in the outbox - not sent, not lost - and goes once that binary stops.
+  [Fact]
+  public async Task AQueuedReplyWaitsWhileThePreviousBinaryRuns()
+  {
+    await using var f = await ReplyFixture.CreateAsync();
+    f.Previous.Runs = true;
+    var worker = f.Worker;
+    var (conversation, last) = await f.ConversationAsync();
+    var id = (
+      await f.SendAsync(
+        new(conversation, "On my way", Guid.NewGuid(), last, false)
+      )
+    )
+      .Response!
+      .Id;
+
+    Assert.Equal(0, await worker.RunOnceAsync(default));
+    Assert.Equal(OutboundStates.Queued, await StatusAsync(f, id));
+    Assert.Empty(f.Messaging.Sent);
+
+    f.Previous.Runs = false;
+    f.Clock.Advance(SendHold.Recheck);
+    Assert.Equal(1, await worker.RunOnceAsync(default));
   }
 
   private static Task<string> StatusAsync(ReplyFixture f, Guid id)

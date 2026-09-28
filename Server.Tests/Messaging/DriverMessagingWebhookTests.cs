@@ -1310,6 +1310,7 @@ public sealed class DriverMessagingWebhookTests
           Company,
           Refresh.Time
         ),
+        TestSendHold.Open(),
         NullLogger<DriverTextDelivery>.Instance
       );
 
@@ -1325,6 +1326,7 @@ public sealed class DriverMessagingWebhookTests
           Company,
           Refresh.Time
         ),
+        TestSendHold.Open(),
         NullLogger<DriverTextDelivery>.Instance
       );
 

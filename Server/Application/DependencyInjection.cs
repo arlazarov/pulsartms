@@ -125,6 +125,7 @@ public static class DependencyInjection
     services.AddScoped<ApprovedTemplates>();
     services.AddScoped<EarlyDeliveryStatuses>();
     services.AddScoped<KeptStatusReconciliation>();
+    services.AddSingleton<SendHold>();
     services.AddSingleton<KeptStatusRetries>();
     services.AddScoped<IDriverTextDelivery, DriverTextDelivery>();
     services.AddSingleton<MessagingEvents>();

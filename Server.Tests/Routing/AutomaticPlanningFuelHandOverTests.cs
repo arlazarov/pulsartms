@@ -350,6 +350,7 @@ public partial class AutomaticPlanningTests
             new TestCompany(),
             clock
           ),
+          TestSendHold.Open(),
           NullLogger<DriverTextDelivery>.Instance
         ),
         new FuelIssueRecords(

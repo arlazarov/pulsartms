@@ -69,7 +69,11 @@ public sealed partial class FleetSynchronizationOperation(
         );
     }
   }
-  private readonly string owner = Guid.NewGuid().ToString("N");
+
+  // Marked, so a newer binary can tell this one from a binary released
+  // before audit F27 (IPreviousBinary).
+  private readonly string owner =
+    IPreviousBinary.Marker + Guid.NewGuid().ToString("N");
   private readonly object stateGate = new();
   private readonly SemaphoreSlim publishGate = new(1, 1);
   private SynchronizationState checkpoint = new();
