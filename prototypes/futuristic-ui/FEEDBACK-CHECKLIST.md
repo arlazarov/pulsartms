@@ -55,7 +55,7 @@ visual inspection only, never acceptance.
 | Request | Status |
 | --- | --- |
 | Map lies under the whole workspace; list, panel and chain float over it as tempered glass (thinner, strongly blurred, lit top edge); the camera keeps fits and reveals clear of them | Built, Seen dark 1440 px |
-| Nothing solid inside the glass: panel head, facts, clocks, list column head and chain cards are faint tints of the glass; sticky heads blur what scrolls under them | Built |
+| Panel head reaches the panel's right edge (no scrollbar lane); inner blocks stay solid (translucent inner blocks were rejected) | Built |
 
 ## Right panel
 

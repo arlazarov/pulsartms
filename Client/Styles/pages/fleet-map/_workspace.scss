@@ -928,30 +928,11 @@
     @include ui.tempered-glass;
     z-index: 1;
   }
-  // Inside the glass panel nothing is solid: the head, the facts and the
-  // clocks are faint tints of the same glass, the head blurring what
-  // scrolls under it (the owner, September 27).
   .fleet-map-info-reserved {
-    .fleet-map-inspector__header {
-      background: ui.theme(surface, 0.3);
-      backdrop-filter: blur(12px);
-      border-bottom-color: ui.theme(accent, 0.12);
-    }
-    .fleet-truck-facts,
-    .driver-hours__clock {
-      background: ui.theme(surface, 0.28);
-      border-color: ui.theme(accent, 0.14);
-    }
-  }
-  .fleet-truck-list__columns {
-    background: ui.theme(surface, 0.3);
-    backdrop-filter: blur(12px);
-  }
-  .fleet-trip-chain__card {
-    background: ui.theme(surface, 0.32);
-  }
-  .fleet-trip-chain .is-selected .fleet-trip-chain__card {
-    background: ui.theme(selected, 0.6);
+    // No scrollbar lane: the head reaches the panel's right edge; the
+    // panel still scrolls by wheel, touch and keyboard.
+    scrollbar-gutter: auto;
+    scrollbar-width: none;
   }
   .fleet-map-stage:has(.fleet-truck-list.is-collapsed) {
     grid-template-columns:
