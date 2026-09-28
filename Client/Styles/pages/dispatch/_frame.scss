@@ -92,3 +92,25 @@
   box-shadow: inset 3px 0 0 ui.theme(accent);
 }
 
+// A load's own page in the workspace style (the owner, September 27): its
+// panels are glass with the cyan rim and corner ticks, their headings HUD
+// labels in the accent, the page's tabs lit when current.
+.dispatch-details__panel {
+  @include ui.glass-panel;
+  h2 {
+    @include ui.hud-label;
+    color: ui.theme(accent);
+    font-size: ui.fs(caption);
+  }
+}
+.stop-workspace__editor {
+  border: 1px solid ui.theme(accent, 0.2);
+  border-radius: ui.radius(md);
+}
+.dispatch-details__tab[aria-current='page'] {
+  box-shadow: 0 0 12px ui.theme(accent, 0.25);
+}
+.dispatch-details__title h1 {
+  letter-spacing: 0.01em;
+}
+
