@@ -322,7 +322,10 @@
                route's own forecast and distance, read here too. *@
             @if (ScheduledStop is { } upcoming)
             {
-                <section class="fleet-truck-next" aria-label="Next stop">
+                @* Keyed by the stop, so a new stop arrives as new
+                   information and a poll of the same stop plays nothing. *@
+                <section class="fleet-truck-next" aria-label="Next stop"
+                         @key="(0, upcoming.Id)">
                     <div class="fleet-truck-next__head">
                         <span class="fleet-truck-next__label">Next stop</span>
                         <span class="fleet-truck-next__left"
@@ -373,7 +376,10 @@
                     </div>
                 </section>
             }
-            <dl class="fleet-truck-facts" aria-label="Truck facts">
+            @* The facts and the clocks are keyed by the truck: choosing
+               another truck brings them in anew. *@
+            <dl class="fleet-truck-facts" aria-label="Truck facts"
+                @key="(1, panelTruck.TruckId)">
                 <div class="fleet-truck-facts__fact">
                     <ActionIcon Kind="user" />
                     <div><dt>Driver</dt><dd>@(string.IsNullOrWhiteSpace(
@@ -442,7 +448,7 @@
                     }
                 </div>
             </dl>
-            <div class="fleet-truck-clocks">
+            <div class="fleet-truck-clocks" @key="(2, panelTruck.TruckId)">
                 <DriverHours @key="_activeTruckId" Clocks="_hos"
                     Jurisdiction="@HeadDutyStatus?.Jurisdiction"
                     Dials="false" Bars="true" ShowDutyStatus="false" />

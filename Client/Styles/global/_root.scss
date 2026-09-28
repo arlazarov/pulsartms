@@ -124,3 +124,39 @@ body {
     background-position-x: 14px;
   }
 }
+
+// New information arriving (base/mixins hud-arrive, hud-type): a settle
+// from a readable fade, one band of light passing, a label written in.
+@keyframes hud-arrive {
+  from {
+    opacity: 0.35;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes hud-scan {
+  from {
+    background-position: 100% 0;
+    opacity: 1;
+  }
+  to {
+    background-position: -50% 0;
+    opacity: 0;
+  }
+}
+@keyframes hud-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0);
+  }
+}
+@keyframes hud-arrive-still {
+  from {
+    opacity: 0.6;
+  }
+}

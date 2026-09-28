@@ -1,0 +1,12 @@
+// How the HUD brings new information in, said once: how long a new value
+// takes to settle, how long the light passes over it, how long a label
+// takes to write itself, how far apart neighbours start, how briefly a
+// value fades in when motion is reduced, and the curve.
+$motions: (
+  hud-arrive: 420ms,
+  hud-scan: 900ms,
+  hud-type: 360ms,
+  hud-stagger: 45ms,
+  hud-still: 150ms,
+  hud-ease: cubic-bezier(0.2, 0.7, 0.2, 1),
+);

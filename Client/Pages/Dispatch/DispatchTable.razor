@@ -58,6 +58,13 @@
             {
                 var stops = Stops(visits, pickup);
                 <td class="dispatch-table__stop @(pickup ? "is-pickup" : "is-delivery")">
+                    @* The lane's direction, from the pickup to this
+                       delivery. *@
+                    @if (!pickup && stops.Count > 0)
+                    {
+                        <span class="dispatch-table__lane-arrow"
+                              aria-hidden="true">→</span>
+                    }
                     @if (stops.Count > 1)
                     {
                         <a class="btn btn--text btn--small

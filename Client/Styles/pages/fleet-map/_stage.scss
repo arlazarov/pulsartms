@@ -77,10 +77,5 @@
   }
   .fleet-map-info-reserved {
     max-height: 50%;
-    // Opened details take most of the map: at half of it the facts were a
-    // sliver under the next stop.
-    &:has(.fleet-map-mobile-summary__toggle[aria-expanded='true']) {
-      max-height: 85%;
-    }
   }
 }

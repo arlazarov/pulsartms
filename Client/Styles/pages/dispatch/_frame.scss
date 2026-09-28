@@ -35,6 +35,22 @@
       calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
     ui.theme(surface);
 }
+// A tile or a table row new to the board arrives as the HUD shows new
+// information; both are keyed by their load, so a poll plays nothing.
+// Table cells settle without the overlay (a table row takes none).
+.dispatch-load {
+  @include ui.hud-arrive;
+}
+.dispatch-truck__loads > .dispatch-load {
+  @for $i from 1 through 6 {
+    &:nth-child(#{$i}) {
+      --hud-index: #{$i - 1};
+    }
+  }
+}
+.dispatch-table__row > td {
+  @include ui.hud-arrive($scan: false);
+}
 .dispatch-load--current {
   --load-accent: #{ui.theme(map-route-current)};
   border-color: color-mix(in srgb, var(--load-accent) 60%, transparent);
