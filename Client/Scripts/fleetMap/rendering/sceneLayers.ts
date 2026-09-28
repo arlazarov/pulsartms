@@ -344,8 +344,8 @@ type FlowPath = {
   scale: number;
 };
 const flowPaths = new WeakMap<object, FlowPath>();
-// Screen pixels: between charges, a charge's head and its tail. Dense and
-// quick, so the road reads as current, not as a few sparks.
+// Screen pixels: between charges, a charge's head and its tail. Dense, so
+// the road reads as current, not as a few sparks; calm, about 38 px/s.
 const tracerSpacing = 38;
 const tracerHead = 6;
 const tracerTail = 30;
@@ -453,30 +453,23 @@ function flowLayers(
     hint = start;
     return piece;
   };
-  // The tail in steps of rising light towards the head; each charge
-  // flickers a little, as current does.
+  // The tail in steps of rising light towards the head.
   const steps = [0.12, 0.3, 0.55];
-  const tick = Math.floor(phase * 3);
-  const flicker = (k: number) => {
-    const x = Math.sin(k * 12.9898 + tick * 78.233) * 43758.5453;
-    return 0.55 + 0.45 * (x - Math.floor(x));
-  };
   const tails: { piece: number[][]; alpha: number }[] = [];
   const heads: { piece: number[][]; alpha: number }[] = [];
   const first = Math.max(0, Math.floor(range[0] / spacing) - 1);
   for (let k = first; k < first + tracerLimit; k++) {
     const head = (k + phase) * spacing;
     if (head - tail > Math.min(range[1], path.total)) break;
-    const spark = flicker(k);
     steps.forEach((alpha, index) => {
       const piece = cut(
         head - tail + (index * tail) / steps.length,
         head - tail + ((index + 1) * tail) / steps.length,
       );
-      if (piece) tails.push({ piece, alpha: alpha * spark });
+      if (piece) tails.push({ piece, alpha });
     });
     const tip = cut(head - headLength, head);
-    if (tip) heads.push({ piece: tip, alpha: spark });
+    if (tip) heads.push({ piece: tip, alpha: 1 });
   }
   const light = isLightMap();
   const core = light ? [255, 255, 255] : [224, 252, 255];
