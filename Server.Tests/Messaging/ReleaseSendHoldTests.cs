@@ -271,7 +271,7 @@ public sealed class ReleaseSendHoldTests
           @"\.Send(?:Text|Template|File)Async\("
         )
       )
-      .Select(Path.GetFileName)
+      .Select(file => Path.GetFileName(file))
       .Order(StringComparer.Ordinal)
       .ToArray();
 
