@@ -30,6 +30,9 @@ $screen-places: (
   truck-facts-stacked: 18rem,
   // The truck panel's four clocks fold two by two.
   truck-clocks-stacked: 22rem,
+  // Below this the map's tool bar leaves the map for a row above it
+  // (enlarged text on a phone).
+  map-tools-apart: 18rem,
   map-fuel-halves: 34rem,
   station-price-days-stacked: 20rem,
   map-next-stop-tight: 18rem,

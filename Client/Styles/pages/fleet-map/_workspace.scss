@@ -609,6 +609,8 @@
       user-select: text;
     }
   }
+  // A place name longer than a narrow cell at enlarged text breaks
+  // inside itself rather than pushing the facts sideways.
   &__copy {
     padding: 0;
     border: 0;
@@ -616,6 +618,7 @@
     color: inherit;
     font: inherit;
     text-align: left;
+    overflow-wrap: anywhere;
     cursor: copy;
     &:hover,
     &:focus-visible {
@@ -1274,5 +1277,27 @@
   }
   .fleet-trip-chain {
     grid-area: chain;
+  }
+  // At enlarged text on a narrow screen the tool bar wrapped into rows
+  // that covered the floating card's head and facts: the stage takes the
+  // screen's height (the page scrolls), the bar a single row of its own
+  // above the map that scrolls across, and the card starts below it.
+  @container fleet-page (width < #{ui.breakpoint(map-tools-apart)}) {
+    .fleet-map-stage {
+      min-height: 100dvh;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      grid-template-areas: 'tools' 'map' 'chain';
+    }
+    .fleet-map-controls {
+      grid-area: tools;
+      align-self: start;
+      flex-wrap: nowrap;
+      max-width: 100%;
+      margin: 0;
+      overflow-x: auto;
+      > .fleet-map-inspector__actions {
+        flex-wrap: nowrap;
+      }
+    }
   }
 }

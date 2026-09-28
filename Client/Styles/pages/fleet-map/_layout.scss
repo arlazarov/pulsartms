@@ -33,6 +33,9 @@
 }
 
 .fleet-map-page {
+  // The page's width, read against its text, decides where the map's
+  // tool bar stands (workspace).
+  container: fleet-page / inline-size;
   position: relative;
   display: flex;
   flex-direction: column;
