@@ -328,5 +328,21 @@ $hud-glyphs: (
     background: fn.theme(accent);
     mask: map.get($hud-glyphs, $glyph) center / 48% no-repeat;
   }
+  // In daylight the emblem is a lit accent disc with a white glyph: a
+  // pale core read washed out (the owner, September 27).
+  :root[data-theme='light'] &::before {
+    border-color: fn.theme(accent);
+    background: radial-gradient(
+      circle at 35% 30%,
+      fn.theme(accent, 0.72),
+      fn.theme(accent) 75%
+    );
+    box-shadow:
+      0 0 0 3px fn.theme(accent, 0.12),
+      0 4px 12px fn.theme(accent, 0.3);
+  }
+  :root[data-theme='light'] &::after {
+    background: fn.theme(on-accent);
+  }
 }
 

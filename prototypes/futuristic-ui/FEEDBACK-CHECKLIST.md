@@ -16,7 +16,9 @@ visual inspection only, never acceptance.
 | Dark is the default theme; no white flash at start | Built (client start); server "never chosen" is Dispatch's |
 | Light theme in the same class as dark: steel canvas with a fine instrument grid; clean white glass panels (no map tint) with a cyan rim, bold ticks and cool shadow; Google's light road map quieted to cool steel (satellite untouched, trucks and routes keep their colours); later trip cards a solid rim with a colour bar | Built, Seen light 1100 px |
 | Truck panel as tall as its content; the map shows beneath it | Built, Seen |
-| Light theme roads: a finer crisp line of the trip's colour in a faint haze, no white casing; only the chosen road glows, softly; the flow grains carry no glow. Light basemap softened and dimmed (half colour), not glaring grey | Built |
+| Light theme roads: a finer crisp line of the trip's colour in a faint haze, no white casing; only the chosen road glows, softly; the flow grains carry no glow. Light basemap keeps Google's colours, only slightly desaturated (grey and dimmed versions were rejected) | Built |
+| Light chain: white tiles with a fine rim and a line of the trip's colour on top, small filled step tokens, soft-tint phase chips, chosen trip ringed in its colour | Built |
+| Light emblems (truck, stop, pump): a lit accent disc with a white glyph | Built |
 | Fleet list as tall as its trucks; weather credit a quiet line, not a plate | Built |
 | Theme switch applies without a page reload: the map is made again in place (Google fixes its scheme at creation), keeping camera, chosen truck, Follow, list, chain and panel | Built, Seen dark→light |
 | Theme switch is smooth: the page cross-fades its colours; the last map stays under the new one until it has drawn, then fades out | Built |

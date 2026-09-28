@@ -87,12 +87,13 @@
 }
 
 // The light road map in the workspace's key (the owner, September 27):
-// Google's pastel greens and blues softened and dimmed a little - calm,
-// not glaring grey (the owner, September 27). Only Google's own layer is filtered - the trucks,
+// Google's own colours, only a little less saturated so the greens do not
+// shout; dimming or greying made it look switched off (the owner,
+// September 27). Only Google's own layer is filtered - the trucks,
 // roads and marks are drawn above it and keep their colours - and never
 // the satellite imagery.
 :root[data-theme='light'] #fleet-map:not(.is-satellite) .gm-style {
-  filter: grayscale(0.5) saturate(0.85) brightness(0.96) contrast(0.9);
+  filter: saturate(0.82);
 }
 #fleet-map .gm-style {
   transition: filter 300ms ease;

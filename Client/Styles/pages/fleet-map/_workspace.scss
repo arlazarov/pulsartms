@@ -997,18 +997,35 @@
     align-self: start;
     max-height: 100%;
   }
-  // In daylight a later trip's card is a fine solid rim with its colour on
-  // a bar at the left, not a dashed outline.
+  // The chain in daylight (the owner, September 27): each trip a clean
+  // white tile with a fine rim and a line of its colour along the top, the
+  // step a small filled token, the phase a soft tint without a rim; the
+  // chosen trip ringed in its colour.
   :root[data-theme='light'] {
+    .fleet-trip-chain__number {
+      width: 1.5rem;
+      height: 1.5rem;
+      border: 0;
+      background: color-mix(in srgb, currentColor 14%, transparent);
+    }
     .fleet-trip-chain__card {
       border: 1px solid ui.theme(border);
-      box-shadow: inset 3px 0 0 currentColor;
+      background: ui.theme(surface);
+      box-shadow:
+        inset 0 2px 0 currentColor,
+        0 2px 8px ui.theme(shadow, 0.06);
     }
     .fleet-trip-chain .is-selected .fleet-trip-chain__card {
-      border-color: currentColor;
+      border-color: color-mix(in srgb, currentColor 55%, transparent);
+      background: ui.theme(surface);
       box-shadow:
-        inset 3px 0 0 currentColor,
-        0 0 0 3px ui.theme(accent, 0.12);
+        inset 0 2px 0 currentColor,
+        0 0 0 3px color-mix(in srgb, currentColor 14%, transparent),
+        0 4px 14px ui.theme(shadow, 0.08);
+    }
+    .fleet-trip-chain__phase {
+      border: 0;
+      background: color-mix(in srgb, currentColor 12%, transparent);
     }
   }
   .fleet-map-info-reserved {
