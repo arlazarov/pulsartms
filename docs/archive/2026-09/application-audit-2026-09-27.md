@@ -1684,6 +1684,11 @@ figure names its source.
   chosen or explicitly declined.
 - **PostgreSQL fixture.** Owner: tests. Done when an isolated fixture,
   not in Docker, runs the 42 skipped tests in the gate.
+- **Delivery statuses lost in a release overlap.** Owner: Messaging.
+  Done when kept statuses whose id names a saved message are applied or
+  reported after a drain, and an accepted message with no status past a
+  stated age is reported by an auditor rule - or the loss is accepted
+  by root as the bounded cost of a release.
 - **Liveness of operations without a heartbeat.** Owner: the background
   owners. Done when each has a heartbeat or a documented reason.
 
