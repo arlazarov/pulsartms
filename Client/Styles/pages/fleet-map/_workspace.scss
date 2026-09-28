@@ -133,9 +133,14 @@
   &__layers {
     position: relative;
   }
-  // The chosen truck's actions lead the bar, set off by a hairline.
+  // The chosen truck's actions lead the bar, set off by a hairline; they
+  // wrap with the bar at enlarged text rather than run past the map.
   > .fleet-map-inspector__actions {
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    min-width: 0;
+    max-width: 100%;
     gap: ui.pg(micro);
     margin: 0;
     padding: 0 ui.pg(xs) 0 0;
@@ -154,6 +159,11 @@
     background: none;
     color: ui.theme(text-secondary);
     box-shadow: none;
+    // Touch targets below 800px, as every action button there.
+    @include ui.below(md) {
+      width: ui.size(control-touch);
+      height: ui.size(control-touch);
+    }
     > span {
       position: absolute;
       width: 1px;
@@ -442,6 +452,7 @@
 }
 
 .fleet-truck-next {
+  container: truck-next / inline-size;
   display: grid;
   gap: ui.pg(xs);
   margin: ui.pg(xs) ui.pg(lg) ui.pg(md);
@@ -500,25 +511,52 @@
   }
   &__hours {
     display: grid;
+    min-width: 0;
     font-variant-numeric: tabular-nums;
+  }
+  // Too narrow for a label column (a phone at enlarged text): each label
+  // stands over its value, words whole, never broken mid-word.
+  @container truck-next (width < #{ui.breakpoint(truck-next-stacked)}) {
+    &__eta {
+      --route-fact-label: 0px;
+      --stop-hours-columns: minmax(0, 1fr);
+    }
+    &__booking {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 }
 
+// The truck's facts: two columns of bordered cells, a lit frame and HUD
+// labels. Light draws the grid in the cyan instrument lines. A panel too
+// narrow for two labels side by side (a phone at enlarged text) stacks the
+// cells in one column instead of pushing labels past them.
 .fleet-truck-facts {
+  --facts-rim: #{ui.theme(accent, 0.22)};
+  --facts-line: #{ui.theme(border-subtle)};
+  --facts-icon: #{ui.theme(accent)};
+  --facts-label: #{ui.theme(text-muted)};
+  @include ui.hud-frame;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 0 ui.pg(lg) ui.pg(md);
-  border: 1px solid ui.theme(border);
+  margin: ui.pg(xs) ui.pg(lg) ui.pg(md);
+  border: 1px solid var(--facts-rim);
   border-radius: ui.radius(md);
-  background: ui.theme(surface);
+  background-color: ui.theme(surface);
+  :root[data-theme='light'] & {
+    --facts-rim: #{ui.theme(selection-border, 0.9)};
+    --facts-line: #{ui.theme(selection-border, 0.7)};
+    --facts-icon: #{ui.theme(hud-line)};
+    --facts-label: #{ui.theme(accent)};
+  }
   &__fact {
     display: flex;
     gap: ui.pg(sm);
     min-width: 0;
     padding: ui.pg(sm) ui.pg(md);
-    border-bottom: 1px solid ui.theme(border-subtle);
+    border-bottom: 1px solid var(--facts-line);
     &:nth-child(odd) {
-      border-right: 1px solid ui.theme(border-subtle);
+      border-right: 1px solid var(--facts-line);
     }
     &:nth-last-child(-n + 2) {
       border-bottom: 0;
@@ -528,16 +566,15 @@
       width: ui.pg(lg);
       height: ui.pg(lg);
       margin-top: ui.pg(micro);
-      color: ui.theme(accent);
+      color: var(--facts-icon);
     }
     > div {
       min-width: 0;
     }
   }
   dt {
-    color: ui.theme(text-muted);
-    font-size: ui.fs(caption);
-    letter-spacing: 0.04em;
+    @include ui.hud-label;
+    color: var(--facts-label);
   }
   dd {
     margin: ui.pg(hair) 0 0;
@@ -578,6 +615,22 @@
     color: ui.theme(success-text);
     font-size: ui.fs(micro);
     font-weight: 600;
+  }
+}
+
+@container map-truck-card (width < #{ui.breakpoint(truck-facts-stacked)}) {
+  .fleet-truck-facts {
+    grid-template-columns: minmax(0, 1fr);
+    &__fact {
+      border-right: 0;
+      border-bottom: 1px solid var(--facts-line);
+      &:nth-child(odd) {
+        border-right: 0;
+      }
+      &:last-child {
+        border-bottom: 0;
+      }
+    }
   }
 }
 
@@ -683,17 +736,6 @@
       &::before,
       &::after {
         left: calc(#{ui.pg(lg)} + #{ui.pg(sm)});
-      }
-    }
-    .fleet-truck-facts {
-      @include ui.hud-frame;
-      margin-top: ui.pg(xs);
-      border-color: ui.theme(accent, 0.22);
-      :root[data-theme='light'] & {
-        border-color: ui.theme(border);
-      }
-      dt {
-        @include ui.hud-label;
       }
     }
     .fleet-truck-clocks {
@@ -998,9 +1040,12 @@
 @include ui.above(fleet-docked) {
   .fleet-map-stage {
     display: grid;
+    // The list and the panel give way before the page does: at enlarged
+    // text their rem widths outgrew the screen and the chain under them
+    // ran past it. The map lies under the whole stage either way.
     grid-template-columns:
-      ui.size(fleet-list) minmax(0, 1fr)
-      ui.size(fleet-panel);
+      minmax(0, ui.size(fleet-list)) minmax(0, 1fr)
+      minmax(0, ui.size(fleet-panel));
     grid-template-rows: minmax(0, 1fr) auto;
     grid-template-areas:
       'list map inspector'
@@ -1224,18 +1269,6 @@
 // glows with - fine grid lines, accent labels, lit value bars and a glow
 // on the chosen row - never grey fills.
 :root[data-theme='light'] {
-  .fleet-truck-facts {
-    border-color: ui.theme(selection-border, 0.9);
-    &__fact {
-      border-color: ui.theme(selection-border, 0.7);
-      > svg {
-        color: ui.theme(hud-line);
-      }
-    }
-    dt {
-      color: ui.theme(accent);
-    }
-  }
   .fleet-truck-clocks {
     --hos-cell-border: #{ui.theme(selection-border, 0.9)};
     --hos-cell-background:

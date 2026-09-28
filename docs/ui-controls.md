@@ -146,10 +146,13 @@ mounted, full-sized and independently interactive, and leave background
 controls accessible. Trucks are always shown; there is no manual
 truck-layer visibility toggle. While editing fuel, show only the edited
 truck; restore all trucks when editing ends, including empty drafts. On a
-phone the editor takes the card's whole width and half the stage; the whole card
-scrolls so that large text cannot trap the quantity or Save controls. The map
-staying under it so a station can still be picked there; there are no
-Route / Fuel / Map tabs any more. The older paragraph below describes the
+phone the editor takes the card's whole width and at most 85% of the map
+(September 28): it keeps its frame, the list scrolling between the totals
+and the footer, so Calculate automatically, Cancel and Save stay in view.
+At half the map the list had no room and a whole-card scroll pushed the
+footer out of the card. The map strip under the editor stays interactive,
+so a station can still be picked there, and the map pans under it; there
+are no Route / Fuel / Map tabs any more. The older paragraph below describes the
 retired two-column card.
 The retired layout centred the editor horizontally with a bottom map inset
 and gave the route timeline a full-height left column beside the
@@ -842,7 +845,11 @@ width before anything wraps. Below the shared `filter-toolbar-drawer` width the
 driver filter waits behind the same Filters drawer Fleet Map uses, while the
 view and scope stay in reach.
 Keep horizontal cards and their footers aligned to the tallest content-driven card in
-their row; do not reserve a fixed height. Stacked mobile cards keep independent
+their row; do not reserve a fixed height (reaffirmed by the owner on
+September 28, reversing a short-lived own-height rule). Owner decisions of
+September 28: tiles keep the compact stop type (place 14px, town,
+appointment and ETA 12px at a 16px root) and the P / D1 / D2 stop badges.
+Stacked mobile cards keep independent
 heights. Completed visits remain visible as short numbered rows with a completion
 check, city and scheduled appointment; full addresses and visit context remain in
 Details. Repeated after-state labels do not belong in compact cards. A single load

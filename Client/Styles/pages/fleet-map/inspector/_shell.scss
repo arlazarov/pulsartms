@@ -57,6 +57,7 @@
     top: 0;
     z-index: ui.layer(raised);
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: ui.pg(sm);
     padding: ui.pg(xs) ui.pg(md);
@@ -90,10 +91,15 @@
       background: ui.theme(surface-soft);
     }
   }
+  // Enlarged text wraps the controls onto a line of their own rather
+  // than pushing the close past the panel.
   &__controls {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: ui.pg(xs);
+    min-width: 0;
+    margin-left: auto;
   }
   &__back {
     margin-left: auto;

@@ -5,6 +5,7 @@ using Client.Services;
 using Client.Shared.Brand.BrandLogo;
 using Client.Tests.Support;
 using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Client.Tests.Identity;
@@ -161,5 +162,38 @@ public sealed class SidebarPresentationTests
     Assert.Equal("/settings/fleet", active.GetAttribute("href"));
     Assert.Equal("Fleet", active.TextContent.Trim());
     Assert.Single(component.FindAll("a[href='/fleet/map']"));
+  }
+
+  // One Escape closes one thing: the account's actions first, and only a
+  // later Escape the phone's menu (uiSmoke "Escape restores account trigger
+  // focus"; the conditional stop let the first Escape close both).
+  [Fact]
+  public async Task EscapeClosesTheAccountActionsBeforeTheMenu()
+  {
+    await using var context = new ClientComponentContext(
+      (_, _) =>
+        throw new InvalidOperationException(
+          "The sidebar must not fetch a profile."
+        )
+    );
+    context.AddAuthenticationServices();
+    context.AddAuthorization().SetAuthorized("Dispatcher");
+    var component = context.Render<Sidebar>();
+    component.Find("button[aria-label='Open menu']").Click();
+    component.Find(".sidebar__account").Click();
+    Assert.NotEmpty(component.FindAll("#sidebar-account-actions"));
+
+    await component
+      .Find(".sidebar__account")
+      .KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
+
+    Assert.Empty(component.FindAll("#sidebar-account-actions"));
+    Assert.Contains("sidebar--open", component.Find("aside").ClassName);
+
+    await component
+      .Find(".sidebar__account")
+      .KeyDownAsync(new KeyboardEventArgs { Key = "Escape" });
+
+    Assert.DoesNotContain("sidebar--open", component.Find("aside").ClassName);
   }
 }

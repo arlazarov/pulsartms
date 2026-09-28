@@ -1,20 +1,14 @@
 @use '../../../base' as ui;
 
-// A phone gives the editor the card's whole width and half the stage, the
-// map staying under it so a station can still be picked there; the three
-// actions wrap when text needs more room.
+// A phone gives the editor the card's whole width and most of the map,
+// a strip of map staying under it so a station can still be picked there.
+// It keeps its frame: the list scrolls between the totals and the footer,
+// so the actions stay in view (a whole-card scroll pushed them out of the
+// card at half the map); the three actions wrap when text needs room.
 .fuel-plan-editor {
   @include ui.below(map-mobile) {
     width: 100%;
-    max-height: 50%;
-    // Large text can fill the panel with its heading and totals alone.
-    // Scroll the whole phone card so every control remains reachable.
-    display: block;
-    overflow: auto;
-    overscroll-behavior: contain;
-    &__stops {
-      overflow: visible;
-    }
+    max-height: 85%;
     // Half a phone's stage has no room for a heading over the list or the
     // truck's own line: the list starts at its first stop.
     &__timeline-heading,

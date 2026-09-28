@@ -67,11 +67,11 @@
   letter-spacing: 0.02em;
 }
 
-// Cards take the height of their own stops, not the tallest beside them.
-// The mouse wheel moves the strip across; its bar is the HUD rail.
+// A truck's cards align to the tallest in the row (the owner, September
+// 28, as ui-controls says). The mouse wheel moves the strip across; its
+// bar is the HUD rail.
 .dispatch-truck__loads {
   @include ui.hud-scrollbar;
-  align-items: start;
   gap: ui.pg(xl);
   padding: ui.pg(sm) ui.pg(md) ui.pg(sm);
   // Snapping pulled each small wheel step back to the card it left; the
@@ -136,7 +136,6 @@
 }
 .dispatch-load__stop--summary .dispatch-load__stop-times {
   gap: 0;
-  margin-top: ui.pg(micro);
 }
 // Table rows stay neutral: the Current badge says the phase. The row a
 // reader is on - pointer or keyboard - is the one marked.

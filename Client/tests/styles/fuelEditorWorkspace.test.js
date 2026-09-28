@@ -79,14 +79,22 @@ test('the desktop list scrolls while the head, totals and foot stay put', () => 
   assert.match(css, /\.fuel-plan-editor__detail\s*\{[^}]*grid-column: 1\/-1;/);
 });
 
-test('a phone gives the editor the whole width and half the stage, with reachable actions', () => {
+// Half the map left the list no room and the whole-card scroll pushed the
+// actions out of the card (fuelEditorSmoke, September 27): the phone keeps
+// the editor's frame, list scrolling between totals and footer, over most
+// of the map with a strip of map still reachable.
+test('a phone gives the editor the whole width and most of the map, with reachable actions', () => {
   assert.match(css, /\.fuel-plan-editor\s*\{\s*box-sizing: border-box;/);
   const mobile = css.slice(
     css.indexOf('@media (width < 768px)', css.indexOf('.fuel-plan-editor')),
   );
   assert.match(
     mobile,
-    /\.fuel-plan-editor\s*\{[^}]*width: 100%;[^}]*max-height: 50%;/,
+    /\.fuel-plan-editor\s*\{[^}]*width: 100%;[^}]*max-height: 85%;/,
+  );
+  assert.doesNotMatch(
+    mobile.match(/\.fuel-plan-editor\s*\{([^}]+)\}/)[1],
+    /display: block;|overflow: auto;/,
   );
   assert.doesNotMatch(mobile, /is-route|is-map|"views"/);
   assert.match(

@@ -3,7 +3,7 @@
    BEM block, so each keeps its own look. *@
 <AuthorizeView Context="account">
 <div class="@(Block)__account-menu" @onkeydown="HandleKeyAsync"
-     @onkeydown:stopPropagation="@Open">
+     @onkeydown:stopPropagation="true">
     <button class="btn btn--@(Block) @(Block)__account" type="button"
             @ref="_toggle"
             aria-expanded="@(Open ? "true" : "false")"

@@ -50,6 +50,9 @@ internal sealed class LocalStorageJsRuntime : IJSRuntime
       }
       else if (identifier == "clear")
         WriteSession(null);
+      // ElementReference.FocusAsync: nothing to move in a test DOM.
+      else if (identifier.EndsWith(".focus", StringComparison.Ordinal))
+        return Result<TValue>(default!);
       else
       {
         var key = (string)args![0]!;
