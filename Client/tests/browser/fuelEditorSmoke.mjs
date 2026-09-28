@@ -274,6 +274,21 @@ const report = {
   errors: [],
   unexpectedRequests: [],
 };
+// Dark only for now (owner decision of 2026-09-28): whatever the saved
+// preference, the page is dark from its first paint, and neither the top
+// bar nor Settings offers a theme.
+async function checkDarkOnly(page, name, check) {
+  const seen = await page.evaluate(() => window.fixtureThemes ?? []);
+  const switches = await page
+    .getByRole('button', { name: /^Use the (light|dark) theme$/ })
+    .count();
+  check(
+    seen.length > 0 && seen.every(theme => theme === 'dark') && switches === 0,
+    `${name}: the page is dark from its first paint, with no theme switch ` +
+      JSON.stringify({ seen, switches }),
+  );
+}
+
 // The truck panel (the owner, September 27): the next stop, the facts and
 // the driver's clocks; a phone's panel opens closed and Details opens the
 // facts and the clocks. Its actions are the map tool bar's.
@@ -541,8 +556,21 @@ try {
               RefreshToken: 'fixture',
             }),
           );
+          // The theme is dark only for now (owner decision of 2026-09-28):
+          // the case keeps its saved preference, on this device and in the
+          // account (the appearance fixture), and every theme the page
+          // shows from its first paint on is recorded.
+          localStorage.setItem('pulsr.theme', theme);
+          window.fixtureThemes = [];
           document.addEventListener('DOMContentLoaded', () => {
-            document.documentElement.dataset.theme = theme;
+            const root = document.documentElement;
+            window.fixtureThemes.push(root.dataset.theme ?? null);
+            new MutationObserver(() =>
+              window.fixtureThemes.push(root.dataset.theme ?? null),
+            ).observe(root, {
+              attributes: true,
+              attributeFilter: ['data-theme'],
+            });
           });
         },
         { userId, theme },
@@ -731,6 +759,12 @@ try {
           report.errors.push(`${name}: ${message.text()}`);
       });
       await page.goto(`${origin}/fleet/map?truckId=${truckId}`);
+      await page
+        .locator(`${panelSelector} .fleet-truck-next`)
+        .waitFor({ state: 'attached' });
+      await checkDarkOnly(page, name, (condition, message) =>
+        assert.ok(condition, message),
+      );
       await page.evaluate(() => {
         window.fuelHorizontalEvents = [];
         document.addEventListener(

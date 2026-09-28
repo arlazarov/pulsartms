@@ -9,7 +9,8 @@ public sealed record GetDispatchPlanningSummariesQuery(
   int Page = 1,
   string? Search = null,
   Guid? TruckId = null,
-  DateOnly? Date = null
+  DateOnly? Date = null,
+  bool ActiveSearch = false
 )
   : IRequest<RequestResponse<List<AutomaticPlanningResult>>>,
     IPlanningRequest,
@@ -42,7 +43,8 @@ public sealed class GetDispatchPlanningSummariesHandler(
           Page: request.Page,
           Search: request.Search,
           TruckId: request.TruckId,
-          Date: request.Date
+          Date: request.Date,
+          ActiveSearch: request.ActiveSearch
         ),
         ct
       )

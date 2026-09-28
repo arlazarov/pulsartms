@@ -21,6 +21,11 @@ public sealed record DriverDutyStatus(
     RestStartedAt is { } start
       ? (int)Math.Max(0, (ObservedAt - start).TotalMinutes)
       : null;
-  public int? TenHourRestRemainingMinutes =>
-    RestMinutes is { } minutes ? Math.Max(0, 600 - minutes) : null;
+
+  // The server's reading of the ongoing rest (DriverDutyStatus on the
+  // server owns the daily rest length and the cycle reset): shown, never
+  // recomputed here.
+  public DateTimeOffset? DailyRestCompleteAt { get; init; }
+  public int? DailyRestRemainingMinutes { get; init; }
+  public DateTimeOffset? CycleResetCompleteAt { get; init; }
 }

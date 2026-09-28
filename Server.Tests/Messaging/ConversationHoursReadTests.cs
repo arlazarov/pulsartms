@@ -1,6 +1,7 @@
 using System.Data.Common;
 using Application.Features.Eta.Interfaces;
 using Application.Features.Eta.Queries;
+using Application.Features.Eta.Services;
 using Application.Features.Fleet.Interfaces;
 using Application.Features.Fleet.Queries;
 using Application.Features.Fleet.Services;
@@ -68,10 +69,7 @@ public sealed class ConversationHoursReadTests
         default
       );
       var duty = await new GetDriverDutyStatusHandler(
-        reader,
-        history,
-        null!,
-        TimeProvider.System
+        new DriverDutyReader(reader, history, null!, TimeProvider.System)
       ).Handle(new(driver.Id), default);
 
       Assert.True(hours.Response!.Known);

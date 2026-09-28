@@ -192,6 +192,17 @@ try {
     serviceWorkers: 'block',
   });
   await context.addInitScript(() => {
+    // Dark only for now (owner decision of 2026-09-28): the account saved
+    // light (the appearance fixture), and every theme the page shows from
+    // its first paint on is recorded.
+    window.fixtureThemes = [];
+    document.addEventListener('DOMContentLoaded', () => {
+      const root = document.documentElement;
+      window.fixtureThemes.push(root.dataset.theme ?? null);
+      new MutationObserver(() =>
+        window.fixtureThemes.push(root.dataset.theme ?? null),
+      ).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    });
     if (!localStorage.getItem('auth_session'))
       localStorage.setItem(
         'auth_session',
@@ -220,6 +231,17 @@ try {
     page.on('pageerror', error => report.errors.push(`${name}: ${error}`));
     await page.goto(`${origin}/messages/${conversation}`);
     await page.locator('.messages__composer').waitFor();
+    const themes = await page.evaluate(() => window.fixtureThemes);
+    if (
+      !themes.length ||
+      themes.some(theme => theme !== 'dark') ||
+      (await page
+        .getByRole('button', { name: /^Use the (light|dark) theme$/ })
+        .count())
+    )
+      report.errors.push(
+        `${name}: not dark from the first paint, or a theme switch (${themes})`,
+      );
     return page;
   };
 

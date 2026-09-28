@@ -137,6 +137,7 @@ public sealed class DriverRulesDisplayTests
             CycleResetHours = 34,
             CycleResetCountry = "US",
             CycleResetRemainingMinutes = 34 * 60 - 300,
+            DailyRestRemainingMinutes = 300,
           }
         )
     );

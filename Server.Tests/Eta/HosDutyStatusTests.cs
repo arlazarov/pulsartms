@@ -45,7 +45,14 @@ public class HosDutyStatusTests
     Assert.Equal(target, result.CycleResetHours);
     Assert.Equal(remaining, result.CycleResetRemainingMinutes);
     Assert.Equal(country, result.CycleResetCountry);
-    Assert.Equal(232, result.TenHourRestRemainingMinutes);
+    Assert.Equal(232, result.DailyRestRemainingMinutes);
+    // The completion times the panel shows are the server's: the rest's
+    // start plus the daily rest and plus the cycle reset.
+    Assert.Equal(Now.AddMinutes(-368).AddHours(10), result.DailyRestCompleteAt);
+    Assert.Equal(
+      Now.AddMinutes(-368).AddHours(target),
+      result.CycleResetCompleteAt
+    );
   }
 
   [Theory]
@@ -175,7 +182,7 @@ public class HosDutyStatusTests
     var result = HosDutyStatus.Read(history, Clocks(), Now)!;
     Assert.Equal(210, result.StatusMinutes);
     Assert.Equal(300, result.RestMinutes);
-    Assert.Equal(300, result.TenHourRestRemainingMinutes);
+    Assert.Equal(300, result.DailyRestRemainingMinutes);
   }
 
   [Theory]
@@ -193,7 +200,7 @@ public class HosDutyStatusTests
     };
     var result = HosDutyStatus.Read(h, Clocks(), Now)!;
     Assert.Equal(210, result.RestMinutes);
-    Assert.Equal(390, result.TenHourRestRemainingMinutes);
+    Assert.Equal(390, result.DailyRestRemainingMinutes);
   }
 
   [Fact]

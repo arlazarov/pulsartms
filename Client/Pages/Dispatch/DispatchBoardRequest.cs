@@ -15,5 +15,11 @@ internal sealed record DispatchBoardRequest(
         + (TruckId.HasValue ? $"&truckId={TruckId}" : "")
       : $"api/dispatch/board?page={Page}&pageSize=12&search={Uri.EscapeDataString(Search)}&date={Date:yyyy-MM-dd}"
         + (TruckId.HasValue ? $"&truckId={TruckId}" : "")
-        + "&includePlanned=true";
+        + "&includePlanned=true"
+        + (ActiveSearch ? "&activeSearch=true" : "");
+
+  // Cards and Papers search active loads only; the Table keeps every load
+  // of the board (the owner, September 28). The server owns the rule.
+  public bool ActiveSearch =>
+    !Completed && View != 1 && !string.IsNullOrWhiteSpace(Search);
 }

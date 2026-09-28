@@ -15,7 +15,7 @@
             { <span>· @Duration(elapsed)</span> }
         </span>
         @if (Fresh && Matches
-            && Status?.TenHourRestRemainingMinutes is { } rest)
+            && Status?.DailyRestRemainingMinutes is { } rest)
         {
             <span class="driver-duty__rest"
                   title="@RestTitle">@(rest > 0
@@ -36,7 +36,7 @@ else
         <span class="driver-duty__label">@(Compact ? "HOS ·" : "HOS status:")</span>
         <span><strong>@Label(string.IsNullOrEmpty(CurrentStatus) ? Status?.Status : CurrentStatus)</strong>@if (Fresh && Matches && Status?.StatusMinutes is { } minutes) { <span>@(Compact ? " · " : " for ")@StatusDuration(minutes)</span> }</span>
     </div>
-    @if (ShowRestDetails && Fresh && Matches && Status?.TenHourRestRemainingMinutes is { } remaining)
+    @if (ShowRestDetails && Fresh && Matches && Status?.DailyRestRemainingMinutes is { } remaining)
     {
         <span>@(remaining > 0 ? $"{Duration(remaining)} left to complete 10h rest" : "10h rest reached")</span>
         @if (CycleResetText is { } reset)

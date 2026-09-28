@@ -114,7 +114,10 @@ public sealed partial class HosTravelClock
       || (status.ObservedAt - start).TotalHours < 3
     )
       return;
-    var remaining = Math.Max(0, 10 - (Now - start).TotalHours);
+    var remaining = Math.Max(
+      0,
+      DriverDutyStatus.DailyRestHours - (Now - start).TotalHours
+    );
     // A rest the ELD has not credited is not a shift this may invent. Where
     // the driver has stood ten hours and the clocks still read a shift in
     // progress, the feed is behind the yard, and resetting here would award
@@ -241,7 +244,7 @@ public sealed partial class HosTravelClock
     shiftDuty += rest;
     breakLeft = 8;
     sinceBreak = 0;
-    if ((timeline?.OngoingRest(Now) ?? 0) >= 10)
+    if ((timeline?.OngoingRest(Now) ?? 0) >= DriverDutyStatus.DailyRestHours)
       Reset(false, fullDailyRest: true);
     RefreshCycle();
     RecapWaits++;
@@ -289,7 +292,9 @@ public sealed partial class HosTravelClock
       }
     }
     // Canada: 72h is a conservative cycle restart for either cycle.
-    double hours = cycle ? (country == "CA" ? 72 : 34) : 10;
+    double hours = cycle
+      ? (country == "CA" ? 72 : 34)
+      : DriverDutyStatus.DailyRestHours;
     var rule = timeline?.Source.Rule(country);
     if (cycle && rule is not null)
       hours = rule.RestartHours;
