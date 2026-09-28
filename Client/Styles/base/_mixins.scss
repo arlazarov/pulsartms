@@ -289,6 +289,64 @@
   }
 }
 
+// New information arriving, as the HUD shows it (the owner, September
+// 28): the element settles in from a readable fade while one band of
+// light passes over it once. Only opacity, transform and an overlay that
+// takes no pointer move; nothing changes size. It plays when the element
+// is created - an unchanged rerender keeps the element and plays nothing;
+// a changed value is given a new element (keyed by the value) to play
+// again. Neighbours start a stagger apart by their --hud-index (capped).
+// With reduced motion nothing moves or sweeps: the value only fades in
+// briefly, without delay. $scan false leaves ::after alone for
+// an element that already draws with it.
+@mixin hud-arrive($scan: true) {
+  animation: hud-arrive fn.motion(hud-arrive) fn.motion(hud-ease) both;
+  animation-delay: calc(
+    min(var(--hud-index, 0), 6) * #{fn.motion(hud-stagger)}
+  );
+  @if $scan {
+    position: relative;
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: linear-gradient(
+          100deg,
+          transparent 35%,
+          fn.theme(hud-glow, 0.32) 50%,
+          transparent 65%
+        )
+        no-repeat;
+      background-size: 250% 100%;
+      pointer-events: none;
+      animation: hud-scan fn.motion(hud-scan) fn.motion(hud-ease) both;
+      animation-delay: inherit;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: hud-arrive-still fn.motion(hud-still) linear both;
+    @if $scan {
+      &::after {
+        animation: none;
+        opacity: 0;
+      }
+    }
+  }
+}
+
+// A short label writing itself in, for headings and field names only -
+// never a value, which always appears whole. The whole text is in the
+// page from the first frame (read and copied whole); only its drawing is
+// revealed, left to right, and the box never changes size. With reduced
+// motion the text is simply there.
+@mixin hud-type {
+  animation: hud-type fn.motion(hud-type) steps(12, end) both;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
 // A HUD label: small, spaced capitals in the muted ink.
 // A strip's scrollbar as a HUD rail: a fine lit thumb on a faint track,
 // in the accent, taking its own room under the content.

@@ -876,6 +876,8 @@
     font-size: ui.fs(caption);
     font-weight: 700;
   }
+  // A trip new to the chain arrives as the HUD shows new information; a
+  // poll that changes nothing keeps the card and plays nothing.
   &__card {
     display: grid;
     gap: ui.pg(xs);
@@ -885,6 +887,7 @@
     border: 1.5px dashed currentColor;
     border-radius: ui.radius(md);
     background: ui.theme(surface);
+    @include ui.hud-arrive;
   }
   .is-current &__card {
     border-style: solid;

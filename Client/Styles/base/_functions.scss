@@ -110,6 +110,13 @@
   @return map.get(vars.$layers, $key);
 }
 
+@function motion($key) {
+  @if not map.has-key(vars.$motions, $key) {
+    @error 'Unknown motion: #{$key}';
+  }
+  @return map.get(vars.$motions, $key);
+}
+
 @function radius($key) {
   @if not map.has-key(vars.$radii, $key) {
     @error 'Unknown radius: #{$key}';

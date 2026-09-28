@@ -52,6 +52,7 @@ One map to a file, and the file says what belongs in it.
 | `_screen.scss`  | the widths at which a layout changes shape        |
 | `_layer.scss`   | what stands in front of what                      |
 | `_shape.scss`   | corners and shadows                               |
+| `_motion.scss`  | how the HUD brings new information in (`motion`)  |
 
 `_screen.scss` holds two maps on purpose: `$screen-scale` is a handful of
 steps about the window, used all over; `$screen-places` is the width at
