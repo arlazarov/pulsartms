@@ -193,8 +193,23 @@ async function dragStop(
     1,
     'real pointer event starts a drag',
   );
+  // A touch pointermove reaches the page aligned to the next frame, after
+  // the dispatched touch event has resolved (runs omAVsN, TR7eAo: the
+  // class appears within 16ms); the mouse path is synchronous. Wait for
+  // the preview, bounded, instead of reading it on the same step.
   assert.equal(
-    await target.evaluate(element => element.classList.contains('drop-after')),
+    await target.evaluate(
+      element =>
+        new Promise(done => {
+          const started = performance.now();
+          const poll = () =>
+            element.classList.contains('drop-after') ||
+            performance.now() - started > 1000
+              ? done(element.classList.contains('drop-after'))
+              : requestAnimationFrame(poll);
+          poll();
+        }),
+    ),
     true,
     'drop preview follows the fixed anchor or row',
   );
