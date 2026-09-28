@@ -58,8 +58,8 @@
           transparent 55%
         )
         left bottom / 100% calc(100% - #{ui.pg(md)}) no-repeat,
-      linear-gradient(ui.theme(surface), ui.theme(surface)) left bottom /
-        100% calc(100% - #{ui.pg(md)}) no-repeat;
+      linear-gradient(ui.theme(surface), ui.theme(surface)) left bottom / 100%
+        calc(100% - #{ui.pg(md)}) no-repeat;
     color: ui.theme(text);
     font-size: ui.fs(heading);
     font-weight: 700;

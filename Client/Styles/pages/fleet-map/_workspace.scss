@@ -179,7 +179,9 @@
     &[aria-pressed='true'] {
       background: ui.theme(accent, 0.16);
       color: ui.theme(accent);
-      box-shadow: 0 0 0 1px ui.theme(accent), 0 0 12px ui.theme(accent, 0.35);
+      box-shadow:
+        0 0 0 1px ui.theme(accent),
+        0 0 12px ui.theme(accent, 0.35);
     }
   }
   &__button {
@@ -677,9 +679,7 @@
       // Clear of the glass's corner tick, as the words were.
       padding-top: ui.pg(md);
       padding-bottom: ui.pg(sm);
-      padding-left: calc(
-        2.75rem + #{ui.pg(lg)} + #{ui.pg(sm)} + #{ui.pg(md)}
-      );
+      padding-left: calc(2.75rem + #{ui.pg(lg)} + #{ui.pg(sm)} + #{ui.pg(md)});
       &::before,
       &::after {
         left: calc(#{ui.pg(lg)} + #{ui.pg(sm)});
@@ -982,17 +982,13 @@
     color: ui.theme(text-muted);
   }
 
-
-  // A phone lists every trip down the sheet, scrolling, never across.
+  // A phone keeps the one row, swiped across card by card (the owner,
+  // September 27: a list down a short sheet showed cut cards and would
+  // not scroll to the first).
   @include ui.below(map-mobile) {
     height: ui.size(trip-chain-phone);
     &__links {
-      grid-auto-flow: row;
-      grid-auto-columns: auto;
-      grid-template-columns: minmax(0, 1fr);
       padding: ui.pg(sm);
-      overflow-x: hidden;
-      overflow-y: auto;
     }
   }
 }
@@ -1143,13 +1139,22 @@
   .fleet-trip-chain {
     grid-area: chain;
   }
+  // The right panel stands against the map's top and right edges (the
+  // owner, September 27: the strips of map above and beside it were
+  // wasted); its outer corner follows the map's.
+  .fleet-map-info-reserved,
+  .fuel-plan-editor {
+    margin: calc(-1 * #{ui.pg(md)}) calc(-1 * #{ui.pg(md)}) 0 0;
+    border-top-width: 0;
+    border-right-width: 0;
+    border-radius: 0 ui.radius(panel) 0 ui.radius(panel);
+  }
   .fleet-map-info-reserved {
     grid-area: inspector;
     position: relative;
     top: auto;
     width: auto;
     max-height: none;
-    margin: 0;
     align-self: stretch;
   }
   // Editors stand where the card they edit stands; the route choices and
@@ -1168,19 +1173,13 @@
   }
 }
 
-.fleet-map-inspector__quick-follow {
-  display: none;
-}
-
-
-// On a phone the card opens closed: the head and its summary rows (load,
-// next stop, ETA, appointment, readings, clocks), an explicit Details /
-// Hide details, and Follow beside it. Details opens the rest.
+// On a phone the card opens closed: the head and its next stop, with an
+// explicit Details / Hide details; Follow is the map bar's (the owner,
+// September 27: a second Follow in the head repeated its icon).
 @include ui.below(fleet-docked) {
   @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
     .fleet-map-inspector[data-inspector-mode='truck']
-      .fleet-map-mobile-summary__toggle,
-    .fleet-map-inspector__quick-follow {
+      .fleet-map-mobile-summary__toggle {
       display: inline-flex;
     }
     .fleet-map-inspector.is-mobile-collapsed .fleet-map-info-content,
@@ -1240,8 +1239,8 @@
   .fleet-truck-clocks {
     --hos-cell-border: #{ui.theme(selection-border, 0.9)};
     --hos-cell-background:
-      linear-gradient(#{ui.theme(hud-line)}, #{ui.theme(hud-line)}) top
-        center / calc(100% - 2 * #{ui.radius(sm)}) 2px no-repeat,
+      linear-gradient(#{ui.theme(hud-line)}, #{ui.theme(hud-line)}) top center /
+        calc(100% - 2 * #{ui.radius(sm)}) 2px no-repeat,
       #{ui.theme(surface)};
     --hos-cell-shadow: none;
     --hos-cell-label: #{ui.theme(accent)};
@@ -1264,4 +1263,3 @@
     }
   }
 }
-

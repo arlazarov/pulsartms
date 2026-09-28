@@ -88,6 +88,10 @@ visual inspection only, never acceptance.
 | Stop the server completed (IsCompleted, not GPS or load state), current and next cards: no ETA, Left, Fuel on arrival, cycle or late warnings; Completed status, completion time only when recorded; address, load link, appointment kept | Built |
 | Truck panel, station card and fuel plan drawn as the stop cards: glass emblem (truck / pump), lit frame with corner brackets, HUD labels, accent-edged clocks and visit numbers | Built |
 | Station price days: Today marked as an instrument (faint accent tint, fine rim, lit brackets, price in the accent) instead of a solid block; HUD labels, each day centred in its equal column so the gaps around Today are equal | Built |
+| Right panel (truck, stops, station, fuel plan) stands against the map's top and right edges, its outer corner following the map's | Built, Seen dark 1280 px |
+| Next load stop: Back to truck in the title's row beside the close | Built |
+| Phone truck card: no second Follow in its head (the map bar has it) | Built, Seen 375 px |
+| Phone trip chain: one row swiped across, each card whole (the list down a short sheet cut cards and would not scroll) | Built, Seen 375 px |
 | Docked panel fills its column to the right edge for truck and stops; a station quote is a narrower card (22.5rem) kept at the right edge | Built |
 | Fleet list truck numbers one step smaller (body size, semibold) | Built |
 | No Keyboard shortcuts link on the map; Google's data credit and Terms stay (required by Google's terms) | Built |

@@ -288,20 +288,6 @@
                     <ActionIcon Kind="chevron-down" />
                 </button>
             }
-            @if (_inspectorMode == MapInspectorMode.Truck)
-            {
-                @* On a phone the card opens closed, and the actions row
-                   closes with it: Follow stays in reach here. A stop's card
-                   has none; Follow is the map bar's. *@
-                <button type="button"
-                        class="btn btn--small map-action-icon fleet-map-inspector__quick-follow
-                            @(_followingTruck ? "btn--primary" : "")"
-                        title="Follow" aria-label="Follow truck"
-                        aria-pressed="@(_followingTruck ? "true" : "false")"
-                        @onclick="ToggleFollowAsync">
-                    <ActionIcon Kind="follow" /><span>Follow</span>
-                </button>
-            }
             @if (_inspectorMode is MapInspectorMode.FuelPlan
                 or MapInspectorMode.FuelStations)
             {

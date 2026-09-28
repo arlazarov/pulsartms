@@ -24,28 +24,15 @@
   }
   &[data-inspector-mode='nextstop'] {
     container: next-stop-inspection / inline-size;
+    // Back stands in the title's row, beside the close (the owner,
+    // September 27: a row of its own under the title wasted the room
+    // beside it).
     .fleet-map-inspector__header {
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
+    .fleet-map-inspector__back,
     .fleet-map-inspector__controls {
       flex-shrink: 0;
-    }
-
-    @include ui.below(map-mobile) {
-      .fleet-map-inspector__header {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 0 ui.pg(xs);
-      }
-      .fleet-map-inspector__controls {
-        grid-column: 2;
-        grid-row: 1;
-      }
-      .fleet-map-inspector__back {
-        grid-column: 1 / -1;
-        justify-self: start;
-        margin-left: 0;
-      }
     }
     @container next-stop-inspection (width < #{ui.breakpoint(map-next-stop-tight)}) {
       .fleet-map-inspector__header {
@@ -76,9 +63,14 @@
     background: ui.theme(surface);
     border-bottom: 1px solid ui.theme(border-subtle);
   }
+  // A title gives way before the head's actions do.
   &__title {
     @include ui.overlay-title;
     margin-right: auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   // Actions are outlined so they read as buttons now that they carry words;
   // only the close control stays bare. It was bare on the truck alone, so

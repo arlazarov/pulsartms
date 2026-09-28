@@ -1066,9 +1066,10 @@ try {
         }
       }
       if (size === 'narrow') {
-        // The phone card opens closed with its summary, Details and Follow.
+        // The phone card opens closed with its summary and Details; Follow
+        // is the map bar's.
         const card = await tab.evaluate(() => ({
-          follow: !!document.querySelector('.fleet-map-inspector__quick-follow')
+          follow: !!document.querySelector('.fleet-map-inspector__follow')
             ?.offsetParent,
           details: !!document.querySelector('.fleet-map-mobile-summary__toggle')
             ?.offsetParent,
@@ -1148,7 +1149,7 @@ try {
         );
 
         // Follow, a drag that ends it, and Follow again, at 360 px.
-        const quick = tab.locator('.fleet-map-inspector__quick-follow');
+        const quick = tab.locator('.fleet-map-inspector__follow');
         await quick.click();
         await tab.waitForTimeout(2500);
         const followed = await quick.getAttribute('aria-pressed');

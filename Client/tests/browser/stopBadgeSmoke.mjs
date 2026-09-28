@@ -33,8 +33,11 @@ await mkdir(output, { recursive: true });
 const browser = await chromium.launch({
   headless: true,
   channel: process.env.UI_TEST_BROWSER_CHANNEL ?? 'chrome',
-  args: ['--ignore-gpu-blocklist', '--use-angle=metal',
-    '--enable-gpu-rasterization'],
+  args: [
+    '--ignore-gpu-blocklist',
+    '--use-angle=metal',
+    '--enable-gpu-rasterization',
+  ],
 });
 try {
   for (const scheme of ['LIGHT', 'DARK']) {
@@ -79,7 +82,9 @@ try {
   }
 } finally {
   await browser.close();
-  await writeFile(resolve(output, `${label}-report.json`),
-    JSON.stringify(report, null, 2));
+  await writeFile(
+    resolve(output, `${label}-report.json`),
+    JSON.stringify(report, null, 2),
+  );
 }
 console.log(JSON.stringify({ output, ...report }, null, 2));
