@@ -1309,8 +1309,9 @@ Empty miles as the orange dash.
 
 On phones the map stage keeps at least half the screen (`50dvh`; the page
 scrolls past the toolbar for it) and the floating panel may take
-half of the stage - the map is what the page is for; opened Details may
-take 85% of it - so the card scrolls for the rest and the fuel plan's
+half of the stage, opened Details included - the map is what the page is
+for and the card never covers it (the owner, September 28) - so the card
+scrolls for the rest and the fuel plan's
 Stations, Edit plan and Send actions stay within reach by scrolling the
 panel rather than vanishing under its own heading.
 
