@@ -204,3 +204,44 @@
     );
   }
 }
+
+// The folder's days: overdue, today, then tomorrow below it, later and
+// undated apart (the owner, September 28).
+.dispatch-paper-column__day {
+  display: flex;
+  align-items: baseline;
+  gap: ui.pg(sm);
+  margin: ui.pg(md) 0 ui.pg(xs);
+  padding-bottom: ui.pg(micro);
+  border-bottom: 1px solid ui.theme(border-subtle);
+  color: ui.theme(text-secondary);
+  font-size: ui.fs(small);
+  font-weight: 650;
+
+  &:first-of-type {
+    margin-top: 0;
+  }
+
+  > span {
+    color: ui.theme(text-muted);
+    font-weight: 400;
+  }
+}
+
+// Which stop the appointment is: pickup or delivery, as a label.
+.dispatch-paper__event {
+  justify-self: end;
+  padding: 0 ui.pg(xs);
+  border: 1px solid currentColor;
+  border-radius: ui.radius(pill);
+  font-weight: 650;
+  text-transform: uppercase;
+
+  &.is-pickup {
+    color: ui.theme(accent);
+  }
+
+  &.is-delivery {
+    color: ui.theme(success-text);
+  }
+}

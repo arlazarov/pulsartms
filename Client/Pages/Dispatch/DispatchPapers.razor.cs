@@ -102,13 +102,73 @@ public partial class DispatchPapers
         due[later] = due[started];
     for (var i = 0; i < 3; i++)
     {
-      _columns[i] = rows.Where(x => x.Column(_today) == i)
+      _columns[i] = rows.Where(x => ColumnOf(x) == i)
         .OrderBy(x => due[x])
         .ThenBy(x => x.OriginCompleted ? 0 : 1)
         .ThenBy(x => x.Load.LoadNumber)
         .ToList();
     }
   }
+
+  // The day a folder is due: its next stop not yet done, by that stop's
+  // own local appointment date (or the load's ship or delivery date for an
+  // end stop that has none) - never an ETA, never a guess at which load
+  // the truck works now (the owner, September 28).
+  private enum Day
+  {
+    Overdue,
+    Today,
+    Tomorrow,
+    Later,
+    Undated,
+  }
+
+  private static readonly string[] DayTitles =
+  [
+    "Overdue",
+    "Today",
+    "Tomorrow",
+    "Later",
+    "Date pending",
+  ];
+
+  private Day DayOf(DispatchBoardRow row) =>
+    (row.NextStop?.ScheduledDate ?? EventFallback(row)) is not { } date
+      ? Day.Undated
+      : (date.DayNumber - _today.DayNumber) switch
+      {
+        < 0 => Day.Overdue,
+        0 => Day.Today,
+        1 => Day.Tomorrow,
+        _ => Day.Later,
+      };
+
+  // In transit keeps its folder; otherwise a load whose next stop is due
+  // by tomorrow, overdue included, is in the today-and-tomorrow folder.
+  private int ColumnOf(DispatchBoardRow row) =>
+    row.Column(_today) == 1 ? 1
+    : row.Planned ? 0
+    : DayOf(row) <= Day.Tomorrow ? 2
+    : 0;
+
+  // A folder's loads by day, today above tomorrow; In transit is one list.
+  private IEnumerable<(string? Title, List<DispatchBoardRow> Rows)> Days(
+    int column
+  ) =>
+    column == 1
+      ? [(null, _columns[column])]
+      : _columns[column]
+        .GroupBy(DayOf)
+        .OrderBy(x => x.Key)
+        .Select(x => ((string?)DayTitles[(int)x.Key], x.ToList()));
+
+  private static string EventTone(DispatchBoardRow row) =>
+    EventLabel(row) switch
+    {
+      "Pickup" => "is-pickup",
+      "Delivery" => "is-delivery",
+      _ => "is-stop",
+    };
 
   private static (DateOnly, TimeOnly) Due(DispatchBoardRow row) =>
     (

@@ -8,8 +8,15 @@
             @if (rows.Count == 0) { <div class="dispatch-paper-column__empty">No loads in this folder</div> }
             else
             {
+                @foreach (var (dayTitle, dayRows) in Days(column))
+                {
+                @if (dayTitle is not null)
+                {
+                    <h3 class="dispatch-paper-column__day">@dayTitle
+                        <span>@dayRows.Count</span></h3>
+                }
                 <div class="dispatch-paper-tabs">
-                @foreach (var row in rows)
+                @foreach (var row in dayRows)
                 {
                     var phase = Phase(row);
                     <div @key="row.Key" class="dispatch-paper-tab-entry">
@@ -46,7 +53,7 @@
                                     </span>
                                     </span>
                                     <span class="dispatch-paper__tab-schedule"
-                                          aria-label="@($"{EventLabel(row)} appointment {EventSchedule(row)}")"><small>@EventLabel(row) appointment</small>@EventSchedule(row)</span>
+                                          aria-label="@($"{EventLabel(row)} appointment {EventSchedule(row)}")"><small class="dispatch-paper__event @EventTone(row)">@EventLabel(row)</small>@EventSchedule(row)</span>
                                 </span>
                                 @* Where the load goes, in one line: the card
                                    named neither end. *@
@@ -58,6 +65,7 @@
                     </div>
                 }
                 </div>
+                }
             }
         </section>
     }
