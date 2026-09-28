@@ -152,14 +152,22 @@ export function routeLayers(
               ? metrics.routeCurrentWidthScale
               : metrics.routeWidthScale),
         );
-  const outlineWidth = width + metrics.routeOutlineWidth;
+  // In daylight a road is a crisp line of its colour in a soft haze of the
+  // same colour - no white casing, a little finer (the owner, September
+  // 27: the light roads were heavy). The dark map keeps its casing.
+  const light = isLightMap();
+  const drawnWidth = light ? Math.max(3, width * 0.75) : width;
+  const outlineWidth = light
+    ? drawnWidth + 5
+    : width + metrics.routeOutlineWidth;
+  const casing = light ? [color[0], color[1], color[2], 46] : outline;
   const dash = dashed ? { extensions, dashJustified: false } : {};
   const pattern = futureDashed
     ? metrics.routeFutureDashArray
     : metrics.routeDashArray;
   // Dash units use half-width. Both strokes must share physical dash boundaries.
   const outlineDash = pattern.map(
-    (value: number) => (value * width) / outlineWidth,
+    (value: number) => (value * drawnWidth) / outlineWidth,
   );
   if (empty && !traveled) {
     // Empty miles as the HUD draws them (the owner, September 27: the
@@ -217,7 +225,7 @@ export function routeLayers(
       ...shared,
       ...dash,
       id: `${line.id}-outline`,
-      getColor: outline,
+      getColor: casing,
       getWidth: outlineWidth,
       ...(dashed ? { getDashArray: outlineDash } : {}),
     }),
@@ -226,7 +234,7 @@ export function routeLayers(
       ...dash,
       id: line.id,
       getColor: color,
-      getWidth: width,
+      getWidth: drawnWidth,
       ...(dashed ? { getDashArray: pattern } : {}),
     }),
   ]);
