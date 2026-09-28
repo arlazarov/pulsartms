@@ -1945,9 +1945,12 @@ figure names its source.
 - **Delivery statuses lost in a release overlap.** Owner: Messaging.
   Kept statuses whose id names a saved message are reconciled; an
   accepted message with no status past the grace is reviewed as
-  unknown. Open: a dropped status itself cannot be recovered (no
-  provider query); done when root accepts that as the bounded cost of a
-  release, or the release drains webhooks before moving traffic.
+  unknown; a new revision sends nothing until a deployment operator
+  releases it after the platform shows the previous one drained
+  (`SendHold`), so no status of what it sends can land on the previous
+  binary. Left: the previous binary's own race for what it sends itself
+  (F27, present every minute it runs, ended by the release); done when
+  root accepts that, and the operator identities are set.
 - **Liveness of operations without a heartbeat.** Done: root decided
   per-operation progress reports stale work and never restarts the only
   instance. `BackgroundProgress` (apart from the liveness
