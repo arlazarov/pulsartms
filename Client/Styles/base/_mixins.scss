@@ -159,6 +159,22 @@
 // a fine accent edge and two corner ticks, its only ornament. The ticks
 // take ::before and ::after, so a panel does not use those for anything
 // else.
+
+// Daylight glass over the map (the owner, September 28: thin light glass
+// let roads and station dots muddy the words). A dense milky white, a
+// restrained blur that only softens what little shows through, a faint
+// cyan hairline rim and a quiet two-step shadow. Panels, the tool bar and
+// the fleet list share it, so the solid white cards inside read one step
+// up. The cyan light along the top edge is the panel's own.
+@mixin light-glass {
+  border-color: fn.theme(hud-glow, 0.32);
+  background-color: fn.theme(surface-soft, 0.96);
+  backdrop-filter: blur(10px) saturate(0.85);
+  box-shadow:
+    0 1px 2px fn.theme(shadow, 0.06),
+    0 6px 18px fn.theme(shadow, 0.07);
+}
+
 @mixin glass-panel {
   position: relative;
   border: 1px solid fn.theme(accent, 0.2);
@@ -196,24 +212,19 @@
   // cool tint, a cyan hairline rim, bold corner ticks, a lit top edge, a
   // cool shadow and a faint cyan halo - the dark panel's parts in daylight.
   :root[data-theme='light'] & {
-    border-color: fn.theme(hud-glow, 0.45);
-    // Pure white, not a grey glass (the owner, September 27), with a thin
-    // cyan light sweeping slowly along its top edge, as a HUD scans.
-    background:
-      linear-gradient(
-          90deg,
-          transparent,
-          fn.theme(hud-glow, 0.9),
-          transparent
-        ) -40%
-        0 / 28% 1px no-repeat,
-      fn.theme(surface, 0.98);
+    // A thin cyan light sweeping slowly along its top edge, as a HUD
+    // scans, over the milky daylight glass.
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      fn.theme(hud-glow, 0.9),
+      transparent
+    );
+    background-position: -40% 0;
+    background-size: 28% 1px;
+    background-repeat: no-repeat;
     animation: hud-sweep 7s linear infinite;
-    // A hairline lift only: large soft shadows spread a grey haze over the
-    // bright canvas around every panel (the owner, September 27).
-    box-shadow:
-      0 1px 2px fn.theme(shadow, 0.05),
-      0 2px 8px fn.theme(shadow, 0.04);
+    @include light-glass;
     // Fine corner ticks in the bright HUD cyan.
     &::before,
     &::after {
@@ -236,22 +247,16 @@
     fn.shadow(panel);
 
   :root[data-theme='light'] & {
-    // Clean white glass: opaque enough, and not saturating, so the map's
-    // colours do not tint it.
-    background:
-      linear-gradient(
-          90deg,
-          transparent,
-          fn.theme(hud-glow, 0.9),
-          transparent
-        ) -40%
-        0 / 28% 1px no-repeat,
-      fn.theme(surface, 0.97);
-    animation: hud-sweep 7s linear infinite;
-    backdrop-filter: blur(18px) saturate(1);
-    box-shadow:
-      0 1px 2px fn.theme(shadow, 0.06),
-      0 3px 10px fn.theme(shadow, 0.05);
+    background-image: linear-gradient(
+      90deg,
+      transparent,
+      fn.theme(hud-glow, 0.9),
+      transparent
+    );
+    background-position: -40% 0;
+    background-size: 28% 1px;
+    background-repeat: no-repeat;
+    @include light-glass;
   }
 }
 

@@ -122,9 +122,10 @@
   background: ui.theme(surface, 0.86);
   backdrop-filter: blur(10px);
   box-shadow: ui.shadow(panel);
-  // In daylight the bar is rimmed in the cyan glow and its icons are cyan.
+  // In daylight the bar is the panels' milky glass (the map no longer
+  // shows through its icons) and its icons are cyan.
   :root[data-theme='light'] & {
-    border-color: ui.theme(hud-glow, 0.45);
+    @include ui.light-glass;
     .map-action-icon,
     .fleet-map-controls__button {
       color: ui.theme(accent);
