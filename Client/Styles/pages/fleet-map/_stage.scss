@@ -132,8 +132,9 @@
   // Expanded, the truck takes the height the stage has and scrolls inside
   // under its sticky head, so the chevron and X stay in reach and the
   // trips below remain reachable on a short screen.
-  .fleet-map-page:not(.is-truck-collapsed)
-    .fleet-map-info-reserved:has(.fleet-map-inspector__compact) {
+  // A stop chosen in the trips (or on the map) opens the same way.
+  .fleet-map-page.has-truck:not(.is-truck-collapsed)
+    .fleet-map-info-reserved {
     align-self: stretch;
     height: 100%;
     max-height: 100%;

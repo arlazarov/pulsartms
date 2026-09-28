@@ -14,6 +14,7 @@ import { createStopEtaWindow } from './routes/stopEtaWindow.ts';
 import { watchInspectorScroll } from './ui/inspectorScroll.ts';
 import { setStopBadges } from './routes/stopBadges.ts';
 import { createCameraViewport } from './ui/cameraViewport.ts';
+import { phoneViewport } from './ui/phoneViewport.ts';
 import { createFuelEditorFocus } from './ui/fuelEditorFocus.ts';
 import { createDockedDetails } from './ui/dockedDetails.ts';
 import { createRouteEditor } from './routes/routeEditor.ts';
@@ -195,6 +196,8 @@ export async function createFleetMap(
       const fit = chainFit;
       chainFit = null;
       if (disposed || fuelEditing || routeEditor.active) return;
+      // A phone keeps its view when a stop is chosen (phoneViewport).
+      if (phoneViewport(window)) return;
       const key = `${position.lat},${position.lng}`;
       const now = Date.now();
       const repeated =
@@ -724,7 +727,7 @@ export async function createFleetMap(
               : null,
           );
           currentProgress = progress;
-          route.setPlan(plan, fit, progress);
+          route.setPlan(plan, fit && !phoneViewport(window), progress);
           if (restoringStop && plan) reopenRestoredStop();
           if (etas.held()) etas.refresh();
           nextLoads.setStopOffset(orderedStops(plan).length);

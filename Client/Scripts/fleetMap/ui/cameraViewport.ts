@@ -1,3 +1,5 @@
+import { phoneViewport } from './phoneViewport.ts';
+
 // A rectangle of the map's own element, in its pixels.
 type Area = { x: number; y: number; width: number; height: number };
 
@@ -42,9 +44,7 @@ export function createCameraViewport(
   // again, even after the reader has dragged the map away (the owner,
   // September 26).
   let current: google.maps.LatLngLiteral | null = null,
-    covering = '',
-    folded = false,
-    foldedAt = 0;
+    covering = '';
   // A reader who drags the map has taken it back: nothing more is moved for
   // them. Any other move - a route fitted, a zoom, our own pan - ends in an
   // idle, where the pick's place is measured again against the camera at
@@ -75,25 +75,14 @@ export function createCameraViewport(
 
   function refresh() {
     if (disposed) return;
-    // A phone's truck card folded or unfolded by its reader is the same
-    // card: the sizes it changes - the card, and the map when the trips
-    // under it fold too - never move the camera (the owner, September 28).
-    // Its resizes arrive over a few frames, so a short window covers them.
-    const fold =
-      element
-        .closest?.('.fleet-map-page')
-        ?.classList?.contains('is-truck-collapsed') === true;
-    if (fold !== folded) {
-      folded = fold;
-      foldedAt = Date.now();
-    }
-    const folding = Date.now() - foldedAt < 600;
+    // A phone's map is moved by its reader alone (phoneViewport).
+    const still = phoneViewport(view);
     measure();
     // Overlay disclosure updates future focus insets, never the current camera.
     const next = [bounds?.width, bounds?.height].join(':');
     if (next !== signature) {
       signature = next;
-      if (!folding) changed();
+      if (!still) changed();
     }
     // A card of another shape than last time is a new card over the pick.
     const cover = region
@@ -101,7 +90,7 @@ export function createCameraViewport(
       : '';
     if (cover !== covering) {
       covering = cover;
-      if (cover && !pending && current && !folding) begin(current);
+      if (cover && !pending && current && !still) begin(current);
     }
     attemptReveal();
   }
@@ -309,6 +298,7 @@ export function createCameraViewport(
       changed = callback;
     },
     reveal(position: google.maps.LatLngLiteral | null | undefined) {
+      if (phoneViewport(view)) return;
       if (disposed || !position) return;
       current = position;
       // The same pick again, while it is still being brought into view,

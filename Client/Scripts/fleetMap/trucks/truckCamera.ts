@@ -1,4 +1,5 @@
 import type { RoutePoint } from '../contracts.d.ts';
+import { phoneViewport } from '../ui/phoneViewport.ts';
 
 type Center = google.maps.LatLng | google.maps.LatLngLiteral;
 
@@ -200,6 +201,8 @@ export function createTruckCamera(
     ) {
       fitted = true;
       if (preserveUserCamera && userCamera && id === initialTruckId) return;
+      // A phone keeps its view when a truck is chosen (phoneViewport).
+      if (phoneViewport(globalThis.window)) return;
       viewportFocusId = id;
       initialCamera(initial => {
         const center = viewport.center(
