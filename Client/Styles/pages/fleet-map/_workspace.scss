@@ -635,11 +635,10 @@
   }
 }
 
-// Too narrow for four clocks abreast (enlarged text): two by two, or one
-// under another where a reading would not fit half the width.
+// Too narrow for four clocks abreast (enlarged text): two by two.
 @container map-truck-card (width < #{ui.breakpoint(truck-clocks-stacked)}) {
   .fleet-truck-clocks {
-    --hos-cell-columns: repeat(auto-fit, minmax(min(100%, 6rem), 1fr));
+    --hos-cell-columns: repeat(2, minmax(0, 1fr));
     --hos-cell-flow: row;
   }
 }
