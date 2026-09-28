@@ -30,13 +30,13 @@ visual inspection only, never acceptance.
 
 | Request | Status |
 | --- | --- |
-| Real Google map, mainland US / Canada bounds, no world zoom | Built, Seen |
+| Real Google map kept to mainland US / Canada with room around it (bounds 14–70 N, 145–45 W) so it zooms out further now that it lies under the panels | Built |
 | Auto satellite at close zoom, no mode caption | Built |
-| One compact tool bar: Follow, Fit route, Camera, Route options, Fuel, Layers; no zoom or whole-fleet | Built, Seen |
+| One compact tool bar: Follow, Fit route, Camera, Route options, Fuel, Layers; no zoom or whole-fleet ; centred across the map | Built, Seen |
 | Layers menu: Fuel stations, Traffic, Next loads; no Map animation option | Built |
 | Map animation always on (sonar, route glow, direction marks, radar), also under the system's reduced motion | Built |
 | No map legend; weather attribution kept | Built, Seen |
-| Truck marks, dark map: bright glass HUD marks in a dark casing with a fine dark spine / core, always glowing so they stand out - running green glass with a green glow, off pale glass with a cyan glow, unknown pale with a dashed edge; standing as large as moving (24 px) | Built |
+| Truck marks, dark map: moving - bright glass arrow in a dark casing with a wide glow of the engine's colour; standing - a HUD sight: bright ring of the engine's colour in a soft glow around a pale glass core; green = engine running, cyan = off, dashed edge = unknown; one size (24 px) | Built |
 | Truck marks, light map: classic green arrow moving, green / grey circle standing | Built |
 | Truck number and "N trucks" cluster tags: HUD plates (clipped corners, fine accent outline, edge ticks, glass sheen), both themes; icons, counts, clustering and picking unchanged | Built |
 | Sonar: four thin compact rings, slow, brighter ink on light map | Built, Seen dark (light ink not yet seen) |
@@ -46,8 +46,8 @@ visual inspection only, never acceptance.
 | Unselected later routes: fine dashes with the softer glow | Built (not yet seen) |
 | Travelled road as a HUD trace: fine instrument-ink line over a faint halo, no white casing; empty miles dashed | Built |
 | Selected P / D / fuel: HUD reticle with four ticks and soft glow | Built |
-| Direction motion, constant and calm, like current: many fine grains (13 px apart, 2 px heads, short tails, about 20 px/s) over a fine steady glowing wire, on the current and later roads, brightest on the chosen one | Built |
-| P / D on the map or in the chain (current and later loads): one press opens it, zoom kept (an off-screen stop is panned into view); a double press centres it at zoom 15, satellite by the zoom rule; Follow ends on a camera move | Built |
+| Direction motion, constant and calm, like current: many fine grains (13 px apart, 2 px heads, short tails, about 10 px/s) over a fine steady glowing wire, on the current and later roads, brightest on the chosen one | Built |
+| P / D on the map or in the chain (current and later loads): one press opens it, zoom kept, a stop off the map or under a panel brought into the free part; a double press centres it in the free part at zoom 15, satellite by the zoom rule; Follow ends on a camera move | Built |
 | Passed (completed) stops openable from chain and map | Open |
 
 ## Workspace surface

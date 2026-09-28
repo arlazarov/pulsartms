@@ -116,7 +116,8 @@
   align-items: center;
   gap: ui.pg(micro);
   align-self: start;
-  justify-self: end;
+  // Centred across the map (the owner, September 27).
+  justify-self: center;
   margin: ui.pg(md);
   padding: ui.pg(micro);
   border: 1px solid ui.theme(accent, 0.2);

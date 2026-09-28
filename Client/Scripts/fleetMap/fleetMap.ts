@@ -38,8 +38,10 @@ const stopZoom = 15;
 // How soon a second press on the same stop counts as a double press.
 const stopPressWindow = 500;
 
-// Mainland USA and southern Canada, the fleet's working area.
-export const fleetBounds = { north: 62, south: 23, west: -130, east: -52 };
+// Mainland USA and southern Canada, the fleet's working area, with room
+// around it: the map now lies under the workspace's panels, so the whole
+// area must still fit in the part left free (the owner, September 27).
+export const fleetBounds = { north: 70, south: 14, west: -145, east: -45 };
 
 const schemeOf = (element: HTMLElement) =>
   element.ownerDocument?.documentElement?.dataset?.theme === 'dark'
@@ -173,7 +175,7 @@ export async function createFleetMap(
     cleanup.push(() => gpuScene?.dispose());
     await yieldToBrowser();
     // A P or D chosen on the map or in the chain. One press opens it and
-    // keeps the zoom, only bringing an off-screen stop into view; a second
+    // keeps the zoom, only bringing a hidden stop into view; a second
     // press on the same stop soon after puts it in the middle at street
     // zoom, where the satellite policy takes over (the owner, September
     // 27). A camera move is the reader's own, so Follow ends; editors keep
@@ -186,14 +188,21 @@ export async function createFleetMap(
       const repeated =
         lastStopPress?.key === key && now - lastStopPress.at < stopPressWindow;
       lastStopPress = repeated ? null : { key, at: now };
+      // The middle is the middle of the map left free by the panels over it.
+      cameraViewport.refresh();
       if (repeated) {
         trucks.releaseCamera();
-        map.moveCamera({ center: position, zoom: stopZoom });
+        map.moveCamera({
+          center: cameraViewport.center(position, stopZoom),
+          zoom: stopZoom,
+        });
         return;
       }
-      if (map.getBounds?.()?.contains(position) !== false) return;
-      trucks.releaseCamera();
-      map.panTo(position);
+      // One press: a stop off the map or under a panel is brought the
+      // least distance into the free part; one already there stays put.
+      if (map.getBounds?.()?.contains(position) === false)
+        trucks.releaseCamera();
+      cameraViewport.reveal(position);
     }
     const route = createRouteLayer(
       map,

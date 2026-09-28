@@ -54,6 +54,7 @@ const body = '#1e293b';
 const glassOn = { lit: '#ecfdf5', deep: '#6ee7a0' };
 const glassOff = { lit: '#ffffff', deep: '#c7d2e0' };
 const offGlow = '#22d3ee';
+const ringOn = '#4ade80';
 const casing = '#020617';
 const spine = '#0b1626';
 
@@ -110,23 +111,25 @@ export function truckIcon(engine: unknown, speed = 0) {
     // the dark map (unknown keeps its dashed edge).
     const tone = reading === 'on' ? glassOn : glassOff;
     const glass = `<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${tone.lit}"/><stop offset="1" stop-color="${tone.deep}"/></linearGradient></defs>`;
-    const glow =
-      reading === 'on'
-        ? `stroke="${engineOn}" stroke-opacity="0.6"`
-        : `stroke="${offGlow}" stroke-opacity="0.55"`;
+    // The engine's colour, bright, for the glow and the sight ring.
+    const ring = reading === 'on' ? ringOn : offGlow;
+    const glow = `stroke="${ring}" stroke-opacity="0.7"`;
     const shape =
       motion === 'moving'
         ? `
-<path d="${silhouette}" fill="none" ${glow} stroke-width="6" stroke-linejoin="round"/>
-<path d="${silhouette}" fill="none" stroke="${casing}" stroke-opacity="0.9" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="${silhouette}" fill="none" ${glow} stroke-width="8" stroke-linejoin="round"/>
+<path d="${silhouette}" fill="none" stroke="${casing}" stroke-opacity="0.9" stroke-width="3.5" stroke-linejoin="round"/>
 <path d="${silhouette}" fill="url(#b)" ${edge} stroke-linejoin="round"/>
 <path d="M13 6.5 L13 17.5" stroke="${spine}" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.75"/>`
-        : `
-<circle cx="13" cy="13" r="11" fill="none" ${glow} stroke-width="6"/>
-<circle cx="13" cy="13" r="11" fill="none" stroke="${casing}" stroke-opacity="0.9" stroke-width="4.5"/>
-<circle cx="13" cy="13" r="11" fill="url(#b)" ${edge}/>
-<circle cx="13" cy="13" r="4.2" fill="none" stroke="${spine}" stroke-width="1.3" stroke-opacity="0.75"/>
-<circle cx="13" cy="13" r="1.3" fill="${spine}"/>`;
+        : // Standing: a HUD sight - a bright ring of the engine's colour in
+          // a soft glow around a pale glass core, so it reads as a truck
+          // and not as a map button.
+          `
+<circle cx="13" cy="13" r="12.4" fill="none" stroke="${ring}" stroke-opacity="0.35" stroke-width="3"/>
+<circle cx="13" cy="13" r="12.4" fill="none" stroke="${ring}" stroke-width="1.4"/>
+<circle cx="13" cy="13" r="8.6" fill="none" stroke="${casing}" stroke-opacity="0.9" stroke-width="3"/>
+<circle cx="13" cy="13" r="8.6" fill="url(#b)" ${edge}/>
+<circle cx="13" cy="13" r="2.2" fill="${spine}"/>`;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="120" viewBox="-1 -1 28 30">${glass}${shape}</svg>`;
     icons.set(key, {
       url: 'data:image/svg+xml,' + encodeURIComponent(svg),

@@ -346,7 +346,7 @@ type FlowPath = {
 const flowPaths = new WeakMap<object, FlowPath>();
 // Screen pixels: between charges, a charge's head and its tail. Dense, so
 // the road reads as current, not as a few sparks: many fine grains, calm,
-// about 20 px/s.
+// about 10 px/s.
 const tracerSpacing = 13;
 const tracerHead = 3;
 const tracerTail = 9;
