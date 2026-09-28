@@ -149,6 +149,50 @@ public sealed class DispatchSyncOrderingTests
     Assert.Equal(200, await PriceAsync(f));
   }
 
+  // A revision change: the previous binary takes no ticket and counts no
+  // write, and commits an older reading behind the new one. Behind a warm
+  // process of the new binary (a manual sync on its instance during the
+  // overlap) the previous binary's relay round makes the next poll put the
+  // newer reading back; a process that has not imported yet - the new
+  // loop, which waits for the lease until the drain - reconciles every
+  // load on its first pass.
+  [Theory]
+  [InlineData(true)]
+  [InlineData(false)]
+  public async Task APreviousBinarysTicketlessWriteIsRepaired(bool warm)
+  {
+    await using var f = await DispatchSyncFixture.CreateAsync();
+    f.Sources.Add(Load(200));
+    await PassAsync(f);
+    if (warm)
+      Assert.Equal(0, (await PassAsync(f)).Response);
+
+    await TicketlessAsync(f, 150);
+    if (warm)
+    {
+      using var previous = TestCache.Create();
+      previous.Invalidate(ReadGroups.Dispatch);
+      await using var services = new ServiceCollection()
+        .AddScoped<IAppDbContext>(_ => f.NewContext())
+        .BuildServiceProvider();
+      foreach (var cache in new[] { previous, f.Reads })
+        await new CacheInvalidationRelay(
+          cache,
+          services.GetRequiredService<IServiceScopeFactory>(),
+          Options.Create(new SynchronizationOptions()),
+          TimeProvider.System,
+          NullLogger<CacheInvalidationRelay>.Instance
+        ).RunOnceAsync(default);
+    }
+    else
+      f.Memory.Compact(1.0);
+    Assert.Equal(150, await PriceAsync(f));
+
+    Assert.True((await PassAsync(f)).Success);
+
+    Assert.Equal(200, await PriceAsync(f));
+  }
+
   // Tickets only grow and are never shared, per carrier and provider.
   [Fact]
   public async Task TicketsGrowAndAreNeverShared()
@@ -214,6 +258,20 @@ public sealed class DispatchSyncOrderingTests
       x.SetProperty(l => l.ReadTicket, ticket)
     );
     await transaction.CommitAsync();
+  }
+
+  // The previous binary's pass as the database sees it: the load written
+  // and stamped, its link's ticket and the write count untouched.
+  private static async Task TicketlessAsync(
+    DispatchSyncFixture f,
+    decimal price
+  )
+  {
+    await using var other = f.NewContext();
+    await other.Dispatches.ExecuteUpdateAsync(x =>
+      x.SetProperty(d => d.Price, price)
+        .SetProperty(d => d.LastSyncedAt, DateTime.UtcNow)
+    );
   }
 
   private static async Task<decimal?> PriceAsync(DispatchSyncFixture f)
