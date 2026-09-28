@@ -184,15 +184,3 @@
     }
   }
 }
-
-// Arc Reactor: the top bar is a deep navy band in the light theme, its
-// clock and account in the dark theme's colours, a cyan line under it.
-@include ui.above(md) {
-  :root[data-theme='light'] .topbar {
-    @include ui.dark-scope;
-    border-color: ui.clr('cyan', 400, 0.55);
-    background: ui.clr(night, 900);
-    animation: none;
-  }
-}
-
