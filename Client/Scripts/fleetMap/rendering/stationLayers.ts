@@ -59,15 +59,13 @@ export function createStationLayers({
       lineWidthUnits: 'pixels',
       // On the dark map a fine rim of the price colour on the core; on the
       // pale light map a rim alone did not tell cheap from dear, so the dot
-      // is filled with its price colour inside a white rim.
+      // is filled flat with its price colour and edged in the same - no
+      // white backing ring (the owner, September 28). A chosen or planned
+      // station keeps its blue rim.
       getLineWidth: (d: StationMark) => (d.selected ? 2.5 : 1.75),
       getFillColor: isLightMap() ? (d: StationMark) => d.color : theme().core,
       getLineColor: (d: StationMark) =>
-        d.selected || d.recommended
-          ? selectedBlue
-          : isLightMap()
-            ? [255, 255, 255]
-            : d.color,
+        d.selected || d.recommended ? selectedBlue : d.color,
       autoHighlight: true,
       highlightColor: [49, 94, 234, 100],
       onHover,
@@ -179,14 +177,20 @@ export function createStationLayers({
           selectStation,
           metrics.recommendationDotRadius * 1.2,
         ),
-        ring(
-          'fuel-recommendation-rings',
-          data,
-          true,
-          metrics.recommendationRadius,
-          setHover,
-          selectStation,
-        ),
+        // Daylight: the planned station's own blue rim and its Fuel tag
+        // say it; no second ring around it.
+        ...(isLightMap()
+          ? []
+          : [
+              ring(
+                'fuel-recommendation-rings',
+                data,
+                true,
+                metrics.recommendationRadius,
+                setHover,
+                selectStation,
+              ),
+            ]),
       ];
     }),
     visitLabels([stationData, setHover, selectStation, fonts.fuelVisit], () =>

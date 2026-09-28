@@ -51,7 +51,8 @@ const engineOn = '#16a34a';
 // dark map's pale truck body, the ring against the map.
 const engineQuiet = '#475569';
 const ringQuiet = '#64748b';
-const body = '#1e293b';
+// The rim of a running truck's light mark: its green, a shade deeper.
+const lightRimOn = '#15803d';
 // The dark map's instrument marks: the glass body by engine state, the
 // casing and the spine.
 const glassOn = { lit: '#dcfce7', deep: '#4ade80' };
@@ -69,14 +70,17 @@ function lightTruckIcon(engine: unknown, speed: number) {
   const key = `light:${truckState(engine, speed)}`;
   if (!icons.has(key)) {
     const silhouette = 'M13 1 L24 23 Q25 26 22 25 L13 22 L4 25 Q1 26 2 23 Z';
+    // One flat shape with one thin rim of a deeper shade of its own colour:
+    // no white casing or dark outline stacked around it (the owner,
+    // September 28: a stopped truck read as a grey halo in rims).
+    const fill = key === 'light:off' ? ringQuiet : engineOn;
+    const rim = key === 'light:off' ? engineQuiet : lightRimOn;
     const shape =
       key === 'light:moving'
         ? `
-<path d="${silhouette}" fill="none" stroke="white" stroke-width="4" stroke-linejoin="round"/>
-<path d="${silhouette}" fill="${engineOn}" stroke="${body}" stroke-width="2" stroke-linejoin="round"/>`
+<path d="${silhouette}" fill="${fill}" stroke="${rim}" stroke-width="1.5" stroke-linejoin="round"/>`
         : `
-<circle cx="13" cy="13" r="11" fill="none" stroke="white" stroke-width="4"/>
-<circle cx="13" cy="13" r="11" fill="${key === 'light:idle' ? engineOn : ringQuiet}" stroke="${body}" stroke-width="2"/>`;
+<circle cx="13" cy="13" r="9" fill="${fill}" stroke="${rim}" stroke-width="1.5"/>`;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="120" viewBox="-1 -1 28 30">${shape}</svg>`;
     icons.set(key, {
       url: 'data:image/svg+xml,' + encodeURIComponent(svg),
