@@ -17,6 +17,7 @@ using Domain.Models.Messaging;
 using Infrastructure.Integrations.WhatsApp;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -901,6 +902,162 @@ public sealed class DriverMessagingWebhookTests
     Assert.All(found, x => Assert.Equal("131047", x.Evidence["errorCode"]));
   }
 
+  // Root: detection is not recovery. Messaging reconciles what the
+  // previous binary left: the kept failure reaches the fuel text, whose
+  // requester is told, and the reply, whose conversation moves to a new
+  // revision; a status for an id nobody holds stays kept; nothing is left
+  // for the audit, and a second round finds nothing to do.
+  [Fact]
+  public async Task AKeptStatusThePreviousBinaryLeftIsReconciled()
+  {
+    await using var f = await Fixture.CreateAsync();
+    await f.PostAsync(Status("wamid.1", "failed", 10, code: 131047));
+    await f.PostAsync(Status("wamid.2", "failed", 11, code: 131047));
+    await f.PostAsync(Status("wamid.3", "read", 12));
+    var text = await f.MessageAsync("wamid.1");
+    var (conversation, reply) = await f.ReplyInFlightAsync();
+    await f
+      .Db.ConversationMessages.Where(x => x.Id == reply)
+      .ExecuteUpdateAsync(x =>
+        x.SetProperty(m => m.ProviderMessageId, "wamid.2")
+          .SetProperty(m => m.Status, DriverMessageStatuses.Accepted)
+      );
+    var revision = await RevisionAsync(f, conversation);
+
+    Assert.Equal(2, await f.Reconciliation().RunOnceAsync(default));
+
+    f.Db.ChangeTracker.Clear();
+    Assert.Equal(DriverMessageStatuses.Failed, await f.StatusAsync(text));
+    var replied = await f
+      .Db.ConversationMessages.AsNoTracking()
+      .SingleAsync(x => x.Id == reply);
+    Assert.Equal(
+      (DriverMessageStatuses.Failed, (int?)131047),
+      (replied.Status, replied.ErrorCode)
+    );
+    Assert.Equal(revision + 1, await RevisionAsync(f, conversation));
+    var truck = await f
+      .Db.DriverMessages.Where(x => x.Id == text)
+      .Select(x => x.TruckId)
+      .SingleAsync();
+    Assert.Equal([(Domain.Entities.Company.Amf, truck)], f.Notified);
+    Assert.Equal(
+      ["wamid.3"],
+      await f
+        .Db.PendingDeliveryStatuses.AsNoTracking()
+        .Select(x => x.ProviderMessageId)
+        .ToListAsync()
+    );
+    Assert.Empty(
+      (
+        await new KeptStatusUnappliedRule(f.Db).ReadAsync(
+          new(
+            Domain.Entities.Company.Amf,
+            DateTime.UtcNow,
+            null,
+            10,
+            TimeSpan.FromMinutes(30)
+          ),
+          default
+        )
+      ).Observed
+    );
+    Assert.Equal(0, await f.Reconciliation().RunOnceAsync(default));
+  }
+
+  // Reconciliation follows the status order and the lifetime a sender
+  // follows: a kept "sent" does not take a read message back, and a kept
+  // failure past its lifetime is discarded, not applied. Both rows go.
+  [Fact]
+  public async Task ReconciliationMovesOnlyForwardAndDropsExpiredStatuses()
+  {
+    await using var f = await Fixture.CreateAsync();
+    await f.PostAsync(Status("wamid.1", "sent", 10));
+    var read = await f.MessageAsync("wamid.1", DriverMessageStatuses.Read);
+
+    Assert.Equal(0, await f.Reconciliation().RunOnceAsync(default));
+    Assert.Equal(DriverMessageStatuses.Read, await f.StatusAsync(read));
+    Assert.Empty(
+      await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+    );
+
+    await f.PostAsync(Status("wamid.2", "failed", 11, code: 131047));
+    var late = await f.MessageAsync("wamid.2");
+    f.Refresh.Time.Advance(
+      EarlyDeliveryStatuses.Keep + TimeSpan.FromMinutes(1)
+    );
+
+    Assert.Equal(0, await f.Reconciliation().RunOnceAsync(default));
+    Assert.Equal(DriverMessageStatuses.Accepted, await f.StatusAsync(late));
+    Assert.Empty(
+      await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+    );
+    Assert.Empty(f.Notified);
+  }
+
+  // A round is bounded; what it leaves, the next round takes.
+  [Fact]
+  public async Task ReconciliationTakesABoundedBatchPerRound()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var extra = 3;
+    for (var i = 0; i < KeptStatusReconciliation.BatchSize + extra; i++)
+    {
+      await f.PostAsync(Status($"wamid.{i}", "failed", i, code: 131047));
+      await f.MessageAsync($"wamid.{i}");
+    }
+
+    Assert.Equal(
+      KeptStatusReconciliation.BatchSize,
+      await f.Reconciliation().RunOnceAsync(default)
+    );
+    Assert.Equal(extra, await f.Reconciliation().RunOnceAsync(default));
+    Assert.Empty(
+      await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+    );
+  }
+
+  // Root: a message whose reconciliation keeps failing is logged, left
+  // kept and skipped for a while: the later ones progress in the next
+  // round, it is not retried on every round, and after its wait it is
+  // tried again - never dropped unapplied.
+  [Fact]
+  public async Task AMessageThatKeepsFailingDoesNotHoldTheOthers()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var bad = KeptStatusReconciliation.BatchSize;
+    for (var i = 0; i < bad + 2; i++)
+    {
+      await f.PostAsync(Status($"wamid.{i}", "failed", i, code: 131047));
+      await f.MessageAsync($"wamid.{i}");
+      if (i < bad)
+        f.Poison.Ids.Add($"wamid.{i}");
+      f.Refresh.Time.Advance(TimeSpan.FromSeconds(1));
+    }
+
+    Assert.Equal(0, await f.Reconciliation().RunOnceAsync(default));
+    Assert.Equal(bad, f.Reconciled.Warnings);
+    Assert.Equal(2, await f.Reconciliation().RunOnceAsync(default));
+    Assert.Equal(0, await f.Reconciliation().RunOnceAsync(default));
+    Assert.Equal(bad, f.Reconciled.Warnings);
+    Assert.Equal(bad, await f.Db.PendingDeliveryStatuses.CountAsync());
+
+    f.Refresh.Time.Advance(KeptStatusRetries.RetryAfter);
+    f.Poison.Ids.Clear();
+    Assert.Equal(bad, await f.Reconciliation().RunOnceAsync(default));
+    Assert.Empty(
+      await f.Db.PendingDeliveryStatuses.AsNoTracking().ToListAsync()
+    );
+    Assert.Equal(0, f.Retries.Count);
+  }
+
+  private static Task<long> RevisionAsync(Fixture f, Guid conversation) =>
+    f
+      .Db.Conversations.AsNoTracking()
+      .Where(x => x.Id == conversation)
+      .Select(x => x.Revision)
+      .SingleAsync();
+
   private static byte[] Status(
     string id,
     string status,
@@ -984,6 +1141,7 @@ public sealed class DriverMessagingWebhookTests
   {
     public required PlanningRefreshFixture Refresh { get; init; }
     public required SaveFailureProbe Probe { get; init; }
+    public required Poisoned Poison { get; init; }
 
     // What the requesting module was told after each commit.
     public List<(Guid Company, Guid Truck)> Notified { get; } = [];
@@ -994,12 +1152,14 @@ public sealed class DriverMessagingWebhookTests
     public static async Task<Fixture> CreateAsync()
     {
       var probe = new SaveFailureProbe();
+      var poison = new Poisoned();
       var f = new Fixture
       {
         Probe = probe,
+        Poison = poison,
         Refresh = await PlanningRefreshFixture.CreateAsync(services =>
           services.ConfigureDbContext<Infrastructure.Persistence.AppDbContext>(
-            options => options.AddInterceptors(probe)
+            options => options.AddInterceptors(probe, poison)
           )
         ),
       };
@@ -1042,6 +1202,31 @@ public sealed class DriverMessagingWebhookTests
       );
 
     public Recorded Logger { get; } = new();
+
+    public KeptStatusReconciliation Reconciliation()
+    {
+      Db.ChangeTracker.Clear();
+      return new(
+        Db,
+        new DeliveryStatusLocks(Db),
+        new EarlyDeliveryStatuses(
+          Db,
+          new DeliveryStatusLocks(Db),
+          Company,
+          Refresh.Time
+        ),
+        Company,
+        Events,
+        [new Observer(Notified)],
+        Retries,
+        Refresh.Time,
+        Reconciled
+      );
+    }
+
+    // Shared by rounds, as the process's singleton is.
+    public KeptStatusRetries Retries { get; } = new();
+    public Recorded<KeptStatusReconciliation> Reconciled { get; } = new();
 
     public DriverTextDelivery Delivery() =>
       new(
@@ -1302,6 +1487,53 @@ public sealed class DriverMessagingWebhookTests
       Exception? exception,
       Func<TState, Exception?, string> formatter
     ) => Lines.Add(formatter(state, exception));
+  }
+
+  public sealed class Recorded<T> : ILogger<T>
+  {
+    public int Warnings { get; private set; }
+
+    public IDisposable? BeginScope<TState>(TState state)
+      where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(
+      LogLevel logLevel,
+      EventId eventId,
+      TState state,
+      Exception? exception,
+      Func<TState, Exception?, string> formatter
+    )
+    {
+      if (logLevel == LogLevel.Warning)
+        Warnings++;
+    }
+  }
+
+  // Fails every save that takes a kept status of these provider ids, as a
+  // message whose reconciliation keeps failing would.
+  public sealed class Poisoned : SaveChangesInterceptor
+  {
+    public HashSet<string> Ids { get; } = [];
+
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+      DbContextEventData eventData,
+      InterceptionResult<int> result,
+      CancellationToken cancellationToken = default
+    )
+    {
+      if (
+        eventData
+          .Context!.ChangeTracker.Entries<PendingDeliveryStatus>()
+          .Any(x =>
+            x.State == EntityState.Deleted
+            && Ids.Contains(x.Entity.ProviderMessageId)
+          )
+      )
+        throw new DbUpdateException("Poisoned.");
+      return ValueTask.FromResult(result);
+    }
   }
 
   private sealed class Observer(List<(Guid, Guid)> notified)

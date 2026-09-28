@@ -34,6 +34,7 @@ internal sealed class ReplyFixture : IAsyncDisposable
   public MessagingEvents Events { get; } = new();
   public OutboxSignal Signal { get; } = new();
   public ManualTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
+  public TestCompany Company { get; } = new();
   public AppDbContext Db => sync.Db;
   public OutboundMessageOperation Worker =>
     new(
@@ -52,7 +53,7 @@ internal sealed class ReplyFixture : IAsyncDisposable
       f.sync.NewContext([.. f.Interceptors])
     );
     collection.AddSingleton<IDriverMessaging>(f.Messaging);
-    collection.AddSingleton<ICurrentCompany>(new TestCompany());
+    collection.AddSingleton<ICurrentCompany>(f.Company);
     collection.AddSingleton(FileStorageTests.Configuration());
     collection.AddSingleton<TimeProvider>(f.Clock);
     collection.AddSingleton<IStorageSecrets>(
@@ -71,6 +72,10 @@ internal sealed class ReplyFixture : IAsyncDisposable
       (AppDbContext)sp.GetRequiredService<IAppDbContext>()
     ));
     collection.AddScoped<EarlyDeliveryStatuses>();
+    collection.AddSingleton(f.Events);
+    collection.AddLogging();
+    collection.AddScoped<KeptStatusReconciliation>();
+    collection.AddSingleton<KeptStatusRetries>();
     f.services = collection.BuildServiceProvider();
     foreach (var name in new[] { "me", "colleague" })
       f.Db.Users.Add(

@@ -1552,9 +1552,35 @@ runs every 10 minutes. Detection test and SQL translation on PostgreSQL
 green; each branch (fuel text, reply) removed fails it
 (diagnostic-qEnFEa; the first run, diagnostic-e8TBeu, failed on the
 test's Guid case - invalid). Messaging and Dispatch groups green
-(diagnostic-mHnhKT). Recovery - applying such a status to the message,
-or telling the dispatcher - is a Messaging decision. Owner: Messaging.
-The second case leaves no trace.
+(diagnostic-mHnhKT).
+
+Root: detection is not recovery. `KeptStatusReconciliation` (Messaging)
+now applies such statuses: the outbox runs it once a minute per carrier;
+each message in its own transaction under its message lock - the lock
+a webhook and a sender take - read after the lock, statuses only
+forward, an expired one discarded; at most 20 messages a round. A
+message whose reconciliation fails is logged, stays kept and is skipped
+for 10 minutes (`KeptStatusRetries`, entries dropped when due), so it
+cannot hold the others; a failing reconciliation does not stop the
+outbox's sends; carriers are forgotten a minute after their last
+reconciliation. A reply's conversation moves to a new revision and is
+signalled; a fuel text's requester is told, as after a webhook.
+Evidence: diagnostic-RVsUnN (53 tests; mutations: no skip, no per-message
+catch, no outbox catch, no pruning, no retry, each failing) and
+diagnostic-hsJElx (PostgreSQL: a webhook holding the message lock while
+recording "read", the reconciliation waits and does not take it back to
+a kept "sent"; reading before the lock fails it). The rule now reports
+what reconciliation has not settled. The second case leaves no trace.
+
+Correction to the F27 evidence: its PostgreSQL overlap tests asserted
+that a party waited by checking it was unfinished after 500 ms, and
+opening a connection to the remote fixture can take that long, so the
+check passed without any wait (seen here: with the lock removed, the
+reconciliation still read after the webhook's commit, 520 ms late -
+scratch-KnWoQ5). Every overlap now waits until the waiting connection's
+advisory lock shows as not granted in `pg_locks`; removing the locks
+fails all five (diagnostic-hsJElx). diagnostic-3joWht and -kswDRW are
+marked accordingly.
 
 **Fuel publication and hand-overs (D6, F16, F17).** The truck's
 publication lock (`PlanningPublicationScope`, `FOR UPDATE SKIP LOCKED`)
@@ -1705,11 +1731,11 @@ figure names its source.
 - **PostgreSQL fixture.** Owner: tests. Done when an isolated fixture,
   not in Docker, runs the 42 skipped tests in the gate.
 - **Delivery statuses lost in a release overlap.** Owner: Messaging.
-  Kept statuses whose id names a saved message are reported
-  (`messaging.kept-status-unapplied`). Done when they are applied or a
-  dispatcher is told, and an accepted message with no status past a
-  stated age is reported - or root accepts the loss as the bounded cost
-  of a release.
+  Kept statuses whose id names a saved message are reconciled and what
+  is not is reported. Open: a status the previous binary dropped leaves
+  no trace; done when an accepted message with no status past a stated
+  age is reported without calling it failed - or root accepts the loss
+  as the bounded cost of a release.
 - **Liveness of operations without a heartbeat.** Owner: the background
   owners. Done when each has a heartbeat or a documented reason.
 

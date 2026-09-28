@@ -45,6 +45,12 @@ public sealed class OutboundMessageOperation(
   public static readonly TimeSpan Lease = TimeSpan.FromMinutes(2);
   public static readonly TimeSpan Poll = TimeSpan.FromSeconds(5);
 
+  // Kept statuses a previous binary left unapplied are rare - a release's
+  // overlap - so they are looked for once a minute per carrier, not on
+  // every pass; each stays kept for an hour.
+  public static readonly TimeSpan ReconcileEvery = TimeSpan.FromMinutes(1);
+  private readonly Dictionary<Guid, DateTime> reconciled = [];
+
   public async Task RunAsync(CancellationToken ct)
   {
     while (!ct.IsCancellationRequested)
@@ -80,6 +86,7 @@ public sealed class OutboundMessageOperation(
   public async Task<int> RunOnceAsync(CancellationToken ct)
   {
     await ReapAsync(ct);
+    await ReconcileAsync(ct);
     List<Guid> due;
     var now = clock.GetUtcNow().UtcDateTime;
     await using (var scope = scopes.CreateAsyncScope())
@@ -102,6 +109,52 @@ public sealed class OutboundMessageOperation(
         sent++;
     }
     return sent;
+  }
+
+  // Its failure is logged and does not stop the pass: the sends below run,
+  // and the carrier is reconciled again after ReconcileEvery. Carriers not
+  // reconciled within ReconcileEvery are forgotten, so the map holds only
+  // those of the last minute.
+  private async Task ReconcileAsync(CancellationToken ct)
+  {
+    await using var scope = scopes.CreateAsyncScope();
+    if (
+      scope.ServiceProvider.GetService<ICurrentCompany>()?.Id is not { } company
+    )
+      return;
+    var now = clock.GetUtcNow().UtcDateTime;
+    lock (reconciled)
+    {
+      foreach (
+        var due in reconciled
+          .Where(x => x.Value <= now - ReconcileEvery)
+          .ToList()
+      )
+        reconciled.Remove(due.Key);
+      if (reconciled.ContainsKey(company))
+        return;
+      reconciled[company] = now;
+    }
+    try
+    {
+      await scope
+        .ServiceProvider.GetRequiredService<KeptStatusReconciliation>()
+        .RunOnceAsync(ct);
+    }
+    catch (Exception ex) when (!ct.IsCancellationRequested)
+    {
+      logger.LogWarning(ex, "Kept delivery status reconciliation failed");
+    }
+  }
+
+  // Carriers whose reconciliation is not due yet; for the bound's test.
+  public int Reconciling
+  {
+    get
+    {
+      lock (reconciled)
+        return reconciled.Count;
+    }
   }
 
   // A worker that died holding a message leaves it "sending"; after the

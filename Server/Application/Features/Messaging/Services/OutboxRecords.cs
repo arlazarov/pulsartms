@@ -116,7 +116,7 @@ public sealed class OutboxRecords(MessagingEvents events, TimeProvider clock)
     await db.SaveChangesAsync(ct);
   }
 
-  private static async Task<long> BumpAsync(
+  internal static async Task<long> BumpAsync(
     IAppDbContext db,
     Guid conversation,
     CancellationToken ct

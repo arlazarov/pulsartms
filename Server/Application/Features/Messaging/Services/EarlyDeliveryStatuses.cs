@@ -180,6 +180,27 @@ public sealed class EarlyDeliveryStatuses(
     return [.. pending.Where(x => x.ReceivedAt >= since)];
   }
 
+  // Kept statuses whose provider id a message of the same carrier, channel
+  // and business number already holds. Every Messaging writer takes them
+  // when it saves the id, so these were saved by a writer that does not -
+  // the previous binary during a release. Reconciled by
+  // KeptStatusReconciliation and reported by KeptStatusUnappliedRule.
+  public static IQueryable<PendingDeliveryStatus> Unapplied(IAppDbContext db) =>
+    db.PendingDeliveryStatuses.Where(p =>
+      db.DriverMessages.Any(m =>
+        m.CompanyId == p.CompanyId
+        && m.Channel == p.Channel
+        && m.BusinessNumberId == p.BusinessNumberId
+        && m.ProviderMessageId == p.ProviderMessageId
+      )
+      || db.ConversationMessages.Any(m =>
+        m.CompanyId == p.CompanyId
+        && m.Channel == p.Channel
+        && m.BusinessNumberId == p.BusinessNumberId
+        && m.ProviderMessageId == p.ProviderMessageId
+      )
+    );
+
   private IQueryable<PendingDeliveryStatus> Pending(
     string channel,
     string businessNumber,
