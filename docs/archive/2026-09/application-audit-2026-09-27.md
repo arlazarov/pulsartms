@@ -1452,6 +1452,21 @@ first version's runs diagnostic-sP3KzC and -A4qt2n checked what it
 changed, not its compatibility; diagnostic-TQzqoy is invalid (the API did
 not build).
 
+### F29 — P3: a webhook status left its conversation's revision
+
+Found while reconciling kept statuses. The outbox commits a reply's status
+with a new conversation revision; the webhook moved the status and signalled
+the conversation at its old revision. A tab whose change stream fails falls
+back to polling and re-reads an open conversation only when the listed
+revision differs, so it kept showing "accepted" after "read" until its
+stream resumed and resynchronized - bounded by that outage (the 503 bursts
+of September 27 were such outages). The webhook now advances the revision of
+each conversation whose reply moved, in its own commit, through the tracked
+entity as the inbox does; statuses that move nothing leave it. Red on the
+previous handler, green (diagnostic-uhGink, 85 tests). Not covered by a
+test: the path where the webhook finds, under the lock, an id saved
+meanwhile - it goes through the same call.
+
 ## Release and rollback constraints (branch at `3e15aeba`)
 
 What the branch stores differently, measured against the released binary

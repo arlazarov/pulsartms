@@ -139,7 +139,10 @@ public sealed class DriverMessagingWebhookHandlers(
       .Statuses.Where(x => !matched.Contains(x.ProviderMessageId))
       .ToList();
     if (unmatched.Count == 0)
+    {
+      await AdvanceRevisionsAsync(outbound, ct);
       await db.SaveChangesAsync(ct);
+    }
     else
     {
       await using var transaction = await db.Database.BeginTransactionAsync(ct);
@@ -151,6 +154,7 @@ public sealed class DriverMessagingWebhookHandlers(
       );
       outbound = [.. outbound.Concat(found.Conversations).Distinct()];
       texts = [.. texts.Concat(found.Attempts).DistinctBy(x => x.Id)];
+      await AdvanceRevisionsAsync(outbound, ct);
       await db.SaveChangesAsync(ct);
       await transaction.CommitAsync(ct);
     }
@@ -283,6 +287,25 @@ public sealed class DriverMessagingWebhookHandlers(
         }
       );
     }
+  }
+
+  // A reply's status moves its conversation to a new revision in the same
+  // commit, as the outbox does: a view that compares revisions - the poll
+  // a tab falls back to while its change stream fails - otherwise keeps
+  // showing the old status.
+  private async Task AdvanceRevisionsAsync(
+    IReadOnlyCollection<Guid> changed,
+    CancellationToken ct
+  )
+  {
+    if (changed.Count == 0)
+      return;
+    foreach (
+      var conversation in await db
+        .Conversations.Where(x => changed.Contains(x.Id))
+        .ToListAsync(ct)
+    )
+      conversation.Revision++;
   }
 
   private async Task<List<(Guid, long)>> RevisionsAsync(

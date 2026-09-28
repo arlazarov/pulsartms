@@ -474,11 +474,15 @@ public sealed class DriverMessagingWebhookTests
       }
     );
     await f.Db.SaveChangesAsync();
+    var before = await RevisionAsync(f, conversation.Id);
 
     Assert.Equal(200, await f.PostAsync(Status("wamid.reply", "read", 30)));
     // WhatsApp's receipt says the driver read the reply; it reads nothing
     // for any dispatcher.
     Assert.Empty(await f.Db.ConversationReads.AsNoTracking().ToListAsync());
+    // Audit F29: the status moved the conversation to a new revision, as
+    // the outbox's statuses do; statuses that move nothing do not.
+    Assert.Equal(before + 1, await RevisionAsync(f, conversation.Id));
     Assert.Equal(
       200,
       await f.PostAsync(Status("wamid.reply", "delivered", 20))
@@ -491,6 +495,7 @@ public sealed class DriverMessagingWebhookTests
         "other"
       )
     );
+    Assert.Equal(before + 1, await RevisionAsync(f, conversation.Id));
 
     Assert.Equal(
       DriverMessageStatuses.Read,
