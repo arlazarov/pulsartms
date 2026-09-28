@@ -70,9 +70,11 @@
         </label>
         </div>
         </div>
+        @* Said to a screen reader only: on screen it covered the head
+           (the owner, September 27); the next poll reads the routes again. *@
         @if (ShowNextLoads && _nextLoadsMessage is not null)
         {
-            <span class="fleet-map-toolbar__status" role="status">@_nextLoadsMessage</span>
+            <span class="visually-hidden" role="status">@_nextLoadsMessage</span>
         }
         </div>
     </fieldset>

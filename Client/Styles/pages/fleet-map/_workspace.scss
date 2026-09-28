@@ -601,8 +601,11 @@
 // clocks edged in the accent.
 @include ui.above(fleet-docked) {
   .fleet-map-inspector[data-inspector-mode='truck'] {
-    // On the head itself: it stays sticky, and its grid is untouched.
+    // On the head itself: it stays sticky, and its grid is untouched. No
+    // rule under it: a straight line right over the facts' rounded
+    // corners read as a seam (the owner, September 27).
     .fleet-map-inspector__header {
+      border-bottom-color: transparent;
       @include ui.hud-emblem(truck, 2.75rem, sticky);
       // Clear of the glass's corner tick, as the words were.
       padding-top: ui.pg(md);
@@ -617,6 +620,7 @@
     }
     .fleet-truck-facts {
       @include ui.hud-frame;
+      margin-top: ui.pg(xs);
       border-color: ui.theme(accent, 0.22);
       :root[data-theme='light'] & {
         border-color: ui.theme(border);
