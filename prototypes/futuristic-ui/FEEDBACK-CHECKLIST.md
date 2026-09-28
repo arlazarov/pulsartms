@@ -32,7 +32,7 @@ visual inspection only, never acceptance.
 | --- | --- |
 | Real Google map: the camera's centre kept to mainland US / Canada; zooms out to the whole continent (min zoom 3) so a coast-to-coast load fits in the free part, never the world | Built |
 | Auto satellite at close zoom, no mode caption | Built |
-| One compact tool bar: Follow, Fit route, Camera, Route options, Fuel, Layers; no zoom or whole-fleet ; centred across the map | Built, Seen |
+| One compact tool bar: Follow, Fit route, Camera, Route options, Fuel, Layers; no zoom or whole-fleet ; always whole - the truck actions dimmed and disabled with no truck chosen; centred across the map | Built, Seen |
 | Layers menu: Fuel stations, Traffic, Next loads; no Map animation option ; closes on a press anywhere outside it | Built |
 | Map animation always on (sonar, route glow, direction marks, radar), also under the system's reduced motion | Built |
 | No map legend; weather attribution kept | Built, Seen |

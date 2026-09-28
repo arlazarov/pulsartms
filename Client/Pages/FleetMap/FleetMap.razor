@@ -133,8 +133,8 @@
              @onclick="() => _layersOpen = false"></div>
     }
     <div class="fleet-map-controls" role="toolbar" aria-label="Map tools">
-        @if (SelectedTruck is not null)
-        {
+        @* The truck's actions are always in the bar; with no truck chosen
+           they are shown disabled, so the bar keeps its shape. *@
         <div class="fleet-map-inspector__actions" role="group"
              aria-label="Truck actions">
             <button type="button"
@@ -143,34 +143,37 @@
                     title="@(_followingTruck ? "Following - press to stop" : "Follow")"
                     aria-label="Follow"
                     aria-pressed="@(_followingTruck ? "true" : "false")"
+                    disabled="@(SelectedTruck is null)"
                     @onclick="ToggleFollowAsync">
                 <ActionIcon Kind="follow" /><span>@(_followingTruck ? "Following" : "Follow")</span>
             </button>
             <button type="button" class="btn map-action-icon"
                     title="Show route" aria-label="Show route"
-                    disabled="@(!CanShowRoute)"
+                    disabled="@(SelectedTruck is null || !CanShowRoute)"
                     @onclick="ShowRouteAsync">
                 <ActionIcon Kind="fit" /><span>Fit route</span>
             </button>
             <button type="button" class="btn map-action-icon"
                     title="Camera" aria-label="Camera"
+                    disabled="@(SelectedTruck is null)"
                     @onclick="OpenCameraAsync">
                 <ActionIcon Kind="camera" /><span>Camera</span>
             </button>
             <button type="button" class="btn map-action-icon"
                     title="Route options" aria-label="Route options"
-                    disabled="@(_fuelEditorOpen || SelectedDispatchId is null)"
+                    disabled="@(SelectedTruck is null || _fuelEditorOpen
+                        || SelectedDispatchId is null)"
                     @onclick="OpenSelectedRouteEditorAsync">
                 <ActionIcon Kind="route" /><span>Route options</span>
             </button>
             <button type="button" class="btn map-action-icon"
                     title="Fuel plan" aria-label="Fuel"
-                    disabled="@(_fuelEditorOpen || _sendPlanOpen)"
+                    disabled="@(SelectedTruck is null || _fuelEditorOpen
+                        || _sendPlanOpen)"
                     @onclick="OpenFuelPlanAsync">
                 <ActionIcon Kind="fuel" /><span>Fuel</span>
             </button>
         </div>
-        }
         @* The layers, behind the map's own button as the concept keeps them;
            the same switches as the phone's Filters drawer. *@
         <div class="fleet-map-controls__layers">

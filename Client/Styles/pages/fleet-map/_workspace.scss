@@ -164,6 +164,12 @@
       background: ui.theme(accent, 0.1);
       color: ui.theme(accent);
     }
+    // Unavailable (no truck chosen, or nothing to act on): still in its
+    // place, plainly dimmed.
+    &:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
     // Follow is lit while it runs.
     &[aria-pressed='true'] {
       background: ui.theme(accent, 0.16);
