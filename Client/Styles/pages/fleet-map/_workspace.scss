@@ -207,6 +207,14 @@
 }
 
 // The layers menu beside the map's Layers button.
+// Behind the open Layers menu: the whole screen, so a press anywhere else
+// closes it (the owner, September 27). Invisible; the tool bar stays above.
+.fleet-map-layer-dismiss {
+  position: fixed;
+  inset: 0;
+  z-index: calc(#{ui.layer(map-controls)} - 1);
+}
+
 .fleet-map-layer-menu {
   position: absolute;
   top: calc(100% + #{ui.pg(sm)});

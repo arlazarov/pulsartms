@@ -126,6 +126,12 @@
     @* One compact bar over the map: the chosen truck's actions (Follow,
        Fit route, Camera, Route options, Fuel), then the layers. Zoom and
        panning are the map's own gestures. *@
+    @* A press anywhere outside the open Layers menu closes it. *@
+    @if (_layersOpen)
+    {
+        <div class="fleet-map-layer-dismiss" aria-hidden="true"
+             @onclick="() => _layersOpen = false"></div>
+    }
     <div class="fleet-map-controls" role="toolbar" aria-label="Map tools">
         @if (SelectedTruck is not null)
         {

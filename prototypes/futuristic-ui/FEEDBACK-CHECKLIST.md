@@ -33,7 +33,7 @@ visual inspection only, never acceptance.
 | Real Google map: the camera's centre kept to mainland US / Canada; zooms out to the whole continent (min zoom 3) so a coast-to-coast load fits in the free part, never the world | Built |
 | Auto satellite at close zoom, no mode caption | Built |
 | One compact tool bar: Follow, Fit route, Camera, Route options, Fuel, Layers; no zoom or whole-fleet ; centred across the map | Built, Seen |
-| Layers menu: Fuel stations, Traffic, Next loads; no Map animation option | Built |
+| Layers menu: Fuel stations, Traffic, Next loads; no Map animation option ; closes on a press anywhere outside it | Built |
 | Map animation always on (sonar, route glow, direction marks, radar), also under the system's reduced motion | Built |
 | No map legend; weather attribution kept | Built, Seen |
 | Truck marks, dark map: coloured glass by engine - green running, bright cyan off, grey with a dashed edge unknown - in a dark casing with a glow of the same colour; moving an arrow, standing a HUD sight (bold ring around the glass core); one size (24 px) | Built |
