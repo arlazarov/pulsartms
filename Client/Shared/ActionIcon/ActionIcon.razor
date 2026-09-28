@@ -3,16 +3,6 @@
     {
         <circle cx="10" cy="10" r="7" /><path d="m15 15 6 6" />
     }
-    else if (Kind == "load-in")
-    {
-        @* Pickup: cargo goes into the box. *@
-        <path d="M4 11v9h16v-9" /><path d="M12 3v11m-4-4 4 4 4-4" />
-    }
-    else if (Kind == "load-out")
-    {
-        @* Delivery: cargo comes out of the box. *@
-        <path d="M4 11v9h16v-9" /><path d="M12 15V4m-4 4 4-4 4 4" />
-    }
     else if (Kind == "clock")
     {
         <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />

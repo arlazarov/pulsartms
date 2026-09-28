@@ -1,5 +1,4 @@
 import { stopBadgeCharacters } from '../routes/stopLabels.ts';
-import { stopLoadIcon } from '../routes/stopBadges.ts';
 import type { DeckLayer, DeckLayerFactory } from './deckLayer.ts';
 import type { StopRow } from './stopMarkerLayout.ts';
 import type { LabelFonts } from './sceneMetrics.ts';
@@ -94,7 +93,6 @@ export function createStopLayers({
           stop.standing,
           stop.stacked,
           stop.markerLabel ?? '',
-          stopLoadIcon(stop.job),
         );
         const layers = [
           ...(stop.markerOffsetX || stop.markerOffsetY
@@ -126,15 +124,11 @@ export function createStopLayers({
             iconMapping: { circle: { ...circle, x: 0, y: 0 } },
             // Deck resolves packed frames through an accessor, not a constant attribute.
             getIcon: () => 'circle',
-            // The icon's room around the badge (stopMarkerIcon) is drawn
-            // too, so the badge keeps its size.
-            getSize:
-              (stop.standing
-                ? metrics.stopBadgeStandingDiameter
-                : stop.stacked
-                  ? metrics.stopBadgeStackedDiameter
-                  : metrics.stopBadgeDiameter) +
-              (stopLoadIcon(stop.job) ? 10 : 0),
+            getSize: stop.standing
+              ? metrics.stopBadgeStandingDiameter
+              : stop.stacked
+                ? metrics.stopBadgeStackedDiameter
+                : metrics.stopBadgeDiameter,
             sizeUnits: 'pixels',
             getPixelOffset: (s: StopRow) => [s.markerOffsetX, s.markerOffsetY],
             billboard: true,

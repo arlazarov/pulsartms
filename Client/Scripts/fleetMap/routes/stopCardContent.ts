@@ -1,5 +1,4 @@
 import { stopAppointment } from './stopAppointment.ts';
-import { stopLoadIcon } from './stopBadges.ts';
 import { addressLines } from '../ui/addressLines.ts';
 import { stopAppointmentReference } from './stopAppointmentReference.ts';
 import { loadReferenceContent } from '../ui/loadReferenceContent.ts';
@@ -113,27 +112,6 @@ export function stopContent(
       `fleet-route-popup__number${stop.done ? ' is-done' : ''}`,
       String(stop.number),
     );
-    // Pickup or delivery as the map's badge says it: cargo into or out of
-    // the box (ActionIcon load-in / load-out).
-    const load = stopLoadIcon(stop.job);
-    if (load) {
-      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-      svg.setAttribute('viewBox', '0 0 24 24');
-      svg.setAttribute('aria-hidden', 'true');
-      svg.setAttribute('class', 'fleet-route-popup__load');
-      const path = document.createElementNS(
-        'http://www.w3.org/2000/svg',
-        'path',
-      );
-      path.setAttribute(
-        'd',
-        load === 'in'
-          ? 'M4 11v9h16v-9M12 3v11m-4-4 4 4 4-4'
-          : 'M4 11v9h16v-9M12 15V4m-4 4 4-4 4 4',
-      );
-      svg.append(path);
-      badge.append(svg);
-    }
     head.append(badge);
   }
   const identity = element('div', 'fleet-route-popup__identity');

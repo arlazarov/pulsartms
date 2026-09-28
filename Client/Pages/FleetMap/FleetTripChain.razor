@@ -64,24 +64,22 @@
                                 var stop = visit.Stop;
                                 var focused = selected && stop.Id == FocusedStopId;
                                 var badge = Badge(stop);
-                                var loadIcon = StopMarkers.LoadIcon(stop.Job);
                                 @if (at > 0)
                                 { <span class="fleet-trip-chain__arrow" aria-hidden="true">→</span> }
                                 <span class="fleet-trip-chain__place"
                                       title="@($"{stop.Job} · {DispatchBoardRow.Location(stop)}{(stop.IsCompleted ? " · completed" : "")}")">
                                     @* The stop's chain number in its trip's
-                                       own colour, and a small icon for
-                                       pickup or delivery (the owner,
-                                       September 28): no P / D letters or
-                                       separate colours. *@
+                                       own colour (the owner, September 28):
+                                       a plain number, no P / D letter,
+                                       icon or separate colour; the stop's
+                                       job is in its accessible name. *@
                                     <button type="button"
                                             class="fleet-trip-chain__stop @(stop.IsCompleted ? "is-done" : "")"
                                             aria-pressed="@(focused ? "true" : "false")"
                                             aria-label="@($"Stop {badge}, {stop.Job}{(stop.IsCompleted ? ", completed" : "")}".Replace("Stop , ", "Stop, "))"
                                             @onclick="() => StopSelected.InvokeAsync((load, stop.Id))"
                                             @onclick:stopPropagation="true"
-                                        >@badge@if (loadIcon is not null)
-                                        {<ActionIcon Kind="@loadIcon" />}@if (stop.IsCompleted)
+                                        >@badge@if (stop.IsCompleted)
                                         {<ActionIcon Kind="check" />}</button>
                                     <span class="fleet-trip-chain__city">@DispatchBoardRow.Location(stop)</span>
                                 </span>

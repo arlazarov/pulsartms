@@ -1,14 +1,11 @@
-import { isDeliveryJob, isPickupJob } from './stopLabels.ts';
-
 // What a stop's badge says on the map (the owner, September 28): its
-// place in the chosen truck's trip chain, a plain 1, 2, 3; a small icon
-// on the badge says pickup or delivery (stopLoadIcon). The page owns the
+// place in the chosen truck's trip chain, a plain 1, 2, 3, with no
+// letter or icon. The page owns the
 // numbers - it reads the chain the trip cards show and sends one per stop
 // (FleetMap's PushStopBadgesAsync, from Shared/Dispatch/StopMarkers
 // .ChainBadges) - so the map and the cards cannot disagree, and choosing a
 // stop or a layer renumbers nothing. A stop outside that chain (another
-// truck's load, a route preview) owns no number: its badge wears only the
-// icon.
+// truck's load, a route preview) owns no number: its badge is plain.
 const badges = new Map<string, string>();
 const listeners = new Set<() => void>();
 
@@ -25,10 +22,6 @@ export function setStopBadges(record: unknown) {
   badges.clear();
   for (const [id, label] of next) badges.set(id, label);
   for (const listener of [...listeners]) listener();
-}
-
-export function stopLoadIcon(job: unknown): 'in' | 'out' | null {
-  return isPickupJob(job) ? 'in' : isDeliveryJob(job) ? 'out' : null;
 }
 
 export function stopBadge(id: unknown, _job?: unknown) {

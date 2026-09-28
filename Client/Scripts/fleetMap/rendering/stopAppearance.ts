@@ -54,9 +54,6 @@ export function stopMarkerIcon(
   // The badge's number: a long one widens the round badge into a pill of
   // the same height (the owner, September 28).
   label = '',
-  // Pickup ('in') or delivery ('out'): a small icon of cargo going into or
-  // out of the box, on the badge's lower right, in the badge's colour.
-  load: 'in' | 'out' | null = null,
 ) {
   const paint = (value: string | readonly number[]) =>
     typeof value === 'string' ? value : `rgb(${value.slice(0, 3).join(',')})`;
@@ -94,27 +91,13 @@ export function stopMarkerIcon(
   const halo = stacked
     ? pill(half - radius - 2.5, `fill="rgb(${markCore.slice(0, 3).join(',')})"`)
     : '';
-  // Room around the badge for the icon, the same on every side so the
-  // badge's centre stays the icon's anchor.
-  const margin = load ? 5 : 0;
-  const outerWidth = width + margin * 2,
-    outerHeight = span + margin * 2;
-  const iconX = margin + width - radius * 0.35 - extra / 2 - (half - radius),
-    iconY = margin + span - (half - radius) - 2;
-  const glyph =
-    load === 'in'
-      ? 'M3.2 6.2v3.3h5.6V6.2M6 1.6v4.6M4.3 4.4 6 6.2l1.7-1.8'
-      : 'M3.2 6.2v3.3h5.6V6.2M6 6.2V1.6M4.3 3.4 6 1.6l1.7 1.8';
-  const icon = load
-    ? `<g transform="translate(${iconX - 6} ${iconY - 6})"><circle cx="6" cy="6" r="6" fill="${paint(border)}" stroke="${paint(color)}" stroke-width="1.2"/><path d="${glyph}" fill="none" stroke="${isLightMap() ? '#ffffff' : paint(color)}" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></g>`
-    : '';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${outerWidth * 4}" height="${outerHeight * 4}" viewBox="0 0 ${outerWidth} ${outerHeight}"><g transform="translate(${margin} ${margin})">${around}${halo}${badge}</g>${icon}</svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * 4}" height="${span * 4}" viewBox="0 0 ${width} ${span}">${around}${halo}${badge}</svg>`;
   return {
     url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    width: outerWidth * 4,
-    height: outerHeight * 4,
-    anchorX: outerWidth * 2,
-    anchorY: outerHeight * 2,
+    width: width * 4,
+    height: span * 4,
+    anchorX: width * 2,
+    anchorY: span * 2,
     mask: false,
   };
 }
