@@ -1,4 +1,5 @@
 using System.Globalization;
+using Client.Shared.Appearance.AppearanceProvider;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Routing;
 
@@ -11,6 +12,9 @@ public partial class Topbar : IDisposable
 
   [Inject]
   private TimeProvider Clock { get; set; } = default!;
+
+  [CascadingParameter]
+  private AppearanceProvider? Appearance { get; set; }
 
   private DateTime _now;
   private ITimer? _timer;
@@ -79,6 +83,13 @@ public partial class Topbar : IDisposable
 
   private void OnLocationChanged(object? sender, LocationChangedEventArgs e) =>
     InvokeAsync(StateHasChanged);
+
+  private Task ToggleThemeAsync() =>
+    Appearance is { } appearance
+      ? appearance.SaveAsync(
+        appearance.AppliedTheme == "dark" ? "light" : "dark"
+      )
+      : Task.CompletedTask;
 
   public void Dispose()
   {

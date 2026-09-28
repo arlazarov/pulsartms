@@ -116,15 +116,15 @@
     // for anything.
     // In daylight a lit accent disc with a white letter, as the truck's
     // emblem: a pale core read washed out (the owner, September 27).
+    // Daylight: a matte accent disc with a white letter, no ring.
     :root[data-theme='light'] &:not(.is-done) {
-      border-color: ui.theme(hud-glow);
-      background: radial-gradient(
-        circle at 35% 30%,
-        ui.theme(hud-glow),
-        ui.theme(accent) 80%
-      );
+      border-color: ui.theme(accent);
+      background: ui.theme(accent);
       box-shadow: none;
       color: ui.theme(on-accent);
+      &::after {
+        content: none;
+      }
     }
     &.is-done {
       border-style: dashed;

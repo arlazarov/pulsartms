@@ -155,11 +155,13 @@ export function routeLayers(
   // In daylight a road is a crisp line of its colour in a soft haze of the
   // same colour - no white casing, a little finer (the owner, September
   // 27: the light roads were heavy). The dark map keeps its casing.
+  // The dark map's roads and their casing are a fifth finer (the owner,
+  // September 28).
   const light = isLightMap();
-  const drawnWidth = light ? Math.max(3, width * 0.75) : width;
+  const drawnWidth = light ? Math.max(3, width * 0.75) : width * 0.8;
   const outlineWidth = light
     ? drawnWidth + 5
-    : width + metrics.routeOutlineWidth;
+    : drawnWidth + metrics.routeOutlineWidth * 0.8;
   const casing = light ? [color[0], color[1], color[2], 28] : outline;
   const dash = dashed ? { extensions, dashJustified: false } : {};
   const pattern = futureDashed
@@ -265,7 +267,9 @@ export function routeGlowLayers(
       ? colors.current
       : line.routeColor || colors[line.routeRole] || colors.current;
   const light = globalThis.document?.documentElement?.dataset?.theme !== 'dark';
-  const width = Math.max(metrics.routeCurrentMinWidth, line.strokeWeight);
+  const width =
+    Math.max(metrics.routeCurrentMinWidth, line.strokeWeight) *
+    (light ? 1 : 0.8);
   // Twenty steps of breathing: each is built once and reused.
   const step = Math.round(Math.min(1, Math.max(0, pulse)) * 20) / 20;
   const key = [color.join(','), light, width, step, chosen].join('|');
@@ -298,9 +302,11 @@ export function routeGlowLayers(
   // In daylight only the chosen road glows, and softly: a haze on every
   // road read as fuzz (the owner, September 27).
   if (light && !chosen) return [];
+  // The dark glow is a fifth narrower, with its road (the owner,
+  // September 28).
   const tier = light
     ? { wide: 10, near: 4, wideAlpha: 22, nearAlpha: 48 }
-    : { wide: 20, near: 9, wideAlpha: 38, nearAlpha: 80 };
+    : { wide: 16, near: 7, wideAlpha: 38, nearAlpha: 80 };
   cached.cachedGlowKey = key;
   cached.cachedGlowData = line.data;
   return (cached.cachedGlow = [

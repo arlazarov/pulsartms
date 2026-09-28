@@ -71,6 +71,12 @@
   .topbar__spacer {
     flex: 1;
   }
+  // The global search field (the owner, September 28): the shared search
+  // input, sized to the bar; it gives way before the clock and account.
+  .topbar__search {
+    flex: 0 1 22rem;
+    width: auto;
+  }
   .topbar__icon-button {
     display: inline-grid;
     place-items: center;

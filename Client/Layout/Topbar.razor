@@ -1,9 +1,8 @@
 @using System.Globalization
 @using Client.Shared.Brand.BrandLogo
 @* The wide-screen bar over the rail: the product, where the reader is,
-   the time and the account. Phones keep the navigation's own head
-   instead. The theme switch is withdrawn while dark is the only theme
-   (the owner, September 28). *@
+   the search, the theme, the time and the account. Phones keep the
+   navigation's own head instead. *@
 <header class="topbar">
     <a class="topbar__brand" href="/fleet/map" aria-label="PulsR TMS home">
         <BrandLogo />
@@ -13,6 +12,29 @@
         <b>@Place.Page</b>
     </nav>
     <span class="topbar__spacer"></span>
+    @* The global search, as the approved concept draws it (the owner,
+       September 28): the field only for now. What it searches comes
+       later, so typing here sends and shows nothing. *@
+    <div class="search-input topbar__search" role="search">
+        <label for="topbar-search" class="visually-hidden"
+            >Search anything</label>
+        <svg class="search-input__icon" viewBox="0 0 20 20"
+             aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" /><path
+             d="m13 13 4 4" /></svg>
+        <input id="topbar-search" type="search" autocomplete="off"
+               placeholder="Search anything…" />
+    </div>
+    @if (Appearance is { } appearance)
+    {
+        <button type="button" class="topbar__icon-button"
+                aria-label="@(appearance.AppliedTheme == "dark"
+                    ? "Use the light theme" : "Use the dark theme")"
+                title="Theme" disabled="@appearance.Busy"
+                @onclick="ToggleThemeAsync">
+            <ActionIcon Kind="@(appearance.AppliedTheme == "dark"
+                ? "sun" : "moon")" />
+        </button>
+    }
     <div class="topbar__clock" aria-hidden="true">
         <ActionIcon Kind="clock" />
         <div>
