@@ -101,3 +101,9 @@
     left: calc(50% + #{ui.pg(xs)});
   }
 }
+
+// Daylight lights the current destination's bar without a glow (the
+// owner, September 28).
+:root[data-theme='light'] .sidebar__nav a.active::before {
+  box-shadow: none;
+}

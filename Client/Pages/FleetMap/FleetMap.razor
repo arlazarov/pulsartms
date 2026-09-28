@@ -232,22 +232,22 @@
                 <strong class="fleet-map-inspector__title fleet-map-inspector__desktop-title">@(SelectedTruck is { } named ? named.UnitNumber : InspectorTitle)</strong>
             </div>
         }
-        else if (_inspectorMode is MapInspectorMode.FuelPlan
-            or MapInspectorMode.FuelStations)
-        {
-            @* The truck's fuel, named with the truck it belongs to. Its
-               close goes back to the truck card, which stays selected. *@
-            <div class="fleet-map-inspector__identity">
-                <strong class="fleet-map-inspector__title"
-                    >@InspectorTitle</strong>
-                <span class="fleet-map-inspector__subtitle"
-                    >@SelectedTruck?.UnitNumber</span>
-            </div>
-        }
         else
         {
-            <strong class="fleet-map-inspector__title">@InspectorTitle</strong>
-            @if (HasTruckInspection)
+            @* Every card's head reads the same way (the owner, September
+               28): what the card is about under the truck it belongs to,
+               and Back in one fixed place beside the close. *@
+            <div class="fleet-map-inspector__identity">
+                <span class="fleet-map-inspector__eyebrow"
+                    >@(SelectedTruck is { } owner
+                        ? $"Truck {owner.UnitNumber}" : "\u00a0")</span>
+                <strong class="fleet-map-inspector__title"
+                    >@InspectorTitle</strong>
+            </div>
+            @* The truck's fuel closes back to the truck; it has no Back. *@
+            @if (HasTruckInspection
+                && _inspectorMode is not (MapInspectorMode.FuelPlan
+                    or MapInspectorMode.FuelStations))
             {
                 <button type="button"
                         class="btn btn--small fleet-map-inspector__back"

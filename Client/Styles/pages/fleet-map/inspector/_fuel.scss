@@ -5,21 +5,7 @@
 .fleet-map-inspector {
   &[data-inspector-mode='fuelplan'],
   &[data-inspector-mode='fuelstations'] {
-    container: fleet-fuel / inline-size;
-    .fleet-map-inspector__identity {
-      display: flex;
-      align-items: baseline;
-      gap: ui.pg(md);
-      min-width: 0;
-      margin-right: auto;
-    }
-    .fleet-map-inspector__subtitle {
-      padding-inline-start: ui.pg(md);
-      border-inline-start: 1px solid ui.theme(border-subtle);
-      color: ui.theme(text);
-      font-size: ui.fs(lead);
-      font-weight: 600;
-    }
+    container: fleet-fuel map-card / inline-size;
     .fleet-map-inspector__body {
       padding-block: 0;
     }
