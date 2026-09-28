@@ -1343,8 +1343,22 @@ failed on the new worktree's missing Client packages and is marked.
   the working tree, ignored files included, and the API's content and
   publish guards list names, not patterns. Cloud Build's upload already
   excluded them (`.gcloudignore` includes `.gitignore`). Red on the old
-  file, green (diagnostic-PpPWIu). Still open: the API names `Domain` in
-  seven files (routing and fleet models, a policy, two JSON converters).
+  file, green (diagnostic-PpPWIu).
+- **F12: the API names `Domain` in seven files - a rule conflict, not a
+  slip.** AGENTS.md says the API must not know Domain; the architecture
+  test allows it on purpose ("the web layer may name the vocabulary -
+  the models and policies ... but never a stored entity",
+  `LayerBoundaryTests`). The seven: request bodies taken as Domain models
+  (`RouteChoiceRequest`, `FleetConfigurationUpdate`,
+  `DriverContactUpdate`, the planning settings), options bound from
+  `Domain.Policies` in `OptionsRegistration`, and two JSON converters for
+  `RouteLeg` and `NextLoadConnection`. Following the rule means moving
+  the request types to Application contracts (two or three files each),
+  the converters beside the contracts they serialize, and the options
+  binding into Application's registration - JSON unchanged - then
+  tightening the test to reject `Domain.` in the API. `RouteLeg` alone
+  is named in 18 files, so it is not done during integration
+  preparation. Owner: root, to say which text is the rule.
 - **F19 re-read.** Verified: fuel stations are a shared table ("a place
   in the world, the same for everyone"); any carrier's Admin can start
   the discount import that creates and overwrites them; the Gmail push
