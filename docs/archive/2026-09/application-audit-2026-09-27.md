@@ -1512,9 +1512,14 @@ during the change. What the older reading caused before it is corrected
 the corrected reading like any source change; execution history keeps
 the intermediate entries, as it keeps all history. Covered by the F21
 tests for a newer ticketed writer (diagnostic-e7IkMs, mutations
-diagnostic-kntNFq); the
-ticketless writer during an overlap is not tested - the argument above
-is from the code.
+diagnostic-kntNFq). The ticketless writer:
+`APreviousBinarysTicketlessWriteIsRepaired` - behind a warm process the
+next poll after the previous binary's relay round, and a process that
+has not imported on its first pass, put the newer reading back
+(diagnostic-kTVT83). Without the relay round the warm process's next
+poll keeps the older reading (the mutation fails with 150 for 200),
+which is the 30-minute bound above; a process that keeps its snapshot
+fails the cold case.
 
 **Delivery statuses before the provider id (F27) - lost, not
 recovered.** Two cases:
