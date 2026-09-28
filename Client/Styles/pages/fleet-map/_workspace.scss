@@ -997,31 +997,45 @@
     align-self: start;
     max-height: 100%;
   }
-  // The chain in daylight (the owner, September 27): each trip a clean
-  // white tile with a fine rim and a line of its colour along the top, the
-  // step a small filled token, the phase a soft tint without a rim; the
-  // chosen trip ringed in its colour.
+  // The chain in daylight (the owner, September 27): the trips strung on
+  // a fine line through their step tokens; each trip a clean white tile
+  // with a straight line of its colour along the top edge (clear of the
+  // rounded corners), the phase a soft tint without a rim; the chosen trip
+  // rimmed in its colour, softly lit and lifted.
   :root[data-theme='light'] {
+    .fleet-trip-chain__links {
+      background: linear-gradient(ui.theme(border), ui.theme(border)) center /
+        100% 1px no-repeat;
+      background-attachment: local;
+    }
     .fleet-trip-chain__number {
       width: 1.5rem;
       height: 1.5rem;
       border: 0;
-      background: color-mix(in srgb, currentColor 14%, transparent);
+      background:
+        linear-gradient(
+          color-mix(in srgb, currentColor 16%, transparent),
+          color-mix(in srgb, currentColor 16%, transparent)
+        ),
+        ui.theme(surface);
     }
     .fleet-trip-chain__card {
       border: 1px solid ui.theme(border);
-      background: ui.theme(surface);
-      box-shadow:
-        inset 0 2px 0 currentColor,
-        0 2px 8px ui.theme(shadow, 0.06);
+      background:
+        linear-gradient(currentColor, currentColor) top center /
+          calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
+        ui.theme(surface);
+      box-shadow: 0 2px 8px ui.theme(shadow, 0.06);
     }
     .fleet-trip-chain .is-selected .fleet-trip-chain__card {
-      border-color: color-mix(in srgb, currentColor 55%, transparent);
-      background: ui.theme(surface);
+      border-color: color-mix(in srgb, currentColor 60%, transparent);
+      background:
+        linear-gradient(currentColor, currentColor) top center /
+          calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
+        ui.theme(surface);
       box-shadow:
-        inset 0 2px 0 currentColor,
-        0 0 0 3px color-mix(in srgb, currentColor 14%, transparent),
-        0 4px 14px ui.theme(shadow, 0.08);
+        0 0 14px color-mix(in srgb, currentColor 18%, transparent),
+        0 6px 16px ui.theme(shadow, 0.1);
     }
     .fleet-trip-chain__phase {
       border: 0;

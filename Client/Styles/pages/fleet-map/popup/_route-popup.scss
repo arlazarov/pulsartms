@@ -94,6 +94,19 @@
     font-variant-numeric: tabular-nums;
     // A stop behind the truck: a dashed rim and no halo; it no longer asks
     // for anything.
+    // In daylight a lit accent disc with a white letter, as the truck's
+    // emblem: a pale core read washed out (the owner, September 27).
+    :root[data-theme='light'] &:not(.is-done) {
+      background: radial-gradient(
+        circle at 35% 30%,
+        ui.theme(accent, 0.72),
+        ui.theme(accent) 75%
+      );
+      box-shadow:
+        0 0 0 3px ui.theme(accent, 0.12),
+        0 4px 12px ui.theme(accent, 0.3);
+      color: ui.theme(on-accent);
+    }
     &.is-done {
       border-style: dashed;
       background: ui.theme(surface-muted);
