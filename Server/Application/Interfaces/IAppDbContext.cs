@@ -31,6 +31,8 @@ public interface IAppDbContext
   DbSet<DriverMessagingWindow> DriverMessagingWindows { get; }
   DbSet<Conversation> Conversations { get; }
   DbSet<ConversationMessage> ConversationMessages { get; }
+  DbSet<PendingDeliveryStatus> PendingDeliveryStatuses { get; }
+  DbSet<SendRelease> SendReleases { get; }
   DbSet<MessageAttachment> MessageAttachments { get; }
   DbSet<ConversationRead> ConversationReads { get; }
   DbSet<ConversationArrivalHead> ConversationArrivalHeads { get; }
@@ -49,6 +51,7 @@ public interface IAppDbContext
   DbSet<FuelDiscount> FuelDiscounts { get; }
   DbSet<FuelTransaction> FuelTransactions { get; }
   DbSet<FuelImportSource> FuelImportSources { get; }
+  DbSet<FuelImportSkip> FuelImportSkips { get; }
   DbSet<IftaTaxRate> IftaTaxRates { get; }
   DbSet<Truck> Trucks { get; }
   DbSet<Trailer> Trailers { get; }

@@ -1,4 +1,5 @@
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Features.Execution.Interfaces;
 using Application.Features.Mileage.Interfaces;
 using Application.Features.Routing.Background;
@@ -19,8 +20,10 @@ public sealed class ExecutionPlanningOperation(
   public async Task RunAsync(CancellationToken stoppingToken)
   {
     var nextPrune = DateTime.MinValue;
+    BackgroundProgress.Expect("ExecutionPlanning", TimeSpan.FromSeconds(5));
     while (!stoppingToken.IsCancellationRequested)
     {
+      BackgroundProgress.Started("ExecutionPlanning");
       ExecutionPlanningChange? work = null;
       try
       {

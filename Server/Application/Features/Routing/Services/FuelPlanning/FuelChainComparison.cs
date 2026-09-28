@@ -105,7 +105,10 @@ public static class FuelChainComparison
         check.Result = "Includes a station without a useful purchase";
         continue;
       }
-      fuel.EconomicCostUsd += initialMinutes / 60 * p.DriverHourlyCostUsd;
+      fuel.EconomicCostUsd += FuelPlanCost.AccessTime(
+        initialMinutes,
+        p.DriverHourlyCostUsd
+      );
       if (
         FuelScheduleRanking.CanSkipReplay(
           fuel,
@@ -134,15 +137,11 @@ public static class FuelChainComparison
       var impact = FuelScheduleRanking.For(fuel.ScheduleImpact);
       // Access driving time is already priced by the optimizer; add only
       // further schedule delay.
-      var timeCost = Math.Max(
-        0,
-        FuelScheduleRanking.DelayCost(
-          fuel.ScheduleImpact,
-          extraMiles,
-          extraMinutes,
-          p.DriverHourlyCostUsd
-        )
-          - extraMinutes / 60 * p.DriverHourlyCostUsd
+      var timeCost = FuelScheduleRanking.DelayBeyondAccess(
+        fuel.ScheduleImpact,
+        extraMiles,
+        extraMinutes,
+        p.DriverHourlyCostUsd
       );
       var score =
         fuel.EconomicCostUsd + fuel.ExpectedFutureFuelCostUsd + timeCost;

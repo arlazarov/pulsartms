@@ -40,15 +40,26 @@ public static class FuelScheduleRanking
     double extraMiles,
     double driverHourlyCostUsd
   ) =>
-    fuel.EconomicCostUsd += Math.Max(
+    fuel.EconomicCostUsd += DelayBeyondAccess(
+      fuel.ScheduleImpact,
+      extraMiles,
+      fuel.ExtraMinutes,
+      driverHourlyCostUsd
+    );
+
+  // The schedule delay a plan's stops add beyond the access time the plan
+  // already prices: what a winning chain and a saved manual plan are
+  // charged on top of their economic cost.
+  public static double DelayBeyondAccess(
+    FuelScheduleImpact? impact,
+    double extraMiles,
+    double extraMinutes,
+    double driverHourlyCostUsd
+  ) =>
+    Math.Max(
       0,
-      DelayCost(
-        fuel.ScheduleImpact,
-        extraMiles,
-        fuel.ExtraMinutes,
-        driverHourlyCostUsd
-      )
-        - fuel.ExtraMinutes / 60 * driverHourlyCostUsd
+      DelayCost(impact, extraMiles, extraMinutes, driverHourlyCostUsd)
+        - FuelPlanCost.AccessTime(extraMinutes, driverHourlyCostUsd)
     );
 
   public static double DelayCost(
@@ -67,9 +78,10 @@ public static class FuelScheduleRanking
         .Max()
     );
     // Charge additional rest/wait once, without counting road time twice.
-    return (roadMinutes + Math.Max(0, scheduledDelay - roadMinutes))
-      / 60
-      * hourlyCost;
+    return FuelPlanCost.AccessTime(
+      roadMinutes + Math.Max(0, scheduledDelay - roadMinutes),
+      hourlyCost
+    );
   }
 
   public static bool CanSkipReplay(
@@ -102,7 +114,7 @@ public static class FuelScheduleRanking
     var lowerBound =
       candidate.EconomicCostUsd
       + candidate.ExpectedFutureFuelCostUsd
-      + Math.Max(0, extraMinutes) / 60 * hourlyCost;
+      + FuelPlanCost.AccessTime(Math.Max(0, extraMinutes), hourlyCost);
     return double.IsFinite(lowerBound)
       && FuelStopEconomy.Compare(
         lowerBound,

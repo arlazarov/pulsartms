@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Net;
+using Application.Diagnostics;
 using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
@@ -37,7 +38,8 @@ internal sealed class TomTomRouteFixture : IAsyncDisposable
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
       new RouteSectionValidator(),
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      new StageTimings()
     );
   }
 

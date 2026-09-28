@@ -32,12 +32,23 @@ public sealed class DispatchSourceConfiguration
   }
 }
 
+public sealed class DispatchImportReadConfiguration
+  : IEntityTypeConfiguration<DispatchImportRead>
+{
+  public void Configure(EntityTypeBuilder<DispatchImportRead> builder)
+  {
+    builder.HasKey(x => new { x.CompanyId, x.Provider });
+    builder.Property(x => x.Provider).HasMaxLength(100);
+  }
+}
+
 public sealed class DispatchNumberCounterConfiguration
   : IEntityTypeConfiguration<DispatchNumberCounter>
 {
   public void Configure(EntityTypeBuilder<DispatchNumberCounter> builder)
   {
-    builder.HasKey(x => x.Id);
+    // One counter per carrier (audit F28).
+    builder.HasKey(x => new { x.CompanyId, x.Id });
     builder.Property(x => x.Id).HasMaxLength(40);
     builder.Property(x => x.NextNumber).IsConcurrencyToken();
   }

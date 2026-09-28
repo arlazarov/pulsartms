@@ -12,8 +12,11 @@ namespace Domain.Rules;
 // docs/architecture/current-work.md).
 public static class LoadCompletion
 {
+  // The closed status as a database compares it: against a lowered column.
+  public const string ClosedStatus = "completed";
+
   public static bool IsClosed(string status) =>
-    status.Equals("completed", StringComparison.OrdinalIgnoreCase);
+    status.Equals(ClosedStatus, StringComparison.OrdinalIgnoreCase);
 
   public static bool IsCompleted(
     string status,

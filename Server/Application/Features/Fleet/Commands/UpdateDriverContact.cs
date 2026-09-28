@@ -1,3 +1,4 @@
+using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Services;
 using Application.Models;
 using Domain.Entities.Fleet;

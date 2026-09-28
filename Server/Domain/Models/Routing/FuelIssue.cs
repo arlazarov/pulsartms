@@ -141,18 +141,5 @@ public sealed record FuelIssuePreview(
   public IReadOnlyList<FuelWithdrawnVisit> Withdrawn { get; init; } = [];
 }
 
-// Sending the previewed plan through Messaging. SendAgain is a dispatcher
-// saying so after an attempt whose outcome is unknown.
-public sealed record FuelIssueSendRequest(
-  FuelIssueSentRequest Plan,
-  bool SendAgain = false
-);
 
-public sealed record FuelIssueSentRequest(
-  DateTime ExpectedCalculatedAt,
-  IReadOnlyList<string> VisitKeys
-)
-{
-  public Guid? ExecutionLegId { get; init; }
-  public long? AssignmentRevision { get; init; }
-}
+

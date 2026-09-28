@@ -1,4 +1,5 @@
 using System.Data;
+using Application.Diagnostics;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,7 @@ public sealed class ExecutionReadScopeTests
   public async Task NestedReadsUseOneTransactionAndReleaseOwnedResources()
   {
     await using var f = await StopCompletionFixture.CreateAsync();
-    var scope = new ExecutionReadScope(f.Db);
+    var scope = new ExecutionReadScope(f.Db, new StageTimings());
     var count = await scope.ReadAsync(
       async ct =>
       {
@@ -49,7 +50,7 @@ public sealed class ExecutionReadScopeTests
     await using var outer = await f.Db.Database.BeginTransactionAsync(
       IsolationLevel.Serializable
     );
-    var scope = new ExecutionReadScope(f.Db);
+    var scope = new ExecutionReadScope(f.Db, new StageTimings());
 
     await scope.ReadAsync(ct => f.Db.Dispatches.CountAsync(ct), default);
 
@@ -74,7 +75,7 @@ public sealed class ExecutionReadScopeTests
       IsolationLevel.ReadUncommitted,
       outer.GetDbTransaction().IsolationLevel
     );
-    var scope = new ExecutionReadScope(db);
+    var scope = new ExecutionReadScope(db, new StageTimings());
     var called = false;
 
     await Assert.ThrowsAsync<InvalidOperationException>(
@@ -97,7 +98,7 @@ public sealed class ExecutionReadScopeTests
   public async Task FailedReadDisposesItsTransactionAndAllowsAFreshRead()
   {
     await using var f = await StopCompletionFixture.CreateAsync();
-    var scope = new ExecutionReadScope(f.Db);
+    var scope = new ExecutionReadScope(f.Db, new StageTimings());
 
     await Assert.ThrowsAsync<InvalidOperationException>(
       () =>
@@ -124,7 +125,7 @@ public sealed class ExecutionReadScopeTests
 
     await Assert.ThrowsAnyAsync<OperationCanceledException>(
       () =>
-        new ExecutionReadScope(f.Db).ReadAsync(
+        new ExecutionReadScope(f.Db, new StageTimings()).ReadAsync(
           ct =>
           {
             called = true;

@@ -76,7 +76,8 @@ public sealed class DispatchPreparationTests
       reads,
       memory,
       preparation,
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(db)
     );
     await handler.Handle(new(), default);
     var load = await db

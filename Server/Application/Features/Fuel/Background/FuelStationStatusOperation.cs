@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Features.Fuel.Interfaces;
 using Application.Features.Fuel.Options;
 using Application.Features.Fuel.Services;
@@ -31,8 +32,13 @@ public sealed class FuelStationStatusOperation(
 {
   public async Task RunAsync(CancellationToken ct)
   {
+    BackgroundProgress.Expect(
+      "FuelStationStatus",
+      TimeSpan.FromMinutes(Math.Clamp(options.Value.IntervalMinutes, 1, 1440))
+    );
     while (!ct.IsCancellationRequested)
     {
+      BackgroundProgress.Started("FuelStationStatus");
       var backlog = false;
       if (options.Value.Enabled)
         try

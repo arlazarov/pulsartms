@@ -53,15 +53,33 @@ public sealed class GetLoadCostsHandler(
     // Totals stay within one currency. A load that bears costs in more than
     // one currency gets one total per currency rather than a converted sum,
     // because the rate and the moment it applied belong to the conversion.
-    var totals = rows.GroupBy(x => new { x.Currency, x.Kind })
-      .Select(x => new LoadCostTotal(
-        x.Key.Currency,
-        x.Key.Kind,
-        x.Sum(row => row.Amount)
-      ))
-      .OrderBy(x => x.Currency)
-      .ThenBy(x => x.Kind)
-      .ToList();
+    // They cover every share, not the page of rows shown (audit F22): past
+    // the page they are summed in the database under the same filter, as a
+    // second read. A cut page never claims to add up to its totals, so the
+    // totals are as of that read: a share written between the two is
+    // counted there before a later page shows it. An uncut page is totalled
+    // from its own rows.
+    var totals = truncated
+      ? await (
+        from attribution in db.ExpenseAttributions.AsNoTracking()
+        join expense in db.Expenses.AsNoTracking()
+          on attribution.ExpenseId equals expense.Id
+        where attribution.DispatchId == id
+        group attribution.Amount by new
+        {
+          expense.Currency,
+          expense.Kind,
+        } into x
+        select new LoadCostTotal(x.Key.Currency, x.Key.Kind, x.Sum())
+      ).ToListAsync(ct)
+      : rows.GroupBy(x => new { x.Currency, x.Kind })
+        .Select(x => new LoadCostTotal(
+          x.Key.Currency,
+          x.Key.Kind,
+          x.Sum(row => row.Amount)
+        ))
+        .ToList();
+    totals = totals.OrderBy(x => x.Currency).ThenBy(x => x.Kind).ToList();
 
     return RequestResponse<LoadCostBreakdown>.Ok(
       new(id, totals, rows, truncated)

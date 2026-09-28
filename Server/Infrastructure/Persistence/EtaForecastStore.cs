@@ -166,7 +166,8 @@ public sealed class EtaForecastStore(
         var forecast = snapshot.Forecast;
         var json = JsonSerializer.Serialize(forecast, Json);
         // Conditional upsert prevents an older concurrent chain from replacing
-        // a newer snapshot.
+        // a newer snapshot, and another carrier's row from being replaced:
+        // raw SQL is outside the company filter.
         var changed = await UpsertAsync(snapshot, json, ct);
         if (changed == 0)
         {
@@ -236,6 +237,7 @@ public sealed class EtaForecastStore(
           "RouteKey" = excluded."RouteKey"
         WHERE "DispatchEtaForecasts"."CalculatedAt" < excluded."CalculatedAt"
           AND "DispatchEtaForecasts"."DispatchId" = excluded."DispatchId"
+          AND "DispatchEtaForecasts"."CompanyId" = excluded."CompanyId"
         """,
         ct
       );
@@ -261,6 +263,7 @@ public sealed class EtaForecastStore(
         "WorkKey" = excluded."WorkKey",
         "RouteKey" = excluded."RouteKey"
       WHERE "DispatchEtaForecasts"."CalculatedAt" < excluded."CalculatedAt"
+        AND "DispatchEtaForecasts"."CompanyId" = excluded."CompanyId"
       """,
       ct
     );

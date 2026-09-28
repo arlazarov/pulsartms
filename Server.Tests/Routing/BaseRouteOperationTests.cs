@@ -1,4 +1,5 @@
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Execution.Services;
@@ -26,6 +27,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
@@ -195,6 +197,66 @@ public sealed class BaseRouteOperationTests
     Assert.Equal(next, saved.DispatchId);
     Assert.NotNull(saved.RouteJson);
     Assert.Equal(100m, saved.Miles);
+  }
+
+  // A load held by a pending address says so once, as a code, through the
+  // real preparation path (audit D1); preparing it later says nothing more.
+  [Fact]
+  public async Task AWaitingRoadIsReportedOnceWithItsReason()
+  {
+    await using var fixture = await Fixture.CreateAsync();
+    await fixture.AddAsync(0, "in_transit");
+    var next = await fixture.AddAsync(1);
+    await using (var edit = fixture.Root.CreateAsyncScope())
+    {
+      var db = edit.ServiceProvider.GetRequiredService<AppDbContext>();
+      var stop = await db.DispatchStops.SingleAsync(x =>
+        x.DispatchId == next && x.Sequence == 1
+      );
+      stop.Address = "99 New Road";
+      stop.AddressRetryAfter = DateTime.UtcNow.AddHours(12);
+      await db.SaveChangesAsync();
+    }
+    var log = new WaitLog();
+    var options = Options.Create(new RoutePreparationOptions());
+    var operation = new BaseRouteOperation(
+      fixture.Root.GetRequiredService<IServiceScopeFactory>(),
+      log,
+      fixture.Queue,
+      options,
+      fixture.Clock
+    );
+
+    await operation.RunOnceAsync(default);
+    await operation.RunOnceAsync(default);
+
+    var line = Assert.Single(log.Lines);
+    Assert.Contains("waits: address;", line);
+    Assert.Contains(next.ToString(), line);
+    Assert.DoesNotContain("New Road", line);
+  }
+
+  private sealed class WaitLog : ILogger<BaseRouteOperation>
+  {
+    public List<string> Lines { get; } = [];
+
+    public IDisposable? BeginScope<TState>(TState state)
+      where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(
+      LogLevel logLevel,
+      EventId eventId,
+      TState state,
+      Exception? exception,
+      Func<TState, Exception?, string> formatter
+    )
+    {
+      var text = formatter(state, exception);
+      if (text.Contains(" waits: ", StringComparison.Ordinal))
+        Lines.Add(text);
+    }
   }
 
   [Fact]
@@ -1001,6 +1063,7 @@ public sealed class BaseRouteOperationTests
         services.AddSingleton<ICompanyRoster, Roster>();
       }
       services.AddSingleton(reads);
+      services.AddSingleton<IReadCache>(reads);
       services.AddScoped(provider => new AppDbContext(
         new DbContextOptionsBuilder<AppDbContext>()
           .UseSqlite(connection)
@@ -1034,7 +1097,10 @@ public sealed class BaseRouteOperationTests
         provider.GetRequiredService<IAppDbContext>(),
         provider.GetRequiredService<PlanningTestServices>().Profiles,
         provider.GetRequiredService<PlanningTestServices>().DeadheadHistory,
-        new ExecutionReadScope(provider.GetRequiredService<AppDbContext>())
+        new ExecutionReadScope(
+          provider.GetRequiredService<AppDbContext>(),
+          new StageTimings()
+        )
       ));
       services.AddScoped(provider => new StopAddressService(
         provider.GetRequiredService<IAppDbContext>(),

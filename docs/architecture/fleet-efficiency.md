@@ -181,7 +181,7 @@ must explain why an existing shared reader cannot serve them. Run the affected
 checks from [test selection](../testing.md), including architecture; shared
 contracts, persistence and dependency injection require the full suite.
 
-The summary's 8 MiB payload budget is additional to CacheBudgets' 80 MiB
+The summary's 8 MiB payload budget is additional to CacheBudgets' 84 MiB
 partitions. Neither sum caps process RSS, temporary allocations, runtime heaps or
 all integration caches. Never estimate total server memory by counting only
 retained truck DTOs. On each API process serving summaries, keep the
@@ -388,8 +388,8 @@ financial evidence needs its own retention owner.
 
 Existing bounded queues, leases, coalescing, provider budgets and Client known
 geometry acknowledgements remain the owners of scheduling and publication. Cache
-partitions total 80 MiB in estimated entries across reads, road display, exact
-indexes, fuel and requested history. These partitions do not cap all process
+partitions total 84 MiB in estimated entries across reads, road display, exact
+indexes, fuel, requested history and stop geocodes. These partitions do not cap all process
 memory. Measurements must distinguish logical JSON, PostgreSQL stored-column
 size, allocations, retained managed memory and total container RSS.
 

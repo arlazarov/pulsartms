@@ -10,44 +10,42 @@ public class BvdFuelDiscountProvider(
 {
   public async Task<IReadOnlyList<FuelDiscountImportData>> GetDiscountsAsync(
     IReadOnlyCollection<string> importedMessageIds,
+    DateTime since,
     CancellationToken cancellationToken = default
   )
   {
     var attachments =
       await gmailAttachmentService.GetFuelDiscountAttachmentsAsync(
         importedMessageIds,
+        since,
         cancellationToken
       );
+    return [.. attachments.Select(Read).OfType<FuelDiscountImportData>()];
+  }
 
-    var imports = new List<FuelDiscountImportData>();
-
-    foreach (var attachment in attachments)
+  // One attachment. Parsing only reads the bytes it was given, so whatever
+  // it throws is this file's content: the attachment is marked unreadable
+  // rather than failing every message of the run (audit F20).
+  public static FuelDiscountImportData? Read(GmailAttachment attachment)
+  {
+    if (GetCurrency(attachment.FileName) is not { } currency)
+      return null;
+    var import = new FuelDiscountImportData
     {
-      var currency = GetCurrency(attachment.FileName);
-
-      if (currency is null)
-      {
-        continue;
-      }
-
-      var (EffectiveDate, EffectiveTo, Rows) = BvdFuelCsvParser.Parse(
-        attachment.Content
-      );
-
-      imports.Add(
-        new FuelDiscountImportData
-        {
-          MessageId = attachment.MessageId,
-          AttachmentName = attachment.FileName,
-          Currency = currency,
-          EffectiveDate = EffectiveDate,
-          EffectiveTo = EffectiveTo,
-          Rows = Rows,
-        }
-      );
+      MessageId = attachment.MessageId,
+      AttachmentName = attachment.FileName,
+      Currency = currency,
+    };
+    try
+    {
+      (import.EffectiveDate, import.EffectiveTo, import.Rows) =
+        BvdFuelCsvParser.Parse(attachment.Content);
     }
-
-    return imports;
+    catch (Exception)
+    {
+      import.Unreadable = true;
+    }
+    return import;
   }
 
   private static string? GetCurrency(string fileName)

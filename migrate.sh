@@ -15,10 +15,7 @@ dotnet ef migrations add "$MIGRATION_NAME" \
     --project Server/Infrastructure \
     --startup-project Server/API
 
-echo "Updating database..."
-
-dotnet ef database update \
-    --project Server/Infrastructure \
-    --startup-project Server/API
-
-echo "Migration completed."
+# Creating a migration no longer applies it (audit F27): the API's
+# configured database may not be a disposable one. Review it, then apply
+# it explicitly as docs/development/setup.md describes.
+echo "Created. Review it, then apply it explicitly (docs/development/setup.md)."

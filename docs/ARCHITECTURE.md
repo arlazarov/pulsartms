@@ -638,7 +638,12 @@ invariants, not routine statements. See [operational diagnostics](operations/dia
 - Users owns the authenticated `settings/appearance` read/write requests.
   Handlers derive the target from `ICurrentUser` and require an active profile;
   clients cannot choose another user ID. `Users.Theme` stores only `light` or
-  `dark`, defaulting to Light through the additive `AddUserTheme` migration.
+  `dark` as a user's explicit choice, or an empty string when none was
+  made (`LetThemeBeUnchosen`); the Client treats anything else as unchosen
+  and applies the default, dark. The column stays NOT NULL: binaries
+  before it read it as required and fail on a null. Rows saved before the
+  migration keep their value: a stored light cannot be told apart from an
+  old default, so none is rewritten. A save must name a theme.
   Appearance is not a company preference, role, token claim or routing input.
   The same authenticated contract includes optional temperature/distance units.
   Omitted write fields preserve saved units, including older theme-only clients.
@@ -754,9 +759,15 @@ and endpoint anchoring both gate geometry reuse. Completed demand is pruned
 only after its retention interval. The preparation queue is not calculation
 input and does not narrow the publication lock boundary.
 
-API's `OptionsRegistration.AddApplicationOptions` groups binding and startup
-validation. Options and policies remain in Application; external adapter DI remains
-in Infrastructure. This grouping does not move ownership between layers.
+Infrastructure's `OptionsRegistration.AddApplicationOptions` groups binding
+and startup validation; the API calls it from its composition root. Options
+and policies keep their owners (Application options, Domain policies). The
+API names Application alone: request bodies are Application contracts
+(`Application.Features.Routing.Models`, `Application.Features.Fleet.Models`;
+`TruckRouteProfileBody` is the profile on the wire), and the route geometry
+converters, which choose the encoded form per request from the
+`X-Route-Geometry` header, live in `Infrastructure.Serialization`.
+`LayerBoundaryTests` rejects `Domain` anywhere in the API.
 
 Fleet Map keeps a component-owned Next Loads display cache keyed by truck and
 current dispatch: at most 12 complete serialized snapshots, eight MiB in total,

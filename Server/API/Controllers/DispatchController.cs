@@ -92,7 +92,10 @@ public class DispatchController : BaseController
       cancellationToken
     );
 
-  [Authorize]
+  // A manual pull from the provider rewrites the company's data with its
+  // credentials and holds a process-wide gate: an administrator's action
+  // (audit F8). The background sync does the ordinary work.
+  [Authorize(Policy = "Admin")]
   [HttpPost("sync")]
   public async Task<IActionResult> Sync(CancellationToken cancellationToken) =>
     await HandleRequest(new SyncDispatchesCommand(), cancellationToken);

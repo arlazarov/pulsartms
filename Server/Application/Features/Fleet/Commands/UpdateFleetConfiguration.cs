@@ -1,5 +1,6 @@
 using System.Data;
 using Application.Caching;
+using Application.Features.Fleet.Models;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Fleet.Services;
 using Application.Models;

@@ -1,10 +1,12 @@
 using Application.Caching;
+using Application.Features.Dispatch.Services;
 using Application.Features.Fleet.Queries.GetFleetLocations;
 using Application.Features.Synchronization.Options;
 using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Fleet;
+using Domain.Models.Fleet;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -73,6 +75,66 @@ public sealed class CompanyIsolationTests
     // Not "everybody's loads" - none. A background pass that forgot to
     // choose a carrier must not read across all of them.
     Assert.Empty(await world.As(null).Dispatches.ToListAsync());
+  }
+
+  // Audit F28: load numbers are counted per carrier. The counter row's key
+  // named no carrier, so a second carrier's first counter collided with
+  // the first carrier's and its first load could not be numbered.
+  [Fact]
+  public async Task EachCarrierNumbersItsOwnLoads()
+  {
+    await using var world = await TwoCarriersAsync();
+
+    var first = await ReserveAsync(world.As(Amf));
+    var second = await ReserveAsync(world.As(Other));
+
+    Assert.Equal(first, second);
+    Assert.Equal(
+      2,
+      await world
+        .Everything.DispatchNumberCounters.IgnoreQueryFilters()
+        .CountAsync()
+    );
+  }
+
+  // The same class: stored hours readings were keyed by the provider's
+  // driver id alone. A second carrier whose provider reports an id the
+  // first carrier's already did could store none of its readings.
+  [Fact]
+  public async Task EachCarrierStoresItsOwnHoursReadings()
+  {
+    await using var world = await TwoCarriersAsync();
+    Dictionary<string, DriverHosClocks> Reading(long drive) =>
+      new()
+      {
+        ["same-provider-id"] = new()
+        {
+          DriveMs = drive,
+          UpdatedAt = DateTime.UtcNow,
+        },
+      };
+
+    await new DriverHosStore(world.As(Amf)).WriteAsync(Reading(100), default);
+    await new DriverHosStore(world.As(Other)).WriteAsync(Reading(200), default);
+
+    Assert.Equal(
+      [100L, 200L],
+      (
+        await world
+          .Everything.DriverHosReadings.IgnoreQueryFilters()
+          .Select(x => x.DriveMs)
+          .ToListAsync()
+      ).Order()
+    );
+  }
+
+  private static async Task<int> ReserveAsync(AppDbContext db)
+  {
+    await using var transaction = await db.Database.BeginTransactionAsync();
+    var reserved = await DispatchNumbers.ReserveAsync(db, [null], default);
+    await db.SaveChangesAsync();
+    await transaction.CommitAsync();
+    return reserved.Single();
   }
 
   [Fact]

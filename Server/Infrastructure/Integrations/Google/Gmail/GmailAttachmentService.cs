@@ -7,6 +7,7 @@ public class GmailAttachmentService(GmailServiceFactory gmailServiceFactory)
 {
   public async Task<List<GmailAttachment>> GetFuelDiscountAttachmentsAsync(
     IReadOnlyCollection<string> importedMessageIds,
+    DateTime since,
     CancellationToken cancellationToken = default
   )
   {
@@ -22,8 +23,7 @@ public class GmailAttachmentService(GmailServiceFactory gmailServiceFactory)
     do
     {
       var listRequest = gmailService.Users.Messages.List("me");
-      listRequest.Q =
-        "label:fleet-bvd-fuel newer_than:2d has:attachment filename:csv";
+      listRequest.Q = Query(since);
       listRequest.MaxResults = 500;
       listRequest.PageToken = pageToken;
 
@@ -104,6 +104,12 @@ public class GmailAttachmentService(GmailServiceFactory gmailServiceFactory)
 
     return result;
   }
+
+  // Gmail's after: takes seconds since the epoch.
+  public static string Query(DateTime since) =>
+    "label:fleet-bvd-fuel "
+    + $"after:{new DateTimeOffset(since, TimeSpan.Zero).ToUnixTimeSeconds()} "
+    + "has:attachment filename:csv";
 
   private static IEnumerable<MessagePart> GetAllParts(MessagePart? part)
   {

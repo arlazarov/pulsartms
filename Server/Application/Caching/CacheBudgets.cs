@@ -8,4 +8,5 @@ public static class CacheBudgets
   public const long RouteIndexes = 32 * MiB;
   public const long Fuel = 8 * MiB;
   public const long TruckHistory = 8 * MiB;
+  public const long Geocodes = 4 * MiB;
 }

@@ -1,5 +1,6 @@
 using Application.Behaviors;
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Commands.SyncDispatche;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Queries;
@@ -123,7 +124,7 @@ public sealed class SynchronizationCadenceTests
         db,
         new NextLoadRouteReader(db),
         new SavedRoutePlanReader(db, NullLogger<SavedRoutePlanReader>.Instance),
-        new ExecutionReadScope(db)
+        new ExecutionReadScope(db, new StageTimings())
       );
     });
     services.AddSingleton<IFuelWorkInputsReader>(sender);
@@ -135,11 +136,11 @@ public sealed class SynchronizationCadenceTests
         new DeadheadHistoryService(
           db,
           new DeadheadHistoryReader(db),
-          new ExecutionReadScope(db),
+          new ExecutionReadScope(db, new StageTimings()),
           new FleetNames(db),
           new ActiveTransfers(db)
         ),
-        new ExecutionReadScope(db),
+        new ExecutionReadScope(db, new StageTimings()),
         provider.GetRequiredService<ReadCache>()
       );
     });

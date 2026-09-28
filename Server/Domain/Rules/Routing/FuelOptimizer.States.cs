@@ -78,7 +78,10 @@ public static partial class FuelOptimizer
 
     double Score(State state) =>
       state.Cost
-      + Math.Max(0, arrival!.TargetGallons - state.Fuel)
-        * arrival.ReplacementPriceUsd;
+      + FuelPlanCost.FutureFuel(
+        arrival!.TargetGallons,
+        state.Fuel,
+        arrival.ReplacementPriceUsd
+      );
   }
 }

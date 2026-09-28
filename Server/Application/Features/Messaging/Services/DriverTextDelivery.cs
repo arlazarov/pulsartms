@@ -16,6 +16,8 @@ public sealed class DriverTextDelivery(
   IDriverMessaging messaging,
   ICurrentCompany company,
   TimeProvider time,
+  EarlyDeliveryStatuses early,
+  SendHold hold,
   ILogger<DriverTextDelivery> logger
 ) : IDriverTextDelivery
 {
@@ -105,7 +107,7 @@ public sealed class DriverTextDelivery(
     if (latest is not null)
     {
       if (DriverMessageProgress.Taken(latest.Status))
-        return new(DriverTextResult.AlreadyTaken, null);
+        return new(DriverTextResult.AlreadyTaken, latest);
       if (DriverMessageProgress.InProgress(latest.Status, latest.StatusAt, now))
         return new(DriverTextResult.InProgress, null);
       if (
@@ -116,6 +118,8 @@ public sealed class DriverTextDelivery(
     }
     if (await messaging.BusinessNumberAsync(ct) is not { } number)
       return new(DriverTextResult.NotConfigured, null);
+    if (await hold.HeldAsync(ct))
+      return new(DriverTextResult.Held, null);
     if (request.Id == Guid.Empty)
       request.Id = Guid.NewGuid();
     request.CompanyId =
@@ -177,12 +181,7 @@ public sealed class DriverTextDelivery(
         );
       case DriverMessageOutcome.Accepted:
         request.ProviderMessageId = result.ProviderMessageId;
-        return await FinishAsync(
-          request,
-          DriverTextResult.Accepted,
-          DriverMessageStatuses.Accepted,
-          null
-        );
+        return await AcceptedAsync(request);
       case DriverMessageOutcome.Unknown:
         logger.LogWarning(
           "WhatsApp send {DriverMessageId} has no answer, code {ErrorCode}",
@@ -208,6 +207,22 @@ public sealed class DriverTextDelivery(
           result.ErrorCode
         );
     }
+  }
+
+  // The id, its acceptance and whatever the provider already reported about
+  // it commit together, under the lock the webhook takes (audit F27).
+  private async Task<DriverTextOutcome> AcceptedAsync(DriverMessage attempt)
+  {
+    await using var transaction = await db.Database.BeginTransactionAsync(
+      CancellationToken.None
+    );
+    attempt.Status = DriverMessageStatuses.Accepted;
+    attempt.StatusAt = time.GetUtcNow().UtcDateTime;
+    attempt.ErrorCode = null;
+    await early.ApplyAsync(attempt, CancellationToken.None);
+    await db.SaveChangesAsync(CancellationToken.None);
+    await transaction.CommitAsync(CancellationToken.None);
+    return new(DriverTextResult.Accepted, attempt);
   }
 
   private async Task<DriverTextOutcome> FinishAsync(

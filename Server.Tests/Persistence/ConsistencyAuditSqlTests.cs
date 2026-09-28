@@ -1,8 +1,10 @@
 using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Audit;
 using Application.Features.Execution.Audit;
+using Application.Features.Fuel.Audit;
 using Application.Features.Messaging.Audit;
 using Application.Features.Routing.Audit;
+using Application.Storage;
 using Domain.Entities;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -35,11 +37,20 @@ public sealed class ConsistencyAuditSqlTests
       "execution.cancelled-source-held",
       "execution.planning-change-overdue",
       "routing.planning-refresh-overdue",
+      "routing.source-road-overdue",
       "messaging.unread-arrival-behind",
       "messaging.outbound-overdue",
+      "messaging.kept-status-unapplied",
+      "messaging.accepted-without-status",
+      "fuel.import-message-skipped",
       "dispatch.filed-document-unavailable",
       "routing.base-road-leaves-country",
       "routing.base-road-border-unverified",
+      "storage.file-on-disconnected-storage",
+      "routing.fuel-handover-uncertain",
+      "routing.fuel-handover-unrecorded",
+      "execution.source-closed-work-open",
+      "execution.source-review-open",
       "journal-events",
       "journal-incidents",
     ];
@@ -71,16 +82,37 @@ public sealed class ConsistencyAuditSqlTests
           request,
           default
         ),
+      "routing.source-road-overdue" => () =>
+        new SourceRoadDemandRule(new SourceRoadStore(db)).ReadAsync(
+          request,
+          default
+        ),
       "messaging.unread-arrival-behind" => () =>
         new UnreadArrivalRule(db).ReadAsync(request, default),
       "messaging.outbound-overdue" => () =>
         new OutboundOverdueRule(db).ReadAsync(request, default),
+      "messaging.kept-status-unapplied" => () =>
+        new KeptStatusUnappliedRule(db).ReadAsync(request, default),
+      "messaging.accepted-without-status" => () =>
+        new AcceptedWithoutStatusRule(db).ReadAsync(request, default),
+      "fuel.import-message-skipped" => () =>
+        new FuelImportSkipRule(db).ReadAsync(request, default),
       "dispatch.filed-document-unavailable" => () =>
         new FiledDocumentRule(db).ReadAsync(request, default),
       "routing.base-road-leaves-country" => () =>
         new BaseRoadBorderRule(db).ReadAsync(request, default),
       "routing.base-road-border-unverified" => () =>
         new BaseRoadBorderUnknownRule(db).ReadAsync(request, default),
+      "storage.file-on-disconnected-storage" => () =>
+        new StoredFileConnectionRule(db).ReadAsync(request, default),
+      "routing.fuel-handover-uncertain" => () =>
+        new FuelHandOverUncertainRule(db).ReadAsync(request, default),
+      "routing.fuel-handover-unrecorded" => () =>
+        new FuelHandOverUnrecordedRule(db).ReadAsync(request, default),
+      "execution.source-closed-work-open" => () =>
+        new SourceClosedWorkOpenRule(db).ReadAsync(request, default),
+      "execution.source-review-open" => () =>
+        new SourceReviewOpenRule(db).ReadAsync(request, default),
       "journal-events" => () =>
         new ConsistencyJournalReads(db).EventsAsync(
           Company.Amf,

@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Text.RegularExpressions;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Eta.Services;
@@ -242,10 +243,11 @@ public class LayerBoundaryTests
     foreach (var file in Sources(Path.Combine(root, "Server/API"), "*.cs"))
     {
       var source = File.ReadAllText(file);
-      // The web layer may name the vocabulary - the models and policies the
-      // whole server speaks in - but never a stored entity: what the
-      // database holds is not what a controller answers with.
-      Assert.DoesNotMatch(@"\bDomain\.Entities\b", source);
+      // The web layer names Application alone (AGENTS.md): request bodies
+      // are Application contracts, and what reads configuration or writes
+      // route geometry for HTTP is registered from Infrastructure. It used
+      // to allow the Domain vocabulary; root ruled that debt, not rule.
+      Assert.DoesNotMatch(@"\bDomain\b", source);
       if (Path.GetFileName(file) != "DependencyInjection.cs")
         Assert.DoesNotMatch(@"\bInfrastructure(?:\.|;)", source);
       Assert.DoesNotMatch(
@@ -264,8 +266,7 @@ public class LayerBoundaryTests
   public void InfrastructureIsNeverGivenAConcreteApplicationClass()
   {
     var application = typeof(GetDispatchBoardHandler).Assembly;
-    var infrastructure =
-      typeof(AppDbContext).Assembly;
+    var infrastructure = typeof(AppDbContext).Assembly;
     var found = infrastructure
       .GetTypes()
       .SelectMany(type =>
@@ -286,6 +287,107 @@ public class LayerBoundaryTests
       .ToArray();
 
     Assert.Empty(found);
+  }
+
+  // Root: the constructor check above cannot see a static call, and the
+  // readiness check called Application's BackgroundProgress directly. This
+  // reads every Infrastructure method's IL for the Application members it
+  // calls, constructs or reads, and allows only contract data - interfaces,
+  // records, value types, exceptions and the types of Models, Interfaces
+  // and Options namespaces - never a command or query, and never another
+  // concrete class, static or not.
+  [Fact]
+  public void InfrastructureCallsApplicationOnlyThroughContracts()
+  {
+    var application = typeof(GetDispatchBoardHandler).Assembly;
+    var infrastructure = typeof(AppDbContext).Assembly;
+    var found = infrastructure
+      .GetTypes()
+      .SelectMany(type =>
+        Referenced(type)
+          .Where(x => x.DeclaringType?.Assembly == application)
+          .Where(x => !IsContract(x.DeclaringType!))
+          .Select(x =>
+            $"{type.FullName} -> {x.DeclaringType!.FullName}.{x.Name}"
+          )
+      )
+      .Distinct()
+      .Order(StringComparer.Ordinal)
+      .ToArray();
+
+    Assert.Empty(found);
+  }
+
+  private static bool IsContract(Type type)
+  {
+    var segments = (type.Namespace ?? "").Split('.');
+    if (segments.Contains("Commands") || segments.Contains("Queries"))
+      return false;
+    return type.IsInterface
+      || type.IsValueType
+      || typeof(Delegate).IsAssignableFrom(type)
+      || typeof(Exception).IsAssignableFrom(type)
+      || type.GetMethod("<Clone>$") is not null
+      || segments.Contains("Models")
+      || segments.Contains("Interfaces")
+      || segments.Contains("Options");
+  }
+
+  private static readonly Dictionary<short, OpCode> Codes = typeof(OpCodes)
+    .GetFields(BindingFlags.Public | BindingFlags.Static)
+    .Select(x => (OpCode)x.GetValue(null)!)
+    .ToDictionary(x => x.Value);
+
+  // The methods, constructors and fields a type's own code names.
+  private static IEnumerable<MemberInfo> Referenced(Type type)
+  {
+    const BindingFlags all =
+      BindingFlags.Public
+      | BindingFlags.NonPublic
+      | BindingFlags.Instance
+      | BindingFlags.Static
+      | BindingFlags.DeclaredOnly;
+    foreach (
+      var method in type.GetMethods(all)
+        .Cast<MethodBase>()
+        .Concat(type.GetConstructors(all))
+    )
+    {
+      var il = method.GetMethodBody()?.GetILAsByteArray();
+      if (il is null)
+        continue;
+      for (var i = 0; i < il.Length; )
+      {
+        var code =
+          il[i] == 0xFE ? Codes[(short)(0xFE00 | il[++i])] : Codes[il[i]];
+        i++;
+        if (
+          code.OperandType
+          is OperandType.InlineMethod
+            or OperandType.InlineField
+        )
+        {
+          var member = method.Module.ResolveMember(
+            BitConverter.ToInt32(il, i),
+            type.IsGenericType ? type.GetGenericArguments() : null,
+            method.IsGenericMethod ? method.GetGenericArguments() : null
+          );
+          if (member is not null)
+            yield return member;
+        }
+        i += code.OperandType switch
+        {
+          OperandType.InlineNone => 0,
+          OperandType.ShortInlineBrTarget
+          or OperandType.ShortInlineI
+          or OperandType.ShortInlineVar => 1,
+          OperandType.InlineVar => 2,
+          OperandType.InlineI8 or OperandType.InlineR => 8,
+          OperandType.InlineSwitch => 4 + 4 * BitConverter.ToInt32(il, i),
+          _ => 4,
+        };
+      }
+    }
   }
 
   private static IEnumerable<Type> Given(Type type)

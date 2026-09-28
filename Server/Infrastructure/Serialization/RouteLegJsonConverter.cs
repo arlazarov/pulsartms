@@ -2,8 +2,9 @@ using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Domain.Models.Routing;
+using Microsoft.AspNetCore.Http;
 
-namespace API.Serialization;
+namespace Infrastructure.Serialization;
 
 // Route geometry leaves the API as an encoded string when the caller has said
 // it can read one, and as the list of points it always was when it has not.

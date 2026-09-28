@@ -26,11 +26,4 @@ public sealed record FleetConfigurationState(
 
 public sealed record FleetConfigurationDispatch(Guid Id, int LoadNumber);
 
-public sealed record FleetConfigurationUpdate(
-  long Revision,
-  string Name,
-  string Vin,
-  string FuelCard,
-  bool IsActive,
-  bool UseImported = false
-);
+

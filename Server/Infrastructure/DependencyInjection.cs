@@ -45,6 +45,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 
 namespace Infrastructure;
@@ -75,7 +76,14 @@ public static class DependencyInjection
       .AddCheck<DatabaseHealthCheck>("database", tags: ["ready"])
       // Tagged "live": a process whose background work has stopped is not
       // alive in any useful sense, and the platform should replace it.
-      .AddCheck<BackgroundWorkHealthCheck>("background", tags: ["live"]);
+      .AddCheck<BackgroundWorkHealthCheck>("background", tags: ["live"])
+      // Tagged "ready" and only ever degraded: it reports, it never
+      // restarts the one instance.
+      .AddCheck<BackgroundProgressHealthCheck>(
+        "background-progress",
+        failureStatus: HealthStatus.Degraded,
+        tags: ["ready"]
+      );
 
     services
       .AddDataProtection()
@@ -86,26 +94,7 @@ public static class DependencyInjection
       .AddAuthentication(IdentityConstants.BearerScheme)
       .AddBearerToken(IdentityConstants.BearerScheme);
 
-    services.AddAuthorization(options =>
-    {
-      options.AddPolicy(
-        "Admin",
-        policy =>
-          policy
-            .RequireAuthenticatedUser()
-            .AddRequirements(new AdminRequirement())
-      );
-      options.AddPolicy(
-        "Dispatch",
-        policy =>
-          policy
-            .RequireAuthenticatedUser()
-            .AddRequirements(new DispatchRequirement())
-      );
-      options.FallbackPolicy = new AuthorizationPolicyBuilder()
-        .RequireAuthenticatedUser()
-        .Build();
-    });
+    services.AddAuthorization(AuthorizationPolicies.Configure);
 
     services
       .AddIdentityCore<AppUser>(options =>
@@ -126,6 +115,10 @@ public static class DependencyInjection
 
     services.AddScoped<IAuthorizationHandler, AdminAuthorizationHandler>();
     services.AddScoped<IAuthorizationHandler, DispatchAuthorizationHandler>();
+    services.AddScoped<IAuthorizationHandler, OperatorAuthorizationHandler>();
+    services.AddSingleton<IDeploymentOperators>(
+      new DeploymentOperators(configuration)
+    );
     services.AddHttpContextAccessor();
 
     services.AddScoped<IAppDbContext>(provider =>
@@ -182,6 +175,8 @@ public static class DependencyInjection
     services.AddScoped<IExecutionPlanningStore, ExecutionPlanningStore>();
     services.AddScoped<IPlanningRefreshStore, PlanningRefreshStore>();
     services.AddScoped<ISourceRoadStore, SourceRoadStore>();
+    services.AddScoped<IDeliveryStatusLocks, DeliveryStatusLocks>();
+    services.AddScoped<IDispatchReadTickets, DispatchReadTicketStore>();
     services.AddScoped<IExecutionReadScope, ExecutionReadScope>();
     services.AddScoped<IPlanningPublicationScope, PlanningPublicationScope>();
     services.AddHostedService<ApplicationWorker<IExecutionPlanningOperation>>();
@@ -204,6 +199,9 @@ public static class DependencyInjection
     services.AddScoped<IFuelDiscountProvider, BvdFuelDiscountProvider>();
 
     services.AddScoped<ISynchronizationStore, SynchronizationStore>();
+    services.AddSingleton<IDeploymentRevision>(
+      new DeploymentRevision(configuration)
+    );
     services.AddHostedService<
       ApplicationWorker<IFleetSynchronizationOperation>
     >();
@@ -235,6 +233,10 @@ public static class DependencyInjection
         client.Timeout = TimeSpan.FromSeconds(30)
       )
       .RemoveAllLoggers();
+    services.AddSingleton<StopGeocodeMemory>();
+    services.AddSingleton<ICacheMemorySource>(sp =>
+      sp.GetRequiredService<StopGeocodeMemory>()
+    );
     services.AddSingleton<SamsaraHosHistoryCache>();
     services.AddSingleton<ICacheMemorySource>(sp =>
       sp.GetRequiredService<SamsaraHosHistoryCache>()

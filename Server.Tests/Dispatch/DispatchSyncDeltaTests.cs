@@ -42,7 +42,11 @@ public sealed class DispatchSyncDeltaTests
     fixture.Db.ChangeTracker.Clear();
     fixture.Counter.Reset();
     Assert.Equal(0, (await fixture.Handler.Handle(new(), default)).Response);
-    Assert.Equal(0, fixture.Counter.Reads);
+    // Nothing is hydrated; the one statement is the pass's read ticket,
+    // taken before every provider read so an older reading can never
+    // replace a newer one (audit F21).
+    Assert.Equal(1, fixture.Counter.Reads);
+    Assert.Contains("DispatchImportReads", fixture.Counter.Sql.Single());
   }
 
   [Fact]

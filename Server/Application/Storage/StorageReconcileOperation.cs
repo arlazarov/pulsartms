@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Domain.Entities.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -23,8 +24,13 @@ public sealed class StorageReconcileOperation(
 {
   public async Task RunAsync(CancellationToken ct)
   {
+    BackgroundProgress.Expect(
+      "StorageReconcile",
+      TimeSpan.FromMinutes(options.Value.ReconcileIntervalMinutes)
+    );
     while (!ct.IsCancellationRequested)
     {
+      BackgroundProgress.Started("StorageReconcile");
       try
       {
         await using var scope = scopes.CreateAsyncScope();

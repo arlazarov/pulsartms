@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Execution.Commands;
 using Application.Features.Execution.Models;
@@ -297,7 +298,7 @@ public sealed class HeldExecutionTests
   {
     var reader = new TruckItineraryReader(
       f.Db,
-      new ExecutionReadScope(f.Db),
+      new ExecutionReadScope(f.Db, new StageTimings()),
       new FleetNames(f.Db),
       new ActiveTransfers(f.Db)
     );

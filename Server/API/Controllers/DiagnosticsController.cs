@@ -1,3 +1,4 @@
+using Application.Features.Messaging.Commands;
 using Application.Features.Synchronization.Queries;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -24,6 +25,25 @@ public sealed class DiagnosticsController : BaseController
   [HttpGet("stages")]
   public Task<IActionResult> Stages(CancellationToken cancellationToken) =>
     HandleUnwrappedRequest(new GetStageDiagnosticsQuery(), cancellationToken);
+
+  // Which background operations are making progress; a report that never
+  // fails liveness or readiness.
+  [HttpGet("background")]
+  public Task<IActionResult> Background(CancellationToken cancellationToken) =>
+    HandleUnwrappedRequest(new GetBackgroundProgressQuery(), cancellationToken);
+
+  // Whether this revision may send to the messaging provider, and the
+  // release an administrator records once the platform has drained the
+  // revision before it (the cutover plan).
+  [HttpGet("sends")]
+  public Task<IActionResult> Sends(CancellationToken cancellationToken) =>
+    HandleUnwrappedRequest(new GetSendHoldQuery(), cancellationToken);
+
+  [HttpPost("sends/release")]
+  [Authorize(Policy = "Operator")]
+  public Task<IActionResult> ReleaseSends(
+    CancellationToken cancellationToken
+  ) => HandleUnwrappedRequest(new ReleaseSendsCommand(), cancellationToken);
 
   // Business-state audit: findings, coverage and the durable journal. It is
   // separate from liveness and readiness and never affects either.

@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Execution.Models;
 using Application.Features.Routing.Services.Routes;
 using Domain.Entities.Execution;
@@ -233,7 +234,7 @@ public sealed class TruckPlanningInputsTests
     new(
       f.Db,
       f.Planning.Itineraries,
-      new ExecutionReadScope(f.Db),
+      new ExecutionReadScope(f.Db, new StageTimings()),
       f.Reads,
       hos,
       new SavedRoutePlanReader(f.Db, NullLogger<SavedRoutePlanReader>.Instance),

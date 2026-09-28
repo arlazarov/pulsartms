@@ -1,4 +1,4 @@
-using Application.Diagnostics;
+using Application.Interfaces;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Infrastructure.Diagnostics;
@@ -10,14 +10,17 @@ namespace Infrastructure.Diagnostics;
 //
 // Reporting unhealthy here tells the platform to replace the container, so
 // the usual case repairs itself without anybody being woken up.
-public sealed class BackgroundWorkHealthCheck(TimeProvider clock) : IHealthCheck
+public sealed class BackgroundWorkHealthCheck(
+  IBackgroundState background,
+  TimeProvider clock
+) : IHealthCheck
 {
   public Task<HealthCheckResult> CheckHealthAsync(
     HealthCheckContext context,
     CancellationToken cancellationToken = default
   )
   {
-    var stalled = BackgroundHeartbeat.Stalled(clock.GetUtcNow());
+    var stalled = background.Stalled(clock.GetUtcNow());
     return Task.FromResult(
       stalled.Count == 0
         ? HealthCheckResult.Healthy()

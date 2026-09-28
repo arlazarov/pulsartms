@@ -1,9 +1,11 @@
 using System.Net;
 using System.Text.Json;
+using Application.Caching;
+using Domain.Models.Routing;
 using Domain.Rules;
 using Infrastructure.Integrations.Google.Places;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
+using Server.Tests.Support;
 
 namespace Server.Tests.Routing;
 
@@ -62,7 +64,7 @@ public sealed class GoogleAddressGeocoderTests
       )
     );
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new StopGeocodeMemory(TimeProvider.System);
     var configuration = new ConfigurationBuilder()
       .AddInMemoryCollection(
         new Dictionary<string, string?> { ["GooglePlaces:ApiKey"] = "test" }
@@ -229,7 +231,7 @@ public sealed class GoogleAddressGeocoderTests
       )
     );
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new StopGeocodeMemory(TimeProvider.System);
     var configuration = new ConfigurationBuilder()
       .AddInMemoryCollection(
         new Dictionary<string, string?> { ["GooglePlaces:ApiKey"] = "test" }
@@ -334,7 +336,7 @@ public sealed class GoogleAddressGeocoderTests
     );
     using var handler = new Handler(geocode, validation);
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new StopGeocodeMemory(TimeProvider.System);
     var configuration = new ConfigurationBuilder()
       .AddInMemoryCollection(
         new Dictionary<string, string?> { ["GooglePlaces:ApiKey"] = "test" }
@@ -383,7 +385,7 @@ public sealed class GoogleAddressGeocoderTests
       )
     );
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new StopGeocodeMemory(TimeProvider.System);
     var service = new GoogleAddressGeocoder(http, Configuration(), cache);
     const string input = "1 Arizona Way, KEASBEY, NJ, USA, 08832";
     if (accepted)
@@ -415,7 +417,7 @@ public sealed class GoogleAddressGeocoderTests
       Candidate("16825", "Murphy Pkwy", "Lathrop", "CA", resultPostal)
     );
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new StopGeocodeMemory(TimeProvider.System);
     var service = new GoogleAddressGeocoder(http, Configuration(), cache);
     var input = $"16825 Murphy Parkway, LATHROP, CA, USA, {inputPostal}";
     if (accepted)
@@ -444,7 +446,7 @@ public sealed class GoogleAddressGeocoderTests
       Candidate("123456789", "Murphy Pkwy", "Lathrop", "CA", "95330")
     );
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new StopGeocodeMemory(TimeProvider.System);
     var service = new GoogleAddressGeocoder(http, Configuration(), cache);
     await service.ResolveAsync(
       "123456789 Murphy Parkway, LATHROP, CA, USA, 953309257",
@@ -463,7 +465,7 @@ public sealed class GoogleAddressGeocoderTests
       Candidate("30", "Ironside Dr", "Brampton", "ON", "L7A 1A2", country: "CA")
     );
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new StopGeocodeMemory(TimeProvider.System);
     var service = new GoogleAddressGeocoder(http, Configuration(), cache);
 
     await service.ResolveAsync(
@@ -510,7 +512,7 @@ public sealed class GoogleAddressGeocoderTests
       Candidate(number, street, city, region, postal, country: country)
     );
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new StopGeocodeMemory(TimeProvider.System);
     var service = new GoogleAddressGeocoder(http, Configuration(), cache);
     if (accepted)
       await service.ResolveAsync(input, default);
@@ -571,13 +573,178 @@ public sealed class GoogleAddressGeocoderTests
       validation
     );
     using var http = new HttpClient(handler);
-    using var cache = new MemoryCache(new MemoryCacheOptions());
+    using var cache = new StopGeocodeMemory(TimeProvider.System);
     var service = new GoogleAddressGeocoder(http, Configuration(), cache);
     await Assert.ThrowsAsync<RoutePlanningException>(
       () =>
         service.ResolveAsync("1 Arizona Way, Keasbey, NJ, USA, 08832", default)
     );
     Assert.Equal(2, handler.Calls);
+  }
+
+  // Audit F26: resolved and failed addresses are kept in their own
+  // memory, bounded in bytes - however many distinct addresses arrive -
+  // instead of the shared cache.
+  [Fact]
+  public void GeocodesStayWithinTheirBudget()
+  {
+    using var memory = new StopGeocodeMemory(TimeProvider.System);
+    var point = new RoutePoint(40, -79);
+    for (var i = 0; i < 10_000; i++)
+      memory.Remember(
+        $"{i} {new string('x', 400)} Street, City, ST",
+        new(point, "Street", "City", "ST", "US", "00000")
+      );
+
+    var held = Assert.Single(
+      memory.ReadMemory(),
+      x => x.Name == "stop-geocodes"
+    );
+    Assert.InRange(held.EstimatedSize ?? 0, 1, CacheBudgets.Geocodes);
+    Assert.InRange(held.Entries ?? 0, 1, 9_999);
+  }
+
+  // A resolved address is kept twelve hours; a failure until its retry.
+  [Fact]
+  public void AnAddressIsKeptForItsLifetimeAndAFailureUntilItsRetry()
+  {
+    var time = new ManualTimeProvider();
+    using var memory = new StopGeocodeMemory(time);
+    var resolved = new ResolvedAddress(
+      new(40, -79),
+      "1 Main",
+      "City",
+      "ST",
+      "US",
+      "1"
+    );
+    memory.Remember("1 Main, City", resolved);
+    memory.RememberFailure(
+      "2 Main, City",
+      new("failed", memory.Now.AddMinutes(5)),
+      memory.Now.AddMinutes(5)
+    );
+
+    time.Advance(TimeSpan.FromMinutes(4));
+    Assert.NotNull(memory.FindFailure("2 main, city"));
+    time.Advance(TimeSpan.FromMinutes(2));
+    Assert.Null(memory.FindFailure("2 Main, City"));
+    time.Advance(StopGeocodeMemory.Resolved - TimeSpan.FromMinutes(7));
+    Assert.Same(resolved, memory.Find("1 MAIN, CITY"));
+    time.Advance(TimeSpan.FromMinutes(2));
+    Assert.Null(memory.Find("1 Main, City"));
+  }
+
+  // Lookups of one address at the same time ask Google once; a failure is
+  // not asked again until its retry, and is asked once it has passed.
+  [Fact]
+  public async Task OneAddressIsAskedOnceAndAFailureWaitsForItsRetry()
+  {
+    var time = new ManualTimeProvider();
+    using var memory = new StopGeocodeMemory(time);
+    using var handler = new Handler(
+      Candidate("16825", "Murphy Pkwy", "Lathrop", "CA", "95330")
+    )
+    {
+      Delay = TimeSpan.FromMilliseconds(100),
+    };
+    using var http = new HttpClient(handler);
+    var service = new GoogleAddressGeocoder(http, Configuration(), memory);
+    const string address = "16825 Murphy Parkway, Lathrop, CA, USA, 95330";
+
+    var answers = await Task.WhenAll(
+      Enumerable.Range(0, 5).Select(_ => service.ResolveAsync(address, default))
+    );
+
+    Assert.Equal(1, handler.Calls);
+    Assert.All(answers, x => Assert.Equal(answers[0], x));
+
+    handler.Status = HttpStatusCode.InternalServerError;
+    const string failing = "1 Nowhere Road, Lathrop, CA, USA, 95330";
+    await Assert.ThrowsAsync<RoutePlanningException>(
+      () => service.ResolveAsync(failing, default)
+    );
+    await Assert.ThrowsAsync<RoutePlanningException>(
+      () => service.ResolveAsync(failing, default)
+    );
+    Assert.Equal(2, handler.Calls);
+    time.Advance(TimeSpan.FromMinutes(6));
+    await Assert.ThrowsAsync<RoutePlanningException>(
+      () => service.ResolveAsync(failing, default)
+    );
+    Assert.Equal(3, handler.Calls);
+
+    // A transport failure is remembered the same way.
+    handler.Unreachable = true;
+    const string unreachable = "2 Nowhere Road, Lathrop, CA, USA, 95330";
+    for (var i = 0; i < 2; i++)
+      await Assert.ThrowsAsync<RoutePlanningException>(
+        () => service.ResolveAsync(unreachable, default)
+      );
+    Assert.Equal(4, handler.Calls);
+  }
+
+  // Root's review: a full memory could lose a failure before its retry.
+  // Resolved addresses, however many, cannot push a failure out: failures
+  // have their own part of the budget.
+  [Fact]
+  public async Task NoNumberOfResolvedAddressesPushesAFailureOut()
+  {
+    using var memory = new StopGeocodeMemory(TimeProvider.System);
+    using var handler = new Handler(Candidate("1", "Main", "City", "CA", "1"))
+    {
+      Status = HttpStatusCode.InternalServerError,
+    };
+    using var http = new HttpClient(handler);
+    var service = new GoogleAddressGeocoder(http, Configuration(), memory);
+    const string failing = "1 Nowhere Road, Lathrop, CA, USA, 95330";
+    await Assert.ThrowsAsync<RoutePlanningException>(
+      () => service.ResolveAsync(failing, default)
+    );
+
+    for (var i = 0; i < 10_000; i++)
+      memory.Remember(
+        $"{i} {new string('x', 400)} Street, City, ST",
+        new(new(40, -79), "Street", "City", "ST", "US", "00000")
+      );
+    await Assert.ThrowsAsync<RoutePlanningException>(
+      () => service.ResolveAsync(failing, default)
+    );
+
+    Assert.Equal(1, handler.Calls);
+  }
+
+  // And when failures themselves cannot be kept - their part is full; here
+  // smaller than one entry - consumers asking again and again reach Google
+  // at most AttemptsPerMinute times a minute, and again once it passes.
+  [Fact]
+  public async Task WhenAFailureCannotBeKeptGoogleIsAskedAtMostTheLimit()
+  {
+    var time = new ManualTimeProvider();
+    using var memory = new StopGeocodeMemory(time, failureBudget: 1);
+    using var handler = new Handler(Candidate("1", "Main", "City", "CA", "1"))
+    {
+      Status = HttpStatusCode.InternalServerError,
+    };
+    using var http = new HttpClient(handler);
+    var service = new GoogleAddressGeocoder(http, Configuration(), memory);
+
+    for (var i = 0; i < 200; i++)
+      await Assert.ThrowsAsync<RoutePlanningException>(
+        () =>
+          service.ResolveAsync(
+            $"{i % 3} Nowhere Road, Lathrop, CA, USA, 95330",
+            default
+          )
+      );
+    Assert.Equal(StopGeocodeMemory.AttemptsPerMinute, handler.Calls);
+
+    time.Advance(TimeSpan.FromMinutes(1));
+    await Assert.ThrowsAsync<RoutePlanningException>(
+      () =>
+        service.ResolveAsync("0 Nowhere Road, Lathrop, CA, USA, 95330", default)
+    );
+    Assert.Equal(StopGeocodeMemory.AttemptsPerMinute + 1, handler.Calls);
   }
 
   private static IConfiguration Configuration() =>
@@ -635,24 +802,29 @@ public sealed class GoogleAddressGeocoderTests
     public int Calls;
     public string? Query;
     public string? GeocodeQuery;
+    public TimeSpan Delay;
+    public HttpStatusCode Status = HttpStatusCode.OK;
+    public bool Unreachable;
 
-    protected override Task<HttpResponseMessage> SendAsync(
+    protected override async Task<HttpResponseMessage> SendAsync(
       HttpRequestMessage request,
       CancellationToken ct
     )
     {
-      Calls++;
+      Interlocked.Increment(ref Calls);
       Query = request.RequestUri!.Query;
       if (request.Method == HttpMethod.Get)
         GeocodeQuery = Query;
-      return Task.FromResult(
-        new HttpResponseMessage(HttpStatusCode.OK)
-        {
-          Content = new StringContent(
-            request.Method == HttpMethod.Post ? validation ?? "{}" : json
-          ),
-        }
-      );
+      if (Delay > TimeSpan.Zero)
+        await Task.Delay(Delay, ct);
+      if (Unreachable)
+        throw new HttpRequestException("unreachable");
+      return new HttpResponseMessage(Status)
+      {
+        Content = new StringContent(
+          request.Method == HttpMethod.Post ? validation ?? "{}" : json
+        ),
+      };
     }
   }
 }

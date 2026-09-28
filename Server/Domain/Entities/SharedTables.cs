@@ -45,6 +45,10 @@ public static class SharedTables
       // second one over the same primary key.
       ["SynchronizationCheckpoint"] =
         "the lease that picks the working instance",
+      // Which deployed revisions an administrator released to send, once
+      // the revision before each was drained. A fact about the service's
+      // deployments, read before any carrier is chosen.
+      ["SendRelease"] = "which deployed revisions may send to the provider",
       // Where the server has read up to in the odometer feed it polls.
       // One row with a fixed id, taken before a carrier is chosen. When a
       // second carrier brings its own telematics account this has to

@@ -1148,20 +1148,42 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("DispatchEtaForecasts", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.Dispatch.DispatchImportRead", b =>
+                {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Provider")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<long>("LastTicket")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("LastWrite")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("CompanyId", "Provider");
+
+                    b.HasIndex("CompanyId");
+
+                    b.ToTable("DispatchImportReads");
+                });
+
             modelBuilder.Entity("Domain.Entities.Dispatch.DispatchNumberCounter", b =>
                 {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Id")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
 
                     b.Property<long>("NextNumber")
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
-                    b.HasKey("Id");
+                    b.HasKey("CompanyId", "Id");
 
                     b.HasIndex("CompanyId");
 
@@ -1441,6 +1463,9 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<string>("ExecutionReviewReason")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
+
+                    b.Property<long>("ReadTicket")
+                        .HasColumnType("bigint");
 
                     b.HasKey("CompanyId", "Provider", "ExternalId");
 
@@ -3043,15 +3068,15 @@ namespace Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Domain.Entities.Fleet.DriverHosReading", b =>
                 {
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("DriverExternalId")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
                     b.Property<long?>("BreakMs")
                         .HasColumnType("bigint");
-
-                    b.Property<Guid>("CompanyId")
-                        .HasColumnType("uuid");
 
                     b.Property<string>("CurrentDutyStatus")
                         .HasMaxLength(32)
@@ -3072,7 +3097,7 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<long?>("ShiftMs")
                         .HasColumnType("bigint");
 
-                    b.HasKey("DriverExternalId");
+                    b.HasKey("CompanyId", "DriverExternalId");
 
                     b.HasIndex("CompanyId");
 
@@ -3426,6 +3451,40 @@ namespace Infrastructure.Persistence.Migrations
                     b.HasIndex("FuelStationId", "EffectiveFrom", "EffectiveTo");
 
                     b.ToTable("FuelDiscounts");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Fuel.FuelImportSkip", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("GmailMessageId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<DateTime>("SkippedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "GmailMessageId")
+                        .IsUnique();
+
+                    b.HasIndex("CompanyId", "SkippedAt");
+
+                    b.ToTable("FuelImportSkips");
                 });
 
             modelBuilder.Entity("Domain.Entities.Fuel.FuelImportSource", b =>
@@ -4309,6 +4368,83 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("MessageBroadcasts", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Entities.Messaging.PendingDeliveryStatus", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("At")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("BusinessNumberId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("Channel")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.Property<Guid>("CompanyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("ErrorCode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ProviderMessageId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CompanyId");
+
+                    b.HasIndex("CompanyId", "ReceivedAt");
+
+                    b.HasIndex("CompanyId", "Channel", "BusinessNumberId", "ProviderMessageId", "Status")
+                        .IsUnique();
+
+                    b.ToTable("PendingDeliveryStatuses");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Messaging.SendRelease", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ReleasedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReleasedBy")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("character varying(450)");
+
+                    b.Property<string>("Revision")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Revision")
+                        .IsUnique();
+
+                    b.ToTable("SendReleases");
+                });
+
             modelBuilder.Entity("Domain.Entities.Mileage.MileageAllocationPolicy", b =>
                 {
                     b.Property<Guid>("Id")
@@ -5155,7 +5291,7 @@ namespace Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasMaxLength(5)
                         .HasColumnType("character varying(5)")
-                        .HasDefaultValue("light");
+                        .HasDefaultValue("");
 
                     b.HasKey("Id");
 

@@ -7,19 +7,7 @@ public sealed record RouteViaPoint(
   RoutePoint Point
 );
 
-public sealed record RouteChoiceRequest(
-  List<RouteViaPoint> ViaPoints,
-  bool Alternatives = true,
-  bool UseSavedVia = false,
-  Guid? ExecutionLegId = null
-);
 
-public sealed record RouteChoiceSave(
-  Guid PreviewId,
-  int Option,
-  long Revision,
-  Guid? ExecutionLegId = null
-);
 
 public sealed record RouteChoiceOption(
   int Number,

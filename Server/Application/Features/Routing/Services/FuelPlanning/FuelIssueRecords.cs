@@ -6,6 +6,7 @@ using Domain.Models.Messaging;
 using Domain.Models.Routing;
 using Domain.Policies;
 using Domain.Rules;
+using Domain.Rules.Messaging;
 using Domain.Rules.Routing;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Options;
@@ -47,14 +48,26 @@ public sealed class FuelIssueRecords(
   // or while a WhatsApp attempt for the truck is in flight or has changed
   // state (an acceptance not yet recorded as a hand-over), is refused and
   // calculated again, so it can never drop that hand-over unseen.
+  //
+  // In flight is Messaging's own reading (DriverMessageProgress): sending
+  // for less than its timeout. An attempt left sending past it - the
+  // process stopped mid-call - is uncertain, and used to refuse every
+  // publication for the truck for ever (audit F16); it is reviewed by the
+  // auditor and sent again by a dispatcher instead.
   public async Task RequireUnchangedAsync(Stamp stamp, CancellationToken ct)
   {
     var latest = await LatestSentAtAsync(stamp.TruckId, ct);
+    var inFlightSince =
+      time.GetUtcNow().UtcDateTime - DriverMessageProgress.SendingTimeout;
     var attempts = await db.DriverMessages.AnyAsync(
       x =>
         x.TruckId == stamp.TruckId
         && x.VisitKeys != ""
-        && (x.Status == DriverMessageStatuses.Sending || x.StatusAt > stamp.At),
+        && (
+          x.Status == DriverMessageStatuses.Sending
+            && x.StatusAt > inFlightSince
+          || x.StatusAt > stamp.At
+        ),
       ct
     );
     if (latest != stamp.LatestSentAt || attempts)
@@ -136,6 +149,8 @@ public sealed class FuelIssueRecords(
   }
 
   private sealed record Sent(
+    DateTime PlanCalculatedAt,
+    string Text,
     Guid DispatchId,
     Guid ScopeId,
     long AssignmentRevision,
@@ -155,7 +170,14 @@ public sealed class FuelIssueRecords(
     CancellationToken ct
   )
   {
-    var dispatches = plan.Stops.Select(x => x.DispatchId).Distinct().ToArray();
+    // The plan's fuel stops and the loads still ahead in it: a visit handed
+    // over before one of those loads' stops can matter even if the plan
+    // no longer has it.
+    var dispatches = plan
+      .Stops.Select(x => x.DispatchId)
+      .Concat(saved.Stops.Select(x => x.DispatchId))
+      .Distinct()
+      .ToArray();
     var sends =
       dispatches.Length == 0
         ? []
@@ -165,6 +187,8 @@ public sealed class FuelIssueRecords(
             x.TruckId == saved.TruckId && dispatches.Contains(x.DispatchId)
           )
           .Select(x => new Sent(
+            x.PlanCalculatedAt,
+            x.Text,
             x.DispatchId,
             x.ScopeId,
             x.AssignmentRevision,
@@ -210,6 +234,39 @@ public sealed class FuelIssueRecords(
           Delivery = latest.Delivery,
         };
     }
+    // A hand-over recorded after this plan was calculated, from an older
+    // plan, that this plan no longer has: the plan's own withdrawn list
+    // could not know it. An acceptance held past Messaging's timeout lands
+    // this way after a plan was published meanwhile (audit D6). The driver
+    // holds the visit, so it is shown withdrawn - by the words the driver
+    // got - until a newer hand-over answers it.
+    var present = plan
+      .Stops.Select(x => (x.StationId, x.BeforeStopId))
+      .ToHashSet();
+    var ahead = saved.Stops.Select(x => x.Stop.Id).ToHashSet();
+    var late = sends
+      .Where(x =>
+        x.SentAt >= saved.CalculatedAt
+        && x.PlanCalculatedAt < saved.CalculatedAt
+        && ahead.Contains(x.BeforeStopId)
+        && !present.Contains((x.StationId, x.BeforeStopId))
+      )
+      .Select(x => new FuelWithdrawnVisit(
+        x.StationId,
+        x.BeforeStopId,
+        x.DispatchId,
+        x.Text,
+        x.SentAt,
+        x.SentAt
+      ))
+      .ToList();
+    if (late.Count > 0)
+      plan.Withdrawn =
+      [
+        .. (plan.Withdrawn ?? [])
+          .Concat(late)
+          .DistinctBy(x => (x.StationId, x.BeforeStopId)),
+      ];
     // A withdrawn visit stays in view until the dispatcher hands the driver
     // something newer: that hand-over is the answer to it.
     if (plan.Withdrawn is { Count: > 0 } withdrawn)

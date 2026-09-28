@@ -2,6 +2,24 @@
 
 - `GET /api/health/live`: process liveness, anonymous, no database or upstream calls.
 - `GET /api/health/ready`: database connectivity, Admin policy, health status only (no connection details).
+  Stale background progress makes it `Degraded` (HTTP 200), never
+  `Unhealthy`: it reports, and never restarts the only instance.
+- `GET /api/diagnostics/sends` (Admin), `POST /api/diagnostics/sends/release`
+  (Operator: Admin and listed in `Operations:Operators`). Where
+  `Messaging:SendHold:RequireRelease` is set (production), a deployed
+  revision (`K_REVISION`) sends nothing to the messaging provider until a
+  deployment operator releases it, after the platform shows the revision
+  before it drained (the release overlap, audit F27). Replies queue
+  meanwhile; a direct fuel send answers 503. The release is recorded once
+  per revision with who released it. Without a valid revision name the
+  sends stay held and a release is refused.
+- `GET /api/diagnostics/background`: Admin. Each background operation of
+  this instance - periodic or on demand, its limit, last round started and
+  finished, rounds running, and whether it is stale. Periodic work is stale
+  when no round started for three intervals (at least five minutes); on
+  demand work only while a round runs past its limit, never for waiting.
+  Stale means no progress, not failure. The synchronization loop keeps its
+  liveness heartbeat; the consistency audit's stall shows as stale coverage.
 - `GET /api/diagnostics/requests`: Admin-only request count, failures, cancellations, total and maximum milliseconds by request type. Counters are per process and reset on restart; they are not fleet-wide or durable metrics.
 - Meter `PulsarTms.Application`, histogram `pulsartms.request.duration` (milliseconds), tags `request`, `outcome`. Export through a metrics collector when one is configured. Slow requests and routing requests also emit `RequestTiming` logs, so diagnosing them does not depend on a collector. When upgrading a collector from the former product identity, update its meter subscription; historical series are not rewritten.
 - `AdminAudit` is an Application pipeline behavior. It records caller identity ID, command name, target ID when present, outcome, trace ID and allowlisted role/activation/planning-setting values. It never serializes commands, profiles, passwords or tokens. These are action records, not before/after database snapshots. Hosting retention controls durability; no separate audit database is introduced.

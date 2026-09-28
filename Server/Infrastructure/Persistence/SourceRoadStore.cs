@@ -261,4 +261,37 @@ public sealed class SourceRoadStore(AppDbContext db) : ISourceRoadStore
         && x.AvailableAt < before
       )
       .ExecuteDeleteAsync(ct);
+
+  public async Task<IReadOnlyList<SourceRoadOverdue>> OverdueAsync(
+    DateTime due,
+    Guid? after,
+    int limit,
+    CancellationToken ct
+  )
+  {
+    var company = Company();
+    return await db
+      .SourceRoadRequests.AsNoTracking()
+      .Where(x =>
+        x.CompanyId == company
+        && x.CompletedVersion < x.RequestedVersion
+        && x.RequestedAt <= due
+        && (after == null || x.DispatchId.CompareTo(after.Value) > 0)
+      )
+      .OrderBy(x => x.DispatchId)
+      .Select(x => new SourceRoadOverdue(
+        x.DispatchId,
+        db.Dispatches.Where(load => load.Id == x.DispatchId)
+          .Select(load => load.Status)
+          .FirstOrDefault(),
+        x.RequestedVersion,
+        x.CompletedVersion,
+        x.Explicit,
+        x.RequestedAt,
+        x.AvailableAt,
+        x.Attempts
+      ))
+      .Take(limit + 1)
+      .ToListAsync(ct);
+  }
 }

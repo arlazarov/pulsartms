@@ -112,7 +112,11 @@ public sealed class SavedRoutePlanReader(
   private IQueryable<MetadataRow> MetadataRows(Guid[] loads, Guid[] legs)
   {
     // JSON stays inside the database; saved-road validation must not
-    // transfer route geometry.
+    // transfer route geometry. Raw SQL skips the company filter, so the
+    // serving carrier is named here: ids alone must not reach another
+    // carrier's plans. Nobody identified (null) matches no row, as the
+    // filter does.
+    var company = db.ServingCompany;
     if (db.Database.IsNpgsql())
       return db.Database.SqlQuery<MetadataRow>(
         $$"""
@@ -120,8 +124,9 @@ public sealed class SavedRoutePlanReader(
           SELECT "DispatchId", "ExecutionLegId", "InputHash", "TruckId",
             "AssignmentRevision", "PlanJson"::jsonb AS document
           FROM "DispatchRoutePlans"
-          WHERE "ExecutionLegId" = ANY({{legs}})
-            OR ("ExecutionLegId" IS NULL AND "DispatchId" = ANY({{loads}}))
+          WHERE "CompanyId" = {{company}}
+            AND ("ExecutionLegId" = ANY({{legs}})
+              OR ("ExecutionLegId" IS NULL AND "DispatchId" = ANY({{loads}})))
         )
         SELECT "DispatchId", "ExecutionLegId", jsonb_build_object(
           'inputHash', "InputHash", 'truckId', "TruckId",
@@ -164,6 +169,7 @@ public sealed class SavedRoutePlanReader(
             'fuelCalculatedAt',
               json_extract("PlanJson", '$.fuelPlan.calculatedAt')) AS "Value"
           FROM "DispatchRoutePlans"
+          WHERE "CompanyId" = {{company}}
           """
         )
         .Where(x =>

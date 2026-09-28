@@ -18,16 +18,40 @@ internal sealed class DispatchSyncFixture : IAsyncDisposable
   public ReadCache Reads { get; } = TestCache.Create();
   public MemoryCache Memory { get; } = new(new MemoryCacheOptions());
   public List<ExternalDispatch> Sources { get; } = [];
+
+  // Runs while the provider is being read, before the pass's transaction:
+  // what happens here happened during the read.
+  public Func<Task>? DuringRead { get; set; }
   public SqlCounter Counter { get; } = new();
   public SyncDispatchesCommandHandler Handler =>
     new(
       Db,
-      [new Provider(Sources)],
+      [new Provider(Sources, () => DuringRead)],
       DispatchImportTestData.Options,
       Reads,
       Memory,
       TestCache.Preparation(),
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(Db)
+    );
+
+  // Another process's handler over the same database: its own provider
+  // answer, read cache and load snapshots.
+  public SyncDispatchesCommandHandler HandlerFor(
+    AppDbContext db,
+    IReadOnlyList<ExternalDispatch> sources,
+    ReadCache reads,
+    MemoryCache memory
+  ) =>
+    new(
+      db,
+      [new Provider(sources, () => null)],
+      DispatchImportTestData.Options,
+      reads,
+      memory,
+      TestCache.Preparation(),
+      new TestCompany(),
+      new DispatchReadTicketStore(db)
     );
 
   public static async Task<DispatchSyncFixture> CreateAsync()
@@ -79,15 +103,23 @@ internal sealed class DispatchSyncFixture : IAsyncDisposable
     }
   }
 
-  private sealed class Provider(IReadOnlyList<ExternalDispatch> sources)
-    : IDispatchProvider
+  private sealed class Provider(
+    IReadOnlyList<ExternalDispatch> sources,
+    Func<Func<Task>?> during
+  ) : IDispatchProvider
   {
     public string Key => DispatchImportTestData.Key;
     public string DisplayName => DispatchImportTestData.DisplayName;
 
-    public Task<IReadOnlyList<ExternalDispatch>> GetDispatchesAsync(
+    public async Task<IReadOnlyList<ExternalDispatch>> GetDispatchesAsync(
       CancellationToken ct = default
-    ) => Task.FromResult(DispatchImportTestData.Identify(sources));
+    )
+    {
+      var read = DispatchImportTestData.Identify(sources);
+      if (during() is { } hook)
+        await hook();
+      return read;
+    }
 
     public Task<IReadOnlyList<ExternalDispatch>> GetDispatchesAsync(
       DateOnly from,

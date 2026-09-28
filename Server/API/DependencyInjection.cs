@@ -1,6 +1,6 @@
-using API.Serialization;
 using Application;
 using Infrastructure;
+using Infrastructure.Serialization;
 
 namespace API;
 

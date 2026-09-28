@@ -54,6 +54,15 @@ public sealed class MessagingSignals : IAsyncDisposable
   private bool _joined;
   private int _subscribers;
 
+  // The scope this tab joined under, and the mailbox it last read under
+  // which scope. A tab that leaves the messaging views and comes back asks
+  // with its mailbox: its last request may still hold that mailbox on the
+  // server - Hosting does not pass the abort on - and opening a new one
+  // each time used up the account's share (503s of September 27).
+  private string? _scope;
+  private string? _mailboxScope;
+  private Guid? _mailbox;
+
   public MessagingSignals(
     ApiService api,
     IJSRuntime js,
@@ -106,6 +115,7 @@ public sealed class MessagingSignals : IAsyncDisposable
       await StopAsync();
       if (_subscribers == 0 || await ScopeAsync() is not { } scope)
         return;
+      _scope = scope;
       try
       {
         _module ??= await _js.InvokeAsync<IJSObjectReference>(
@@ -216,14 +226,15 @@ public sealed class MessagingSignals : IAsyncDisposable
   {
     _leading?.Cancel();
     _leading = new CancellationTokenSource();
-    _ = ReadAsync(_leading.Token);
+    _ = ReadAsync(_scope, _leading.Token);
     return Task.CompletedTask;
   }
 
-  private async Task ReadAsync(CancellationToken ct)
+  private async Task ReadAsync(string? scope, CancellationToken ct)
   {
     var backoff = FirstBackoff;
-    Guid? mailbox = null;
+    Guid? mailbox =
+      scope is not null && scope == _mailboxScope ? _mailbox : null;
     var replaced = 0;
     var repaired = _time.GetUtcNow();
     while (!ct.IsCancellationRequested)
@@ -247,6 +258,7 @@ public sealed class MessagingSignals : IAsyncDisposable
           repaired = _time.GetUtcNow();
         }
         mailbox = changes.Mailbox;
+        (_mailbox, _mailboxScope) = (mailbox, scope);
         foreach (var id in changes.Conversations)
           await PostAsync("change", id.ToString(), ct);
         if (_time.GetUtcNow() - repaired >= RepairEvery)

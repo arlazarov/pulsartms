@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Dispatch.Models;
 using Application.Features.Dispatch.Services;
 using Application.Features.Execution.Models;
@@ -206,7 +207,7 @@ public sealed class ExecutionImportAcceptanceTests
     {
       var itinerary = await new TruckItineraryReader(
         f.Db,
-        new ExecutionReadScope(f.Db),
+        new ExecutionReadScope(f.Db, new StageTimings()),
         new FleetNames(f.Db),
         new ActiveTransfers(f.Db)
       ).ReadAsync(truck.Id, DateTimeOffset.UtcNow, default);

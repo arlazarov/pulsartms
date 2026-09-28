@@ -1,4 +1,5 @@
 using System.Net;
+using Application.Diagnostics;
 using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules;
@@ -46,7 +47,8 @@ public class TomTomCacheTests
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
       new RouteSectionValidator(),
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      new StageTimings()
     );
     Task<TruckRoute> Calculate() =>
       provider.CalculateAsync(
@@ -105,7 +107,8 @@ public class TomTomCacheTests
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
       new RouteSectionValidator(),
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      new StageTimings()
     );
     var profile = new TruckRouteProfile { UsesFleetDefaults = true };
     var error = await Assert.ThrowsAsync<RoutePlanningException>(

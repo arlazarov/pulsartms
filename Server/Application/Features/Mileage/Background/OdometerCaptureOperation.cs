@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Mileage.Interfaces;
 using Application.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,8 +17,10 @@ public sealed class OdometerCaptureOperation(
     var owner = Guid.NewGuid().ToString("N");
     var failures = 0;
     var nextProviderRead = DateTime.MinValue;
+    BackgroundProgress.Expect("OdometerCapture", TimeSpan.FromMinutes(2));
     while (!stoppingToken.IsCancellationRequested)
     {
+      BackgroundProgress.Started("OdometerCapture");
       var delay = TimeSpan.FromMinutes(2);
       try
       {

@@ -1,11 +1,14 @@
 using Application.Diagnostics.Consistency;
 using Application.Features.Dispatch.Options;
 using Application.Features.Fuel.Options;
+using Application.Features.Messaging.Options;
 using Application.Features.Synchronization.Options;
 using Application.Storage;
 using Domain.Policies;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace API;
+namespace Infrastructure;
 
 public static class OptionsRegistration
 {
@@ -24,6 +27,7 @@ public static class OptionsRegistration
     Bind<FuelIssueOptions>("FuelIssue");
     Bind<ConsistencyAuditOptions>("ConsistencyAudit");
     Bind<StorageOptions>("Storage");
+    Bind<SendHoldOptions>("Messaging:SendHold");
     return services;
 
     void Bind<T>(string section)

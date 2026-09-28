@@ -158,7 +158,10 @@ public static class FuelManualReplay
     var extraMinutes = FuelAccessEstimate.DrivingMinutes(initialAccessMiles);
     double purchaseGallons = 0,
       purchaseCost = 0,
-      economicCost = extraMinutes / 60 * profile.DriverHourlyCostUsd;
+      economicCost = FuelPlanCost.AccessTime(
+        extraMinutes,
+        profile.DriverHourlyCostUsd
+      );
     for (var i = 0; i < visits.Count; i++)
     {
       var candidate = visits[i];
@@ -179,11 +182,14 @@ public static class FuelManualReplay
       var departure = gallons + quantity;
       var milesAhead =
         candidate.AlongMiles + accessSoFar + candidate.ExtraInMiles;
-      var cash = quantity * candidate.PriceUsd;
-      var economic =
-        quantity * candidate.EconomicPriceUsd
-        + profile.StopCostUsd
-        + minutes / 60 * profile.DriverHourlyCostUsd;
+      var cash = FuelPlanCost.Purchase(quantity, candidate.PriceUsd);
+      var economic = FuelPlanCost.Stop(
+        quantity,
+        candidate.EconomicPriceUsd,
+        profile.StopCostUsd,
+        minutes,
+        profile.DriverHourlyCostUsd
+      );
       if (
         !double.IsFinite(gallons)
         || !double.IsFinite(departure)
@@ -262,9 +268,11 @@ public static class FuelManualReplay
       minimum = profile.ReserveGallons;
     }
     gallons -= (routeMiles - cursor + previousAccessOut) / mpg;
-    var futureCost =
-      Math.Max(0, arrival.TargetGallons - gallons)
-      * arrival.ReplacementPriceUsd;
+    var futureCost = FuelPlanCost.FutureFuel(
+      arrival.TargetGallons,
+      gallons,
+      arrival.ReplacementPriceUsd
+    );
     if (
       !double.IsFinite(gallons)
       || !double.IsFinite(futureCost)

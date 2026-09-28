@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Services;
 using Application.Reference;
@@ -21,7 +22,7 @@ public sealed class WorkSequenceReaderTests
     var before = await f.Planning.EtaInputs.DescribeAsync(truck.Id, default);
     var reader = new TruckItineraryReader(
       f.Db,
-      new ExecutionReadScope(f.Db),
+      new ExecutionReadScope(f.Db, new StageTimings()),
       new FleetNames(f.Db),
       new ActiveTransfers(f.Db)
     );

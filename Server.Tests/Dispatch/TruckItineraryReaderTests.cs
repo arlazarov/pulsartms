@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Execution.Models;
 using Application.Features.Execution.Queries;
 using Application.Features.Execution.Services;
@@ -361,7 +362,7 @@ public sealed class TruckItineraryReaderTests
   private static TruckItineraryReader Reader(StopCompletionFixture f) =>
     new(
       f.Db,
-      new ExecutionReadScope(f.Db),
+      new ExecutionReadScope(f.Db, new StageTimings()),
       new FleetNames(f.Db),
       new ActiveTransfers(f.Db)
     );

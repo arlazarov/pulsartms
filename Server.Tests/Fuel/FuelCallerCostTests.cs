@@ -172,9 +172,19 @@ public sealed partial class FuelCallerCostTests(ITestOutputHelper output)
       new[] { prepared, copy, later },
       state => Assert.False(state.Plan!.FuelPlan!.NeedsRefresh)
     );
+    // Each projection also reads what was handed over to the driver, once
+    // and fresh - hand-overs are not shared within an operation. Audit D6
+    // made that read run for a plan without fuel stops too (this fixture's):
+    // a hand-over accepted after a publication that dropped every stop must
+    // still show as withdrawn. One statement per projecting caller, none
+    // for the price refresh, which does not project.
+    Assert.Equal(
+      [1, 1, 1, 0, 1, 0, 0],
+      calls.Select(x => x.Statements.Count(Records))
+    );
     Assert.Equal(
       shared ? [8, 0, 4, 1, 6, 6, 4] : [8, 6, 10, 7, 6, 6, 4],
-      calls.Select(x => x.Statements.Count)
+      calls.Select(x => x.Statements.Count(sql => !Records(sql)))
     );
     if (shared)
       return;
@@ -182,7 +192,11 @@ public sealed partial class FuelCallerCostTests(ITestOutputHelper output)
     // the same saved roads and history, whatever it supplied.
     Assert.All(
       calls.Take(5),
-      call => Assert.Equal(check, call.Statements.TakeLast(check.Count))
+      call =>
+        Assert.Equal(
+          check,
+          call.Statements.Where(sql => !Records(sql)).TakeLast(check.Count)
+        )
     );
     // Beyond the check, the summary reads the saved plan and its geometry
     // once for every caller after it.
@@ -200,6 +214,8 @@ public sealed partial class FuelCallerCostTests(ITestOutputHelper output)
     double Milliseconds,
     IReadOnlyList<string> Statements
   );
+
+  private static bool Records(string sql) => sql.Contains("\"FuelVisitSends\"");
 
   private static string Label(string sql) =>
     From().Match(sql) is { Success: true } match

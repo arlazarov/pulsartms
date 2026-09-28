@@ -18,9 +18,20 @@ public sealed class DriverHosRefreshOperation(
 {
   public async Task RunAsync(CancellationToken ct)
   {
+    // Hours are refreshed when they are wanted; a pass reads each carrier
+    // with a 30-second limit, so one running past five minutes is stale.
+    BackgroundProgress.OnDemand("DriverHosRefresh", TimeSpan.FromMinutes(5));
     while (!ct.IsCancellationRequested)
     {
-      await RunOnceAsync(ct);
+      BackgroundProgress.Started("DriverHosRefresh");
+      try
+      {
+        await RunOnceAsync(ct);
+      }
+      finally
+      {
+        BackgroundProgress.Finished("DriverHosRefresh");
+      }
       await snapshot.WaitForRefreshAsync(ct);
     }
   }

@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Routing.Interfaces;
 using Application.Features.Routing.Services.Addresses;
 using Application.Features.Routing.Services.Deadheads;
@@ -34,8 +35,13 @@ public sealed partial class BaseRouteOperation(
       TimeSpan.FromSeconds(options.Value.TickSeconds),
       time
     );
+    BackgroundProgress.Expect(
+      "BaseRoute",
+      TimeSpan.FromSeconds(options.Value.TickSeconds)
+    );
     do
     {
+      BackgroundProgress.Started("BaseRoute");
       await RunOnceAsync(ct);
     } while (await timer.WaitForNextTickAsync(ct));
   }
@@ -252,6 +258,8 @@ public sealed partial class BaseRouteOperation(
     CancellationToken ct
   )
   {
+    if (succeeded)
+      ForgetWait(work);
     await using var scope = scopes.CreateAsyncScope();
     var now = time.GetUtcNow().UtcDateTime;
     var next =

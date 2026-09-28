@@ -1,4 +1,5 @@
 using System.Globalization;
+using Application.Diagnostics;
 using Application.Features.Routing.Services.Routes;
 using Domain.Models.Routing;
 using Domain.Rules.Routing;
@@ -53,7 +54,8 @@ internal sealed class TomTomProviderFixture : IAsyncDisposable
       new RouteRequestValidator(),
       new UnusedAddressGeocoder(),
       new RouteSectionValidator(),
-      new RouteRegionLookup()
+      new RouteRegionLookup(),
+      new StageTimings()
     );
 
   public Task<TruckRoute> CalculateAsync(
@@ -121,7 +123,8 @@ internal sealed class TomTomProviderFixture : IAsyncDisposable
         new RouteRequestValidator(),
         new UnusedAddressGeocoder(),
         new RouteSectionValidator(),
-        new RouteRegionLookup()
+        new RouteRegionLookup(),
+        new StageTimings()
       ),
       config
     );

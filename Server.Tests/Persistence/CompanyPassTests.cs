@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Server.Tests.Support;
 
 namespace Server.Tests.Persistence;
 
@@ -129,6 +130,7 @@ public sealed class CompanyPassTests
     services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
     services.AddSingleton<ICurrentCompany, CurrentCompany>();
     services.AddScoped<ICompanyRoster, CompanyRoster>();
+    services.AddSingleton<IReadCache>(TestCache.Create());
     services.AddDbContext<AppDbContext>(o => o.UseSqlite(connection));
     return services.BuildServiceProvider();
   }

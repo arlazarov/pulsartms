@@ -44,6 +44,11 @@ public sealed class DispatchAuthorizationTests
   [InlineData(typeof(CostsController), "Record", "Dispatch", true)]
   [InlineData(typeof(MileageController), "SavePolicy", "Admin", true)]
   [InlineData(typeof(MileageController), "SavePolicy", "Dispatch", false)]
+  // A manual provider sync is an administrator's action (audit F8).
+  [InlineData(typeof(DispatchController), "Sync", "Admin", true)]
+  [InlineData(typeof(DispatchController), "Sync", "Dispatch", false)]
+  [InlineData(typeof(FleetController), "Sync", "Admin", true)]
+  [InlineData(typeof(FleetController), "Sync", "Dispatch", false)]
   public async Task EndpointsUseCurrentApplicationRoleWithoutRequiringStandardRoleClaims(
     Type controller,
     string action,

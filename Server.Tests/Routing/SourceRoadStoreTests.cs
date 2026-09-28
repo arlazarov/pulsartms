@@ -1,3 +1,7 @@
+using Application.Diagnostics.Consistency;
+using Application.Features.Routing.Audit;
+using Domain.Entities;
+using Domain.Entities.Dispatch;
 using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -212,5 +216,62 @@ public sealed class SourceRoadStoreTests
     var retained = await f.Db.SourceRoadRequests.ToListAsync();
     Assert.Equal(2, retained.Count);
     Assert.DoesNotContain(retained, x => x.DispatchId == completed);
+  }
+
+  // Audit F23: work still behind after the grace window is reported, for
+  // the serving carrier only, one keyset page at a time. Finished work,
+  // fresh demand and another carrier's work are not.
+  [Fact]
+  public async Task OverdueWorkIsReportedForTheServingCarrierOnly()
+  {
+    await using var f = await SourceRoadFixture.CreateAsync();
+    var old = f.Now.AddHours(-2);
+    var failed = Guid.NewGuid();
+    var waiting = Guid.NewGuid();
+    var finished = Guid.NewGuid();
+    await f.Store.DemandAsync(failed, "failed", 0, old, default);
+    var work = Assert.IsType<SourceRoadWork>(
+      await f.Store.ClaimAsync(old, Lease, default)
+    );
+    await f.Store.CompleteAsync(work, false, old, f.Now, default);
+    await f.Store.DemandAsync(finished, "finished", 0, old, default);
+    work = Assert.IsType<SourceRoadWork>(
+      await f.Store.ClaimAsync(old, Lease, default)
+    );
+    await f.Store.CompleteAsync(work, true, old, f.Now, default);
+    await f.Store.DemandAsync(waiting, "waiting", 0, old, default);
+    await f.Store.DemandAsync(Guid.NewGuid(), "fresh", 0, f.Now, default);
+    f.Db.SourceRoadRequests.Add(
+      new SourceRoadRequest
+      {
+        CompanyId = Guid.NewGuid(),
+        DispatchId = Guid.NewGuid(),
+        RequestedVersion = 1,
+        RequestedAt = old,
+        AvailableAt = old,
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    var rule = new SourceRoadDemandRule(f.Store);
+    ConsistencyPageRequest Page(string? after) =>
+      new(Company.Amf, f.Now, after, 1, TimeSpan.FromMinutes(30));
+
+    var first = await rule.ReadAsync(Page(null), default);
+    var second = await rule.ReadAsync(
+      Page(first.Observed.Single().EntityKey),
+      default
+    );
+
+    Assert.True(first.More);
+    Assert.False(second.More);
+    var seen = first.Observed.Concat(second.Observed).ToArray();
+    Assert.Equal(
+      new[] { failed, waiting }.Order(),
+      seen.Select(x => Guid.Parse(x.EntityKey)).Order()
+    );
+    var stopped = seen.Single(x => x.EntityKey == failed.ToString());
+    Assert.Equal("1", stopped.Evidence["attempts"]);
+    Assert.Equal("missing", stopped.Evidence["dispatchStatus"]);
+    Assert.Equal("requested:1;completed:0", stopped.Versions);
   }
 }

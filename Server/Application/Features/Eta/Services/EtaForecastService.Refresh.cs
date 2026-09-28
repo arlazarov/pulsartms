@@ -53,14 +53,15 @@ public sealed partial class EtaForecastService
       Drop(requestedDispatchId, "the truck has no chain to describe");
       return;
     }
-    var rootKey = memory.Scope(
+    var root = new EtaMemory.ScopeIdentity(
       description.RootDispatchId,
       description.RootExecutionLegId
     );
+    var rootKey = EtaMemory.Key(root);
     if (rootKey != requestedDispatchId)
     {
       Drop(requestedDispatchId, "the chain's root is another scope");
-      memory.View(rootKey, DateTime.UtcNow);
+      memory.View(root, DateTime.UtcNow);
     }
     var chain = await inputs.PrepareAsync(description, ct);
     var state = await routes.GetAsync(
@@ -215,7 +216,7 @@ public sealed partial class EtaForecastService
         if (calculation is { Published: false })
           eta.Publish(state, calculation, description.InputHash);
         else if (waiting is not null)
-          memory.Publish(rootKey, waiting);
+          memory.Publish(root, waiting);
       }
       else
       {

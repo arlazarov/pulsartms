@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Execution.Models;
 using Application.Features.Routing.Background;
 using Application.Features.Routing.Queries;
@@ -87,7 +88,7 @@ public sealed partial class DeadheadGeometryRepairTests
       f.Db,
       f.Services.Profiles,
       f.Services.DeadheadHistory,
-      new ExecutionReadScope(f.Db)
+      new ExecutionReadScope(f.Db, new StageTimings())
     );
     var before = await inputs.ReadAsync(work.Id, default);
     if (mutate)

@@ -1,5 +1,8 @@
+using Application.Diagnostics.Consistency;
 using Application.Features.Messaging.Services;
+using Application.Features.Routing.Audit;
 using Application.Features.Routing.Commands;
+using Application.Features.Routing.Models;
 using Application.Features.Routing.Services.FuelPlanning;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
@@ -8,6 +11,7 @@ using Domain.Entities.Messaging;
 using Domain.Models.Messaging;
 using Domain.Models.Routing;
 using Domain.Policies;
+using Domain.Rules;
 using Domain.Rules.Routing;
 using Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -46,6 +50,41 @@ public sealed class FuelIssueSenderTests
       () => f.SendAsync(Request(shown), shown)
     );
     Assert.Empty(f.Transport.Sent);
+  }
+
+  // Until this revision is released a send is refused with a retry,
+  // before anything is recorded or sent - not reported as done - and goes
+  // once an administrator has released it.
+  [Fact]
+  public async Task ASendBeforeTheReleaseIsHeldNotLost()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    f.Hold = TestSendHold.Required(
+      f.Refresh.Services.GetRequiredService<IServiceScopeFactory>(),
+      "rev-1",
+      clock
+    );
+    var shown = await f.CurrentAsync(First, fill: true);
+
+    var held = await f.SendAsync(Request(shown), shown);
+
+    Assert.Equal(503, held.Status);
+    Assert.Empty(f.Transport.Sent);
+    Assert.Empty(await f.Db.DriverMessages.AsNoTracking().ToListAsync());
+    f.Db.SendReleases.Add(
+      new SendRelease
+      {
+        Id = Guid.NewGuid(),
+        Revision = "rev-1",
+        ReleasedAt = DateTime.UtcNow,
+        ReleasedBy = "admin",
+      }
+    );
+    await f.Db.SaveChangesAsync();
+    clock.Advance(SendHold.Recheck);
+    Assert.Equal(200, (await f.SendAsync(Request(shown), shown)).Status);
+    Assert.Single(f.Transport.Sent);
   }
 
   [Fact]
@@ -338,14 +377,192 @@ public sealed class FuelIssueSenderTests
       sendAgain
     );
 
+  // Audit F17: the provider took the hand-over and the process stopped
+  // before it was recorded (the record is removed here, as the stop left
+  // it). The auditor finds it; sending the same plan again records it
+  // from the accepted attempt, without a second message.
+  [Fact]
+  public async Task AnAcceptedHandOverLeftUnrecordedIsRecordedWhenSentAgain()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+    Assert.Equal(200, (await f.SendAsync(Request(shown), shown)).Status);
+    await f.Db.FuelVisitSends.ExecuteDeleteAsync();
+    var attempt = await f.Db.DriverMessages.SingleAsync();
+    var rule = new FuelHandOverUnrecordedRule(f.Db);
+
+    var found = await rule.ReadAsync(f.Audit(), default);
+    var again = await f.SendAsync(Request(shown), shown);
+    var recorded = await f.Db.FuelVisitSends.SingleAsync();
+    var after = await rule.ReadAsync(f.Audit(), default);
+
+    Assert.Equal(
+      attempt.Id.ToString(),
+      Assert.Single(found.Observed).EntityKey
+    );
+    Assert.Equal(200, again.Status);
+    Assert.Single(f.Transport.Sent);
+    Assert.Equal(attempt.Id, recorded.MessageId);
+    Assert.Empty(after.Observed);
+  }
+
+  // Audit F16: an attempt left sending by a stopped process refused every
+  // fuel publication for the truck for ever. It refuses them only while it
+  // may still be in flight; past Messaging's timeout it is uncertain, the
+  // plans publish, and the auditor asks for the driver to be checked.
+  [Fact]
+  public async Task AnAttemptLeftSendingStopsHoldingFuelPlansAfterItsTimeout()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+    f.Transport.During = () => throw new OperationCanceledException();
+    await Assert.ThrowsAsync<OperationCanceledException>(
+      () => f.SendAsync(Request(shown), shown)
+    );
+    f.Transport.During = null;
+    var rule = new FuelHandOverUncertainRule(f.Db);
+
+    f.Time.Advance(TimeSpan.FromMinutes(1));
+    var early = await f.Records.StampAsync(f.Truck, default);
+    await Assert.ThrowsAsync<PlanningSettingsConflictException>(
+      () => f.Records.RequireUnchangedAsync(early, default)
+    );
+    var inFlight = await rule.ReadAsync(f.Audit(TimeSpan.Zero), default);
+    f.Time.Advance(TimeSpan.FromMinutes(2));
+    var late = await f.Records.StampAsync(f.Truck, default);
+    await f.Records.RequireUnchangedAsync(late, default);
+    var uncertain = await rule.ReadAsync(f.Audit(TimeSpan.Zero), default);
+
+    Assert.Empty(inFlight.Observed);
+    Assert.Equal(
+      (await f.Db.DriverMessages.SingleAsync()).Id.ToString(),
+      Assert.Single(uncertain.Observed).EntityKey
+    );
+  }
+
+  // Root's review of D6: a timeout does not prove the provider stopped.
+  // The call is held past Messaging's two minutes, a fuel plan is
+  // published meanwhile (the attempt no longer holds it), and then the
+  // provider takes the message. Whether the new plan dropped the stop or
+  // kept it, the driver's stop is not lost from view, and nothing is sent
+  // twice.
+  [Theory]
+  [InlineData(false)]
+  [InlineData(true)]
+  public async Task AnAcceptanceHeldPastTheTimeoutLosesNoStopAndSendsNothingTwice(
+    bool kept
+  )
+  {
+    await using var f = await Fixture.CreateAsync();
+    // Plans calculated on the fixture's clock, which the records use too.
+    var shown = await f.CurrentAsync(
+      f.Time.GetUtcNow().UtcDateTime,
+      fill: true
+    );
+    var reached = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    var held = new TaskCompletionSource(
+      TaskCreationOptions.RunContinuationsAsynchronously
+    );
+    f.Transport.During = async () =>
+    {
+      reached.TrySetResult();
+      await held.Task;
+    };
+    var sending = f.SendAsync(Request(shown), shown);
+    await reached.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+    f.Time.Advance(TimeSpan.FromMinutes(3));
+    var stamp = await f.Records.StampAsync(f.Truck, default);
+    await f.Records.RequireUnchangedAsync(stamp, default);
+    var station = kept ? Fixture.Station : Fixture.OtherStation;
+    var published = f.Time.GetUtcNow().UtcDateTime;
+    // The dispatcher presses send again, plainly, while the call is held:
+    // the attempt is uncertain, and nothing more is sent.
+    var meanwhile = await f.SendFromAnotherRequestAsync(Request(shown), shown);
+    held.SetResult();
+    Assert.Equal(200, (await sending).Status);
+    f.Transport.During = null;
+    var now = await f.CurrentAsync(published, fill: true, station: station);
+    var again = await f.SendAsync(Request(shown), shown);
+
+    Assert.Equal(409, meanwhile.Status);
+    Assert.Equal(200, again.Status);
+    var recorded = await f.Db.FuelVisitSends.SingleAsync();
+    Assert.Equal(Fixture.Station, recorded.StationId);
+    if (kept)
+    {
+      Assert.NotNull(Assert.Single(now.Saved.Plan.Stops).Sent);
+      Assert.Empty(now.Saved.Plan.Withdrawn ?? []);
+      Assert.Equal(409, (await f.SendAsync(Request(now), now)).Status);
+    }
+    else
+      Assert.Equal(
+        Fixture.Station,
+        Assert.Single(now.Saved.Plan.Withdrawn ?? []).StationId
+      );
+    Assert.Single(f.Transport.Sent);
+  }
+
+  // The key does not name the plan's calculation. An attempt found under
+  // it is recorded only if it carried these very visits for this work;
+  // otherwise nothing is recorded and nothing is sent.
+  [Fact]
+  public async Task ATakenAttemptForOtherVisitsRecordsNothing()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var shown = await f.CurrentAsync(First, fill: true);
+    Assert.Equal(200, (await f.SendAsync(Request(shown), shown)).Status);
+    await f.Db.FuelVisitSends.ExecuteDeleteAsync();
+    await f.Db.DriverMessages.ExecuteUpdateAsync(x =>
+      x.SetProperty(m => m.VisitKeys, "another-visit")
+    );
+
+    var again = await f.SendAsync(Request(shown), shown);
+
+    Assert.Equal(409, again.Status);
+    Assert.Empty(await f.Db.FuelVisitSends.ToListAsync());
+    Assert.Single(f.Transport.Sent);
+  }
+
+  // A view of an older plan - a summary prepared a moment before a newer
+  // plan was handed over - does not show the newer plan's stops as
+  // withdrawn: only an older plan's hand-over that the viewed plan dropped
+  // is.
+  [Fact]
+  public async Task ANewerPlansHandOverIsNotWithdrawnFromAnOlderView()
+  {
+    await using var f = await Fixture.CreateAsync();
+    var older = f.Time.GetUtcNow().UtcDateTime;
+    f.Time.Advance(TimeSpan.FromMinutes(1));
+    var newer = await f.CurrentAsync(
+      f.Time.GetUtcNow().UtcDateTime,
+      fill: true,
+      station: Fixture.OtherStation
+    );
+    Assert.Equal(200, (await f.SendAsync(Request(newer), newer)).Status);
+
+    var view = await f.CurrentAsync(older, fill: true);
+
+    Assert.Empty(view.Saved.Plan.Withdrawn ?? []);
+  }
+
   private sealed class Fixture : IAsyncDisposable
   {
     public required PlanningRefreshFixture Refresh { get; init; }
     public FakeDriverMessaging Transport { get; } = new();
+    public SendHold Hold { get; set; } = TestSendHold.Open();
     public Guid Truck { get; private set; }
     public Guid Dispatch { get; private set; }
     public Guid Driver { get; private set; }
     public Guid Before { get; } = Guid.NewGuid();
+    public static readonly Guid Station = new(
+      "11111111-1111-1111-1111-111111111111"
+    );
+    public static readonly Guid OtherStation = new(
+      "22222222-2222-2222-2222-222222222222"
+    );
     public Infrastructure.Persistence.AppDbContext Db => Refresh.Db;
     public ManualTimeProvider Time => Refresh.Time;
 
@@ -394,6 +611,17 @@ public sealed class FuelIssueSenderTests
       return f;
     }
 
+    // An audit page as the auditor asks for it, by default an hour on -
+    // past its grace window.
+    public ConsistencyPageRequest Audit(TimeSpan? later = null) =>
+      new(
+        Refresh.Services.GetRequiredService<ICurrentCompany>().Id!.Value,
+        Time.GetUtcNow().UtcDateTime + (later ?? TimeSpan.FromHours(1)),
+        null,
+        10,
+        TimeSpan.FromMinutes(30)
+      );
+
     public FuelIssueRecords Records =>
       new(
         Db,
@@ -411,12 +639,13 @@ public sealed class FuelIssueSenderTests
       bool fill = false,
       double gallons = 0,
       string text = "fuel at LOVES",
-      string state = FuelIssueChannelStates.Ready
+      string state = FuelIssueChannelStates.Ready,
+      Guid? station = null
     )
     {
       var stop = new FuelPlanStop
       {
-        StationId = new Guid("11111111-1111-1111-1111-111111111111"),
+        StationId = station ?? Station,
         DispatchId = Dispatch,
         BeforeStopId = Before,
         FillToTarget = fill,
@@ -491,6 +720,47 @@ public sealed class FuelIssueSenderTests
       );
     }
 
+    // The same send from another request's own context, while this
+    // fixture's context holds an attempt in flight.
+    public async Task<FuelIssueSender.Outcome> SendFromAnotherRequestAsync(
+      FuelIssueSendRequest request,
+      FuelIssuePreviews.Current current
+    )
+    {
+      await using var scope = Refresh.NewScope();
+      var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+      var company = Refresh.Services.GetRequiredService<ICurrentCompany>();
+      return await new FuelIssueSender(
+        new DriverTextDelivery(
+          db,
+          Transport,
+          company,
+          Time,
+          new EarlyDeliveryStatuses(
+            db,
+            new DeliveryStatusLocks(db),
+            company,
+            Time
+          ),
+          Hold,
+          NullLogger<DriverTextDelivery>.Instance
+        ),
+        new FuelIssueRecords(
+          db,
+          Refresh.Services.GetRequiredService<PlanningSummaryCache>(),
+          company,
+          Options.Create(new FuelIssueOptions()),
+          Time,
+          new PlanningPublicationScope(db)
+        )
+      ).SendAsync(
+        request,
+        _ => Task.FromResult<FuelIssuePreviews.Current?>(current),
+        "dispatcher",
+        default
+      );
+    }
+
     // Messaging's delivery, which the fuel sender asks to send.
     public DriverTextDelivery Delivery =>
       new(
@@ -498,6 +768,13 @@ public sealed class FuelIssueSenderTests
         Transport,
         Refresh.Services.GetRequiredService<ICurrentCompany>(),
         Time,
+        new EarlyDeliveryStatuses(
+          Db,
+          new DeliveryStatusLocks(Db),
+          Refresh.Services.GetRequiredService<ICurrentCompany>(),
+          Time
+        ),
+        Hold,
         NullLogger<DriverTextDelivery>.Instance
       );
 

@@ -56,7 +56,8 @@ public class DispatchTests
       reads,
       memory,
       preparation,
-      new TestCompany()
+      new TestCompany(),
+      new DispatchReadTicketStore(db)
     );
     await handler.Handle(new(), default);
     var stop = await db.DispatchStops.SingleAsync();

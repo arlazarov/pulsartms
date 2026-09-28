@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Routing.Services.Deadheads;
 using Application.Features.Routing.Services.FuelPlanning;
 using Domain.Models.Routing;
@@ -29,6 +30,7 @@ public sealed class FuelSavedInputsShareTests
     {
       Assert.Equal(Check, await t.ApplyAsync());
       Assert.Equal(0, await t.ApplyAsync());
+      Assert.Equal(1, t.LastRecords);
       Assert.Equal(0, await t.ApplyAsync(supplied: false));
     }
     var outside = await t.ApplyAsync();
@@ -263,6 +265,11 @@ public sealed class FuelSavedInputsShareTests
     public Guid Truck => Fixture.State.Plan!.TruckId;
     public RoutePlanningState Last { get; private set; } = null!;
 
+    // The hand-over records read of the last projection. It is fresh on
+    // every projection, shared or not (audit D6), and not part of the
+    // check these tests count.
+    public int LastRecords { get; private set; }
+
     public static async Task<Test> CreateAsync()
     {
       var probe = new QueryColumnProbe();
@@ -315,8 +322,12 @@ public sealed class FuelSavedInputsShareTests
         supplied ? Itinerary : null
       );
       Last = state;
-      return probe.Statements.Count;
+      LastRecords = probe.Statements.Count(Records);
+      return probe.Statements.Count(sql => !Records(sql));
     }
+
+    private static bool Records(string sql) =>
+      sql.Contains("\"FuelVisitSends\"");
 
     public async Task<int> CountAsync(Func<Task> call)
     {
@@ -333,7 +344,7 @@ public sealed class FuelSavedInputsShareTests
       new(
         Services.Roads,
         Services.DeadheadHistory,
-        new ExecutionReadScope(Fixture.Db),
+        new ExecutionReadScope(Fixture.Db, new StageTimings()),
         Services.Reads
       );
 

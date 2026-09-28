@@ -364,23 +364,208 @@ characters appears in any committed JSON file in the 650 commits.
 Migrations that drop or rewrite data in `Up` are listed in the evidence
 run; `RebuildExecutionStorage` refuses to run on populated tables.
 
+## Coverage closure (September 27, afternoon)
+
+Root asked for the inventory to be closed before more fixes: per-endpoint
+role and tenant scope, migration recovery, financial and idempotency
+owners, state and import recovery, shared reads, and test content. Four
+more read-only code reviews did this (no build, no database, no
+network). Their full reports, with the per-endpoint table of all 171
+endpoints, are pinned in the main checkout's
+`artifacts/managed/diagnostic-XrL576`. Findings below say **verified**
+when this audit re-read the lines itself, **reported** otherwise.
+One production read, read-only: `DriverMessages` has 0 rows and
+`FuelVisitSends` 0, so WhatsApp fuel hand-over has never been used and
+F16/F17 have no existing invalid rows.
+
+Inventory, as counted by the reviews:
+
+- **Endpoints:** 171 in 28 controllers (79 GET, 63 POST, 25 PUT,
+  3 DELETE, 1 PATCH) and 4 minimal-API mappings. 45 Admin-only; 79 under
+  the Dispatch policy; 41 any signed-in user; 6 anonymous (sign-in,
+  refresh, two WhatsApp webhook verbs, Gmail push, Drive callback).
+  Every tenant table is filtered by `CompanyId` through the global filter
+  (`AppDbContext.Companies.cs:51-106`); the shared tables are listed in
+  `SharedTables.cs:18-56`. No endpoint found reading another carrier's
+  rows; the exceptions are yes/no probes (F27).
+- **Migrations:** 73; 18 change or drop data, 55 are additive. Every
+  NOT NULL column added to a populated table has a default; no step runs
+  outside a transaction.
+- **Money:** every figure has a server owner; the Client formats values
+  only, except the two derivations in F27.
+- **External sends and inputs:** 16 paths. Conversation and broadcast
+  sends are fenced and leased with a reaper; inbound WhatsApp is
+  deduplicated by a unique provider id; TomTom calls are reserved in the
+  database before they are made.
+- **Stateful workflows:** 16; caches: 6 owners plus the shared
+  `IMemoryCache`. Auditor rules: 10 in code; the operating guide lists 9.
+- **Tests:** Server 2,348 facts in 443 files, Client 806, JavaScript
+  641. Category traits are enforced; 42 PostgreSQL tests skip with a
+  named reason when no fixture is present.
+
+### F16 — P1 (latent): a stuck fuel hand-over blocks that truck's plans
+
+Verified. A WhatsApp fuel hand-over is committed as `Sending` before the
+provider call (`DriverTextDelivery.cs:127-134`). Nothing moves a
+`DriverMessage` out of `Sending` after a crash: the reaper and the
+auditor rule read `ConversationMessages` only
+(`OutboundMessageOperation.cs:109-117`, `OutboundOverdueRule.cs:35-45`).
+`FuelIssueRecords.RequireUnchangedAsync` refuses every fuel publication
+for the truck while such a row exists (`FuelIssueRecords.cs:48-60`), so
+background refreshes fail for ever and dispatchers see "a fuel stop was
+handed to the driver during the calculation". A send-again adds a new
+attempt and leaves the old row. No test covers publication after it.
+
+### F17 — P1 (latent): an accepted hand-over can go unrecorded
+
+Verified. The hand-over (`FuelVisitSend`) is recorded only after the
+provider accepted and the attempt was committed
+(`FuelIssueSender.cs:98-106`). If recording fails or the process stops
+in between, a retry of the same content returns `AlreadyTaken`
+(`DriverTextDelivery.cs:107-108`), which falls to `default: return
+Outcome.Done` (`FuelIssueSender.cs:142-143`) and records nothing. Fuel
+planning can then drop a stop the driver already holds.
+
+### F18 — P2: the Dispatch policy restricts nothing
+
+Verified. Any active user without exactly one Admin claim resolves to
+Dispatch (`UserRoleService.cs:101-102`) and the policy admits Admin or
+Dispatch (`DispatchAuthorization.cs:21`). So 120 endpoints, 65 of them
+state-changing, are open to every signed-in user: WhatsApp broadcasts
+and sends, a driver's messaging number, expenses, IFTA movements,
+broker records, truck route profiles. This corrects the F8 proposal:
+putting the syncs under the Dispatch policy would change nothing. Whether
+a limited role is wanted is an owner decision.
+
+### F19 — P2: one carrier's Admin writes data every carrier reads
+
+Reported, entry points re-read. The fuel-discount import creates and
+overwrites the shared `FuelStations` from one carrier's mail
+(`FuelController.cs:50-52`, `FuelStationSync.cs:115-147`); the IFTA
+sync rewrites the shared rates (`IftaTaxRateSync.cs:19-36`, public
+data, lower risk). Gmail push is fixed to AMF
+(`GmailPushValidator.cs:11`, verified), so a second carrier's mailbox
+cannot be served. Blocks selling the product, not today's operation.
+
+### F20 — P2: one bad email stops the fuel import; old mail is lost
+
+Reported. An empty or unreadable attachment throws for the whole run
+(`ImportFuelDiscounts.cs:44-50`, `BvdFuelParser.cs:37-47`); the message
+is never marked, so every push and recovery fails on it again. The
+mailbox query is `newer_than:2d` (`GmailAttachmentService.cs:25-27`), so
+an outage over two days loses messages with no quarantine.
+
+### F21 — P2: a load import can put back older data
+
+Reported. The dispatch gate is per process (`ProcessGates.cs:3-6`); the
+leased loop, a manual sync on another instance and the history-import
+tool can run together. The provider is read before the transaction
+(`SyncDispatche.cs:86-87` vs `:128-132`) and the source carries no
+version, so a slower pass can restore an older price, status or miles.
+Not reproduced.
+
+### F22 — P2: load cost totals are summed over a truncated list
+
+Verified. `GetLoadCosts.cs:47-64` takes 201 rows, drops the last, then
+totals what is left; `truncated` is set but the totals are wrong for a
+load with more than 200 cost rows. No such load checked in production.
+
+### F23 — P2: three durable queues retry for ever without escalation
+
+Reported. `SourceRoadRequests`, `PlanningRefreshRequests` and
+`ExecutionPlanningChanges` have no attempt cap (`SourceRoadStore.cs:164`,
+`PlanningRefreshStore.cs:89`, `ExecutionPlanningStore.cs:31`);
+`SourceRoadRequests` has no auditor rule at all. This is the mechanism
+behind F1; D1 records the reason, a cap and a rule remain.
+
+### F24 — P2: schema compatibility is procedure only
+
+Reported, startup path re-read. Nothing at runtime refuses an old binary
+on a newer schema; `deploy-server.sh` migrates while the old revision
+still serves. The company adoption pass is skipped when
+`Database:ApplyMigrations` is false, and its first run is not guarded,
+so a failing adoption stops every start (`DatabaseInitializer.cs:22-28`).
+The 17 migrations after `RecordRouteMovement` drop messaging and file
+data in `Down` with no guard, and `IntroduceCompanies` `Down` would merge
+carriers; today only the throwing `Down` of
+`IsolateCarrierIntegrationCredentials` stops a rollback reaching it.
+
+### F25 — P2: fuel-plan cost formulas have five copies
+
+Reported. Per-stop economic cost and future-fuel cost are computed in
+`FuelOptimizer.cs:84-125`, `FuelOptimizer.States.cs:79-82`,
+`FuelManualReplay.cs:183-267`, `FuelPlanProjection.Project.cs:270-285`
+and `FuelPriceMateriality.cs:44-61`, and the copies already differ
+(guards, which costs are repriced, access minutes). All on the server,
+but against the one-owner rule.
+
+### F26 — P2: the shared memory cache has no bound
+
+Reported. The host `IMemoryCache` has no `SizeLimit`
+(`Application/DependencyInjection.cs:82`) and sits outside the 80 MiB
+`CacheBudgets`; stop geocodes stay 12 hours, unbounded in count. The
+planning-summary `Committed` notice is per process, so another instance
+corrects only on its next signature change or 30-second pass.
+
+### F27 — P3: smaller items
+
+Reported unless marked: IFTA rates keyed without currency
+(`IftaTaxRateConfiguration.cs:19-26`, not checked against the source
+file); a delivery status that arrives before the provider id is saved is
+dropped (`ReceiveDriverMessages.cs:157-202`); a second Total RPM formula
+(`DeadheadService.cs:341-345`) and stored savings that the read ignores
+(`FuelDiscountSync.cs:49`); the litres-per-gallon constant four times,
+one in the Client (`stationQuantity.ts:24`); the Client derives
+yesterday's price (`stationPriceComparison.ts:74-78`); fuel-stop price
+dates use the offset's local day, not the Toronto business day
+(`FuelPriceCalendar.cs:53-55`); stop geocoding has no durable dedup
+(`GoogleAddressGeocoder.cs:17-127`); the deadhead publication re-check
+compares a copy with itself (`DeadheadService.Ensure.cs:146`); process
+diagnostics and readiness are shown to any carrier's Admin; the
+credential store and Identity answer yes/no about another carrier's
+WhatsApp number and e-mail (`IntegrationCredentialStore.cs:169-195`,
+`IdentityService.cs:22-28`); `EtaForecastStore.cs:221,246` upserts
+without a company predicate; caches keyed without company (EtaMemory,
+route display, Samsara HOS, latent); the auditor guide lists 9 of 10
+rules and `storage.file-on-disconnected-storage` is tested only under
+PostgreSQL; no expired-lease reclaim test for the planning-refresh and
+road stores, none for odometer capture; about nine tests assert only
+that some error exists; `CheckpointLeaseStore` mixes the system clock
+with the injected one (`:77,99`); `migrate.sh` applies each migration as
+soon as it is added.
+
+Checked and sound, as reported: sign-in and refresh take the company
+from the database, never the request; the WhatsApp, Gmail and Drive
+anonymous paths authenticate as described in F15; conversation sends,
+broadcasts, inbound messages, expenses and TomTom calls are idempotent
+under retry; every tenant read goes through the global filter.
+
 ## Proposed order, for root
 
-First batch after the frontend publication, each small and separately
-tested:
+Bounded; each item small, separately reviewed and tested, published
+only through the gate.
 
-1. F2 roster through ReadCache (design D2); a count test over idle
-   passes.
-2. F1 (a) record the road-request failure reason (design D1); then (b)
-   on evidence, and (c) only with an owner policy.
-3. F8 Dispatch policy and cooldown on the manual syncs.
-4. F3 cleanup (design D3): remove the dead read path and key the gate
-   per company.
+1. **D2** roster through ReadCache — implemented locally (`07631585`),
+   waiting for review.
+2. **F16 + F17** fuel hand-over recovery (design D6): a reaper that
+   turns a `DriverMessage` past its lease into `Uncertain`, publication
+   that stops counting such a row, `AlreadyTaken` recorded from the found
+   attempt, an auditor rule, and regressions for crash-after-accept and
+   crash-before-accept. No existing rows to repair.
+3. **D1** road requests say why they wait, plus an attempt cap and an
+   auditor rule for `SourceRoadRequests` (F23).
+4. **F22** cost totals computed in the query, not over the page.
+5. **F20** fuel import: one message's failure is recorded and skipped;
+   the window follows the last imported message, not two days.
+6. **F8/F18** manual syncs Admin-only now; a limited role waits for the
+   owner.
+7. **D3** dead HOS read path.
 
-Then: F14 limits that do not depend on addresses (design D5); F13 key
-custody (design D4, owner decision); F4 page identity; F7 per-load
-identity; F5 shared work read in steps; F6 cadences; F9 auditor rules;
-the P3 items.
+Owner decisions before code: F18 role model, D4 key custody (F13), D5
+proxy chain (F14), F19 shared stations for more than one carrier.
+Designs needed before code: F21 source versions, F24 schema guard,
+F25 one fuel-cost owner, F26 cache bound (a `SizeLimit` makes every
+entry declare a size). Then F4-F7, F9 and the P3 items.
 
 ## Implementation designs (not implemented)
 
@@ -476,36 +661,1267 @@ one account is capped; refresh of user A does not consume B's budget.
 
 ## Coverage matrix
 
-Each area: what was inventoried; what this audit verified itself; what
-remains.
+Each area: what was inventoried and verified; what is left open.
 
-- **API endpoints and auth:** 28 controllers, 171 endpoints; verified
-  the sync endpoints, the sign-in limiter and the fallback policy;
-  remains a per-endpoint role review.
-- **Background work:** 17 hosted services; verified the roster reads,
-  road preparation and the summary worker; remains liveness for the
-  operations without a heartbeat.
-- **Shared reads and caches:** 9 caches; verified the F4, F5 and F7
-  paths and the planning-inputs entry; remains per-statement counts.
-- **Client requests:** per-screen rates; verified the map and board
-  planning cadences; remains payload sizes.
-- **Consistency auditor:** 10 rules; verified the register against the
-  workflows; remains the cost of each rule's SQL.
-- **Providers:** 6; verified exception texts, the Samsara HOS path and
-  ingress; remains API key restrictions.
-- **Authentication:** login, refresh, logout; verified the key ring and
-  the limiter; remains proof of the proxy chain.
-- **Schema and migrations:** 73; verified the adoption loop; remains the
-  bodies of rollback paths.
-- **Tests and gates:** categories and probes; verified the PostgreSQL
-  skip behaviour; remains a review of test content.
-- **Live data:** table scans and loads 1341 and 1355, read-only; remains
+- **API endpoints and auth:** all 171 endpoints tabulated with policy and
+  tenant scope (evidence run); F18, F19, F27. The table is now executable
+  (below). Open: proof of the proxy chain (D5).
+- **Background work:** 17 hosted services and 16 stateful workflows with
+  their recovery; F16, F23. Open: liveness of operations without a
+  heartbeat.
+- **Shared reads and caches:** 6 owners and the shared cache, keys,
+  bounds and invalidation; F2, F4, F5, F7, F26. Open: per-statement
+  counts.
+- **Money and idempotency:** every figure's owner and 16 external paths;
+  F17, F20, F21, F22, F25. Open: IFTA source shape, arrival offsets.
+- **Client requests:** per-screen rates. Open: payload sizes.
+- **Consistency auditor:** 10 rules against the workflows; F9, F16, F23.
+  Open: the cost of each rule's SQL.
+- **Providers:** 6; exception texts, HOS, ingress. Open: Google key
+  restrictions.
+- **Authentication:** login, refresh, logout, key ring, limiter. Open:
+  proxy chain, key custody.
+- **Schema and migrations:** 73, with the 18 non-additive ones' Down and
+  rerun behaviour; F24. Open: none beyond F24's design.
+- **Tests and gates:** content reviewed for asserts, categories,
+  PostgreSQL skips and missing regressions; F27. Open: a PostgreSQL
+  fixture for the 42 skipped tests.
+- **Live data:** scans, loads 1341 and 1355, hand-over rows. Open:
   per-statement counts.
+
+## Follow-up (September 27, evening)
+
+Focused checks only; nothing released from this branch.
+
+- **Endpoint rules are executable.** `EndpointAuthorizationTests` reads
+  every controller action's effective rule from its attributes -
+  anonymous, named policies (all must pass), or any signed-in user - and
+  compares it with `Server.Tests/Architecture/EndpointAuthorization.txt`
+  (171 lines); a new or changed endpoint fails until its line is written.
+  A second test pins the six anonymous endpoints (sign-in, refresh, the
+  Gmail push, the storage callback, the two WhatsApp webhook verbs). The
+  counts match the review once `70eb2e98` (F8 proposal: the two manual
+  syncs Admin-only) is counted: Dispatch 79, Admin 46, Admin and
+  Dispatch together 1 (mileage policy), signed-in 39, anonymous 6. The
+  four minimal-API mappings in `Program.cs` are not controllers and are
+  not in the table.
+- **Tenant filters are checked in the built model.** Classification
+  (`CompanyOwnershipTests`) did not prove the filter: it is applied in one
+  loop and a later `HasQueryFilter` on the same table would replace it.
+  `EveryCarriersTableIsFilteredByTheServingCarrier` walks each carrier
+  table's filter expression for `CompanyId == ServingCompany`.
+- **F22 on PostgreSQL.** The totals past the page are summed in the
+  database; `LoadCostsPostgresTests` runs that read on the isolated
+  fixture (150 USD toll and 60 CAD fuel shares, written as rows in one
+  save; through the command the same test took 12 minutes).
+- **PostgreSQL skips.** The recorded fixture now runs the PostgreSQL
+  tests (the release gate of `0e6add5d` on another branch skipped none);
+  the "42 skipped tests" gap stands only where no fixture is recorded.
+- **D1 and D2 evidence** still needs this branch released: D1 is done
+  when a wait reason is logged for loads 1341 and 1355, D2 when the
+  roster read rate is measured after release.
+
+Mutations, each killed (diagnostic-WMUKSO in this worktree): a
+controller's policy dropped, an endpoint made anonymous, the tenant
+filter without its company comparison, F22 totalling the page alone on
+PostgreSQL. Checks: `bash test.sh costs database` with Architecture:
+Server 287, Client, JavaScript passed (diagnostic-OYe2Di); a first run
+failed on the new worktree's missing Client packages and is marked.
+
+## Follow-up (September 27, night)
+
+- **Tenant scope in handlers.** Every raw SQL and IgnoreQueryFilters use
+  in Application and Infrastructure (15 files) is listed with its reason
+  (`TenantFilterBypassTests`). One was not safe: `SavedRoutePlanReader`
+  read `DispatchRoutePlans` by id in raw SQL without the company, so
+  another carrier's plans would be returned for their ids; both queries
+  now name the serving carrier (`9b369651`, tested on SQLite and
+  PostgreSQL). The forecast upsert's conflict update did not check the
+  existing row's carrier either; fixed on `claude/current-work-design`
+  (`cc6e53d8`), where that code lives now.
+- **Messenger driver work, cold 17 statements.** Measured again
+  (`DriverWorkCostTests`): 5 of the handler's own (actor, the driver's
+  trucks, the board rows), 12 of the planning capture. Three statements
+  repeat word for word - the truck row, the native-work check and the
+  load legs. They are not merged: the planning capture is a shared,
+  cached and coherent snapshot read in its own transaction, and the
+  board rows decide which loads Messenger lists; reading one from the
+  other would break the snapshot's coherence or change the list. Warm,
+  only the handler's 5 remain. Kept as justified repetition, no change.
+- **D6, F16 and F17.** No reaper was needed: Messaging already reads an
+  attempt left sending past its two-minute timeout as uncertain.
+  - F16: `FuelIssueRecords.RequireUnchangedAsync` refused a truck's fuel
+    publications while any attempt was sending, for ever after a stopped
+    process. It now refuses only while the attempt may still be in
+    flight, by Messaging's own rule.
+  - F17: a send of a message the provider already took returned
+    `AlreadyTaken` and recorded nothing, so a hand-over accepted before
+    a stop stayed unrecorded. Delivery now returns the taken attempt and
+    the sender records the hand-over from it, once, without a second
+    message.
+  - Auditor: `routing.fuel-handover-uncertain` (review: the last attempt
+    has no answer) and `routing.fuel-handover-unrecorded` (violation: an
+    accepted hand-over with no record for the truck since it was sent).
+  - Regressions start from the stopped states (sending left behind; an
+    acceptance whose record is gone) and are red on the old code
+    (diagnostic-A3DBEV/red.log). No existing rows: WhatsApp hand-over
+    has never been used (0 driver messages, 0 visit sends).
+  - Root's review of `7db23d82`: the timeout does not prove the provider
+    stopped. With the call held past two minutes and a plan published
+    meanwhile, a late acceptance recorded the hand-over after the plan
+    that dropped the stop, and that plan's withdrawn list could not know
+    it: the driver's stop was lost from view (red on `7db23d82`,
+    diagnostic-Q7uMxs). `FuelIssueRecords.ApplyAsync` now shows as
+    withdrawn a hand-over from an older plan recorded after the viewed
+    plan was calculated, for a stop still ahead, that the plan no longer
+    has - from the query it already made. A plan that kept the stop shows
+    it sent and refuses to send it again; a plain press while the call is
+    held is uncertain and sends nothing; the original request found taken
+    sends nothing. `AlreadyTaken` is recorded only if the taken attempt
+    is the same truck, root leg, assignment and visit set (the key does
+    not name the plan's calculation). Limits: an explicit "send again"
+    after the uncertain warning is a dispatcher's decision and can send a
+    second message if the first was only slow; clocks are assumed shared
+    (one instance).
+  - Root's review of `292d31aa`: that test published nothing while the
+    call was held. `AnAcceptanceHeldOverAPublicationLosesNoStopAndSendsOnce`
+    (Routing) now holds a real sender at the provider, lets the attempt
+    age past the timeout, and saves the fuel plan through the real owner
+    (`FuelPlanningService.EditAsync`) meanwhile - keeping stop A, or
+    choosing C - which commits without knowing A went. After the release:
+    the prepared summary is no longer current; the plan read through
+    `PlanningReadService` shows A sent, or A withdrawn; a plain press
+    during and after sends nothing; the provider got one message. Red on
+    the `7db23d82` sources (A not withdrawn) and with either the late rule
+    or the record's summary notice removed (diagnostic-lLNmFz); green
+    diagnostic-bJ0Vun. `PlanningTestServices` now shares one summary
+    cache between publication and records, as production does.
+  - Cost, found when the released 0e6add5d was merged in and its stage
+    4e count tests ran (diagnostic-iGURcZ): the late rule reads the
+    hand-over records for a plan without fuel stops too, which read
+    nothing before - one statement per projection of such a plan, four
+    per truck per planning refresh (summary, display copy, refresh,
+    fleet loop). The saved-inputs check is unchanged and still once per
+    operation; the tests now count the records read separately
+    (diagnostic-HLCV0v). Alternative for Root: move the rule to the
+    write - the late record, which already holds the truck's publication
+    lock, amends the current saved plan's withdrawn list - so reads cost
+    nothing more; it changes the mechanism reviewed here.
+
+- **F23, road requests.** Re-read: retries are already bounded - the
+  claim skips waiting rows, and a failure backs off to at most one
+  attempt an hour per load - so no work starves; what was missing is
+  escalation. A cap would turn endless retries into a silent stop, so
+  none was added. `routing.source-road-overdue` (violation, warning)
+  reports a request still unfinished 30 minutes after its last demand,
+  through `ISourceRoadStore.OverdueAsync`, for the serving carrier only
+  (`SourceRoadDemandRule`; tests in `SourceRoadStoreTests`, SQL
+  translation in `ConsistencyAuditSqlTests`; diagnostic-3vA9vy, and
+  mutations of the carrier, grace, unfinished and cursor conditions all
+  fail it, diagnostic-ppPtcs). PostgreSQL behavior not run. The other
+  two queues already had rules.
+- **Production, read only, 20:45 UTC:** 30 of 168 road requests are
+  unfinished, 24 of them past the grace window, and every one is for a
+  completed load (execution leg completed, both stops unverified, no
+  recorded mileage); one has 50 attempts, eight have 8. The rule would
+  report 24 today. Nothing is logged: a wait is silent until D1 is
+  released, so which step stops them is not known. Hypothesis, not
+  checked: address verification skips completed legs, so their stops
+  stay unverified and the base road step fails on them, or reaches a
+  provider, on every attempt.
+
+- **F20, fuel import.** Verified by reading: a parse error in one
+  attachment threw from the provider for the whole run, and an empty one
+  threw in the handler; every later push failed on the same message, and
+  newer prices waited until it left the `newer_than:2d` window, which
+  also lost any message older than two days after an outage. Now the
+  provider marks an attachment it cannot read (`Unreadable`), the
+  handler skips only that message and imports the rest, and the skip is
+  logged once per process (`FuelImportSkips`, 256 message ids). The
+  message is not marked imported. The mailbox is read `after:` two days
+  before the last import, at most 30 days back. Limits, explicit: an
+  outage longer than 30 days still loses the older messages; a skipped
+  message is retried, and a corrected parser imports it, only while it
+  stays in the window - about two days once later messages import -
+  after which nothing retries it and one warning per process is its
+  only trace (stored skips are the open gap below). Red on the old
+  handler (diagnostic-td0Jkw); green diagnostic-YWTwxK; mutations of the
+  once-only report, the 30-day limit, the window, the provider's catch
+  and the query all fail (diagnostic-BBaWUC). Production, read only: 25
+  imports since September 18, none on the 19th; no loss seen. No schema
+  change: this branch does not contain the released migration 74, and a
+  second migration here would have to be ordered at integration.
+
+- **Messaging 503s after the 0e6add5d release.** Twelve 503s on
+  `GET /api/messaging/changes` (20:35, 20:49, 20:52 UTC), none logged in
+  the three days before. Attribution, proven from the code path and the
+  request log (diagnostic-FG2rAH, no IPs or ids): every refused request
+  named no mailbox, so each was an open; the waiting bound is checked only
+  for a known mailbox and the process bound needs 512 mailboxes, so every
+  refusal was the account's share (4). At 20:35:10 four waits with a
+  mailbox were in flight from one user agent. Consistent with the log,
+  not proven: every one of the 198 waits lasted 20.0 s, none ended early,
+  across 13 new mailboxes in 20 minutes - a browser that stops listening
+  does not end its request on the server, so each new leader leaves the
+  old mailbox held for up to one wait. The 503s come in pairs 0.12 s
+  apart and the Client does not retry: an intermediary retrying a 503
+  once is the likely reading, unconfirmed. Changes: a refusal now logs
+  which bound refused with the counts, never the account
+  (`MessagingMailboxes`); a tab that leaves the messaging views and comes
+  back asks with its own mailbox under the same account and sign-in
+  (`MessagingSignals`, red diagnostic-kgopft, green diagnostic-hPOhI1).
+  Tests pin the lifecycle: four leaders restarted within one wait refuse
+  the fifth open, which is admitted once the waits end
+  (diagnostic-jToIxx); mutations of the scope check and the bound name
+  fail (diagnostic-9RkEfZ). Limits: leadership moving to another tab,
+  and each separate sign-in of one account, still opens its own
+  mailbox; a refusal lasts at most one wait, while the Client backs off
+  and polls. Not released.
+
+- **D3, the dead HOS read path.** `SamsaraDriverHosProvider` kept a
+  read that no production caller reaches (the board, ETA, fuel and fleet
+  read `DriverHosSnapshot`) but that cached every carrier's clocks under
+  one key without a company, written by every refresh; and a static gate
+  made carriers' refreshes wait for each other. This was a dead path, not
+  a production tenant leak: nothing in production read that cache, and
+  no carrier was ever served another's clocks. Red on the old provider,
+  calling the dead read directly (diagnostic-u0Fqww: carrier B's read
+  returned carrier A's clocks without asking B's account; two carriers
+  never refreshed at once). The provider
+  now only refreshes the serving carrier and keeps nothing; the snapshot
+  already keeps clocks per carrier and one refresh per carrier at a time
+  (`CompanySnapshotTests`). A missing permission still leaves the board
+  open, now through the refresh operation. Green diagnostic-Pc2lPC;
+  restoring the static gate fails (diagnostic-OftlPq; an earlier run with
+  a weak concurrency test let it survive, diagnostic-vnCrB8, and one did
+  not compile, diagnostic-kYNM3X); group fleet exit 0, Server 609,
+  Client 321 (diagnostic-f6E4NN, before the one-line test fix). One
+  shared-cache entry fewer for F26.
+
+- **F21, an import restoring older data.** Verified: the provider is
+  read before the pass's serializable transaction and the source has no
+  version, so a pass whose reading is older can begin its transaction
+  after a newer pass committed and write the older reading back without
+  a conflict. Within one process the dispatch gate orders passes; across
+  processes (the leased loop, a manual sync on another instance or
+  during a revision change, the history tool) nothing did. Red on the
+  old handler (diagnostic-qM6cbz, with a clock-based first draft that
+  Root rejected: it assumed clock order). Now the database orders
+  readings: each pass takes a read ticket (`DispatchImportReads`, an
+  upsert committed before the provider is read, per carrier and
+  provider); a load keeps the ticket of the pass that last wrote it
+  (`DispatchSourceLink.ReadTicket`, migration 75
+  `RecordDispatchReadTickets`), and a pass writes, inside its
+  serializable transaction, only loads whose ticket is smaller than its
+  own - a concurrent commit is a serialization conflict and a retry. A
+  deferred load is neither written nor marked reconciled; the next pass
+  reads it again. Every load a pass applies takes its ticket, changed
+  or not. No clock is compared, and no two passes share a ticket.
+  Tests (`DispatchSyncOrderingTests`): a reading begun later and
+  committed during this one defers it, also in a process that never saw
+  the load; a reading begun earlier is replaced, whatever time it
+  stamped (a clock an hour ahead too); a pass that changes nothing
+  stamps its ticket; tickets grow and are never shared - on PostgreSQL
+  too, eight taken at once (diagnostic-LOb3Jj). Green diagnostic-8rxi3H;
+  mutations of the deferral, the stamp and the reconciliation all fail
+  (diagnostic-ojteeE; an earlier run let the last survive until a
+  fresh-process case was added, diagnostic-EPWsQT). Costs: one ticket
+  statement per pass, including a poll that finds nothing new (once a
+  minute per carrier; the identical-replay test now pins exactly that
+  statement), and one update per pass that applies loads. Limits: a
+  load this process skips as unchanged since its own last pass is not
+  stamped (the half-hourly repair pass stamps it); during a revision
+  change a previous binary writes without tickets; the history tool's
+  reading counts as current, by design. Migration additive (a column
+  with default 0 and a table), applied before the API that writes them;
+  the reset inventory names the table and schema 75. Runtime detection:
+  the `deferred-loads` stage count; the defect leaves no row to audit.
+- **F21, Root's review of the tickets: a write behind a warm skip.** Two
+  warm processes: B wrote V2 and skips it since as unchanged; A, holding
+  the older V1, took its ticket after B's last write. While A reads, B
+  polls, finds V2 unchanged and returns without writing - a skipped load
+  takes no ticket - and A commits V1. Reproduced
+  (`AWriteBehindAWarmSkipIsRepairedByTheNextPoll`, diagnostic-Q12eoH):
+  with the cache relay, A's commit invalidates the dispatch group, B
+  learns it on its relay round and its next poll reconciles every load
+  and puts V2 back; without it - the history tool runs no relay, and a
+  round can fail - V1 stayed until the half-hourly repair. Now the ticket
+  row also counts the passes that changed loads (`LastWrite`, migration
+  77 `CountDispatchImportWrites`, counted inside the pass's transaction);
+  the ticket upsert returns the count in the same statement, and a
+  process whose count moved since its own last pass reconciles every
+  load instead of skipping. Both variants green (diagnostic-e7IkMs);
+  ignoring the count or not counting the write fails the variant without
+  the relay (diagnostic-kntNFq). Bound: an older reading can be shown
+  from its commit until the next poll of a process holding the newer
+  one - one poll interval (60 s) - independent of the relay. Cost: one
+  statement more per pass that changes loads; a poll that finds nothing
+  new stays one statement. A pass that reconciles everything after
+  another process's write costs what a relay invalidation already cost.
+- **F21 cutover: ticketless writes of the previous binary.** Migrations
+  75-77 are additive or rebuild keys over one carrier's rows, and the
+  previous binary does not read the new column or tables, so they are
+  applied before the new API, as for 74. During the revision change the
+  previous binary can still write: its loop only while it holds the
+  synchronization lease (the new one's loop waits for it), and a manual
+  sync while it serves requests. Such a write takes no ticket and counts
+  no write; it does invalidate its caches and relays that, so the new
+  binary reconciles on its next poll after the relay round, and a new
+  process starts with no snapshot and reconciles everything on its first
+  pass. Safe cutover: apply the migrations; move traffic; wait for the
+  previous revision's drain (its "Shutting down user disabled instance"
+  line, `TrafficShutDown` true), since only then can it write no more;
+  a ticketless write before that is corrected within one relay round and
+  one poll, or by the half-hourly repair if the relay failed. No manual
+  sync or history-tool run during the change.
+- **F28 - P2: carrier rows keyed without the carrier.** Reproduced
+  (diagnostic-7Coojh, -OH6eyE): `DispatchNumberCounters` was keyed by
+  `Id` alone, so a second carrier's first load could not be numbered
+  (`UNIQUE constraint failed: DispatchNumberCounters.Id`); a new model
+  rule over every carrier table found one more, `DriverHosReadings`
+  keyed by the provider's driver id, so a second carrier whose provider
+  reports an id the first's already did would store none of its hours.
+  No data crossed carriers - the filters held - but the second carrier's
+  writes failed. Fixed in migration 76 `ScopeCarrierNaturalKeys`: both
+  keys now start with `CompanyId` (existing rows are all one carrier's;
+  its `Down` fails rather than merge if two carriers repeat a key).
+  `CompanyOwnershipTests.EveryCarriersNaturalKeyNamesTheCarrier`: a
+  carrier table's key or unique index must name the carrier, be scoped
+  by a Guid, or be generated by the database; `User (IdentityUserId)` is
+  unique across carriers by design (one sign-in, one carrier), listed
+  with that reason - an open product question for a carrier's staff who
+  work for two. Green diagnostic-YjnWHK; every migration applies to an
+  empty PostgreSQL schema (diagnostic-F41Wt2); the reset inventory names
+  schema 76.
+- **Migrations 75-77 against the previous binary (Root's review).** The
+  released binary `0e6add5d` was run, unchanged, against a PostgreSQL
+  schema migrated to 77 by this branch (diagnostic-nCoRvK made the
+  schema; diagnostic-vdc2U5 ran the binary's own code from a worktree of
+  that commit; the first attempt, diagnostic-5LJXG0, reached the shared
+  schema through an ignored search path and wrote nothing - invalid):
+  the import numbered a new load and updated the counter, inserted and
+  changed source links (their `ReadTicket` stays 0), hours readings were
+  inserted, updated and removed, and the road queue's raw upsert,
+  claim and completion worked. It touches the two re-keyed tables only
+  through EF; its raw `ON CONFLICT` statements name other tables. With
+  one carrier it serves this schema. Its model still keys those tables
+  by `Id` and by the driver id alone, so once a second carrier exists
+  its updates and deletes by that key would reach the other carrier's
+  rows: the boundary is no second carrier while any binary older than
+  76 can run - not as traffic, not as a rollback target. The probe
+  schema was dropped after the run.
+
+- **D6 read cost: options, investigated, nothing changed.** The
+  late-withdrawn rule stays read-time, as accepted. Facts (production,
+  read only): no hand-over has ever been recorded (0 visit sends, 0
+  driver messages), so no existing row constrains a change; about one
+  of the four saved plans has no fuel stop (a text match over the saved
+  JSON, approximate) - the case that pays the extra statement.
+  - Keep as is: one statement per projection of a stop-less plan, four
+    per truck per planning refresh (summary, display copy, refresh,
+    fleet loop).
+  - Reuse within an operation (recommended): the hand-over records read
+    shared per operation and truck, as `FuelSavedInputsValidation.Share`
+    shares the saved-inputs check - reused only while the truck's item
+    generation of a new family (`fuel-hand-overs`) is unchanged, bumped
+    by `FuelIssueRecords.RecordAsync` after its commit and relayed to
+    other instances (`ReadCache.InvalidateItem` is published). It removes
+    three of the four reads per refresh for every plan, stops or not -
+    the read plans with stops already made before D6 included - so it
+    costs less than before D6. Race: a hand-over recorded by another
+    instance during an operation is seen by the next operation (seconds),
+    the bound the saved-inputs share accepts; one recorded in this
+    process ends the share at once.
+  - Write-time: the late record, which already holds the truck's
+    publication lock, amends the current saved plan's withdrawn list
+    (compare-and-set on its calculation time), so reads need nothing
+    more. Races: a publication committing first is amended by the late
+    record under the lock; a record committing first changes the attempt
+    after the publication's stamp, and `RequireUnchangedAsync` refuses
+    that publication, which recalculates knowing the hand-over. Costs: a
+    narrow write of the saved plan's summary JSON owned by the store
+    (Infrastructure), invalidation of its 30-second read cache and the
+    relay, and moving the D6 tests from synthetic snapshots to stored
+    plans. It changes the mechanism Root accepted.
+  Owner decision: Root. Neither is made until chosen.
+
+- **F24 design: schema compatibility.** Re-read (read-only review of all
+  77 migrations, verified at the guards and the initializer; the F24-F26
+  reviewers' reports were not retained - the facts used are restated
+  here with the file and line they were checked at). Two
+  corrections to the finding: 22 migrations follow `RecordRouteMovement`
+  (not 17), none with a guarded `Down`; and a rollback does not reach
+  `IsolateCarrierIntegrationCredentials` first - `Down`s run newest
+  first, so `RecordRouteMovement` and `StoreRouteChunks` raise before
+  it, but only after the 22 newer `Down`s have run, and EF may commit
+  those steps (`release.md:32-33`). Facts: migration runs only in
+  `DatabaseInitializer` at instance start when `Database:ApplyMigrations`
+  is true (production), and the last release applied migration 74 by
+  script because a revision without traffic never starts; its comment
+  "this revision migrates before it is given any traffic" is therefore
+  not what happens. Of the last 22 `Up`s, two are breaking for the
+  previous binary (`AddConversationReadRevisions`,
+  `AddConversationArrivalSequence` drop columns); the rest are additive
+  or widen keys. Nothing at runtime compares the binary with the schema.
+  Constraints: the previous revision must keep serving on an additive
+  newer schema (it serves until drained and is the rollback target),
+  migrations can be applied by script outside the binary, and local,
+  restore and cutover runs use `ApplyMigrations=false`.
+  Design, owner persistence (Infrastructure): each migration that the
+  previous binary cannot serve raises a stored floor - one row naming the
+  oldest migration a binary must know to serve this schema, written by
+  that migration's `Up`; additive migrations leave it. Every binary
+  reads it at start, whatever `ApplyMigrations` says, and refuses to
+  start (and reports not ready) if its own newest migration is older
+  than the floor; the newer binary knows its own migrations, the older
+  one learns only the floor, which is why the answer lives in the
+  database. An architecture test requires every migration after the
+  floor's introduction to be classified, compatible or floor-raising,
+  and the reset inventory's count stays the release check. `Down`s: the
+  documented policy is forward repair; make it executable by guarding
+  every data-dropping `Down` of a carrier table the way the two route
+  migrations do (raise if rows exist), starting with messaging, files,
+  driver groups and approved templates, so a mistaken downgrade stops
+  before it drops a customer's messages rather than after. Adoption:
+  its first run failing stops every start and it is skipped when
+  migration is off; with more than one carrier it no longer runs at all.
+  Make its first run report instead of failing the start, and run it
+  whatever `ApplyMigrations` says while one carrier exists. Tests: a
+  binary older than the floor refuses to start; an additive migration
+  leaves an older binary serving; each guarded `Down` raises over a row.
+  Root's review: a floor read at start protects neither a binary already
+  running when the migration lands nor a binary older than the floor
+  itself, which never reads it. The enforceable boundary is operational:
+  a migration the previous binary cannot serve is applied only after the
+  previous revision is drained (traffic moved, `TrafficShutDown`, no
+  instance) and removed as a rollback target; the floor then guards
+  starts after that, not the overlap. And "additive" is not the same as
+  compatible: widening a key changes what the previous binary's SQL
+  means, so each such migration is proven by running the previous
+  binary's statements against the migrated schema (below, for 75-77).
+- **F25 design: one owner for fuel-plan cost.** Re-read (read-only
+  review, verified at each copy): seven copies, not five - the finding's
+  five plus the chain comparison (`FuelChainComparison.cs:108,173`) and
+  the schedule-delay charge. All take the same per-gallon USD prices
+  (IFTA, discount and currency are applied once, in
+  `FuelRegionGrid.Prices`); they differ in terms and guards:
+  - access time: the optimizer charges each stop's stored
+    `DetourMinutes` (clamped at 0) and not the initial access; the chain
+    comparison adds the initial access and the schedule delay to the
+    winner; the manual replay derives minutes from access miles and
+    charges the initial access; the projection charges stored minutes
+    unclamped plus the current GPS access, and drops the delay;
+  - price day: automatic plans use arrival-date prices, manual edits
+    today's;
+  - invalid prices: the optimizer drops a candidate silently, the replay
+    reports it;
+  - future fuel: never repriced - price refreshes (`FuelPriceMateriality`)
+    move purchase costs only; its test is per stop, while choosing
+    compares totals;
+  - the arrival floor, a validity rule, not a cost: the replay requires
+    `Max(Reserve, Minimum)`, the projection `Minimum ?? Reserve`, so a
+    policy whose minimum is below the reserve passes projection and
+    fails replay.
+  No test compares the optimizer's cost with the replay's or the
+  projection's for the same stops; one compares replay with projection,
+  with symmetric access only. Design, owner fuel planning (Domain rules):
+  a `FuelPlanCost` rule taking explicit inputs - per stop gallons, cash
+  and economic price per gallon and access minutes; the initial-access
+  minutes; stop cost and driver hourly cost; the arrival target,
+  arriving gallons and replacement price; an optional delay charge - and
+  returning each component (purchase, stops, access time, delay, future
+  fuel), so a caller chooses its minutes source visibly instead of in a
+  private formula. Steps: first pin each copy's current numbers in
+  characterization tests - a record of today's behaviour, not the
+  product's invariant; then route the copies through the rule one at a
+  time with no change in any number; only then change the
+  differences, each as its own decision with its own test - they change
+  figures dispatchers see: one minutes source, the initial access, the
+  delay in projections, the arrival floor, and whether a price refresh
+  moves the future-fuel value. Owner decisions before the last step:
+  fuel planning with the owner. Noted: `FuelCheckedRouteSearch` appears
+  to be reachable only from tests (unconfirmed).
+- **F25, step two done: one owner for the terms.** `FuelPlanCost`
+  (Domain rules) owns the arithmetic of the purchase, access time, stop
+  and future-fuel terms, and `FuelScheduleRanking.DelayBeyondAccess` the
+  delay charged beyond access time; the optimizer (three future-fuel
+  copies and the stop cost), the chain comparison, the manual replay,
+  the projection, the price refresh and the replay lower bound call
+  them. Each caller keeps its own inputs - the optimizer's clamp and
+  stored minutes, the replay's minutes from miles, the projection's
+  totals-based time - so no figure changed: every existing test that
+  pins a figure passed without an expectation changed (fuel and routing
+  groups, Server 2505 of 2506, diagnostic-E0yd1K; the one failure was
+  the new component test comparing a double exactly, fixed,
+  diagnostic of the fix after it). Mutating the owner's access time
+  fails 29 of those tests and its future-fuel floor 20, across the
+  optimizer, replay, projection and tier search (diagnostic-mjhWQ1):
+  the copies compute through it. Those tests record today's behaviour;
+  they are not the product's rules.
+- **F25 proposed semantic corrections (not applied).** Each changes a
+  figure dispatchers or drivers see, so each needs the owner's decision,
+  then its own test and its own release note:
+  1. One source of access minutes: stored `DetourMinutes` everywhere, or
+     minutes from miles everywhere (the replay derives them, the
+     optimizer and projection store them; they agree only for
+     symmetric access).
+  2. The initial access: charged by the chain comparison, the replay
+     and the projection, not by the optimizer's own score; decide
+     whether the optimizer's ranking should include it (it is constant
+     within one search, so ranking is unaffected, but its `SavingsUsd`
+     is computed without it).
+  3. Schedule delay in the projection: the projection drops it, so a
+     plan shown after publication costs less than it did when chosen;
+     decide whether the shown figure is "remaining" (as labelled) or
+     comparable to the chosen one.
+  4. Negative detour minutes: clamped by the optimizer only; clamp in
+     the owner, or reject at the source (`Nearby` never produces them).
+  5. The arrival floor: `Max(Reserve, Minimum)` in the replay,
+     `Minimum ?? Reserve` in the projection - a validity rule, not a
+     cost; one rule in one owner.
+  6. Future fuel under a price refresh: never repriced; decide whether
+     the replacement value follows the new price.
+  7. The materiality test: per stop against a total-based choice.
+  8. Invalid prices: the optimizer drops a candidate silently, the
+     replay reports it.
+- **F26 design: the shared memory cache.** Re-read (read-only review,
+  verified at the geocoder): eleven writes in eight files, none sizing
+  its entry. One family is unbounded: stop geocodes
+  (`GoogleAddressGeocoder.cs:37,127`), keyed by the address across
+  carriers, twelve hours for a success and up to an hour for a failure,
+  fed by the load import, the TomTom provider and a user endpoint that
+  accepts ~900 characters of address under the global rate limit only;
+  each entry ~1-2 KB with its key. The others are limited in number by
+  carriers, active loads or request rate and live 5 s to 1 h - which is
+  not a byte bound: the fleet route preview is up to 8 MiB per carrier
+  (30 s) and the import snapshot up to ~2.5 MiB per carrier, so the
+  shared cache still grows with carriers and has no ceiling in bytes. The diagnostics count
+  entries only; nothing is in the 80 MiB budget. Design, owner the
+  geocoder (Infrastructure): move the geocode entries into their own
+  bounded memory - a private `MemoryCache` with a byte `SizeLimit`
+  (4 MiB proposed, sized per entry from key and value), reported through
+  `ICacheMemorySource` as `stop-geocodes` and added to `CacheBudgets` -
+  the pattern `ReadCache` and `SamsaraHosHistoryCache` already follow. A
+  geocode dropped early is only looked up again: resolved points are
+  stored on the stop, so this cache never holds the only copy. No
+  `SizeLimit` on the shared cache itself: when full it would refuse
+  entries whose loss changes behaviour (a camera request answers
+  "expired", an import snapshot forces a full reconciliation) to make
+  room for geocodes. Tests: many distinct addresses stay within the
+  bound; a failure entry still expires at its retry time; the report
+  shows bytes. Noted beside it: the geocoder's static gate serializes
+  every carrier's lookups (as D3's did for hours), and
+  `FleetTelemetryCache` keeps one never-evicted response per carrier -
+  bounded by carriers, reported for completeness.
+  Implemented (Root approved the scoped geocode budget):
+  `StopGeocodeMemory` holds resolved and failed addresses in a private
+  cache limited to `CacheBudgets.Geocodes` (4 MiB, entries sized from
+  their strings), reported as `stop-geocodes` in bytes; each entry keeps
+  its expiry by the injected clock (twelve hours resolved, a failure
+  until its retry, at most an hour). The geocoder's global gate is
+  unchanged, so a concurrent lookup of one address still asks Google
+  once and the provider sees no more concurrency than before. Tests:
+  ten thousand distinct addresses stay within the budget; lifetimes by
+  a test clock; five lookups of one address make one call; failures by
+  status and by transport are not asked again until their retry
+  (diagnostic-8VWO2W for the first version; mutations of the limit, the
+  expiry and the transport failure fail, diagnostic-G0Drow after the
+  transport case was added - an earlier run let that mutation survive,
+  marked; groups addresses and synchronization exit 0, Server 1946,
+  Client 747, diagnostic-T0qmvm). The shared cache itself still has no
+  byte ceiling.
+  Root's review of `a01e5927`: in one 4 MiB cache, pressure could refuse
+  or evict a failure before its retry, and the global gate bounds
+  concurrency, not how often Google is asked. Now failures have their
+  own part of the budget (one eighth, reported as
+  `stop-geocode-failures`), so no number of resolved addresses pushes
+  one out; and every call to Google takes an attempt from a limit of 60
+  a minute for the process, so when failures cannot be kept - their own
+  part full - consumers asking again reach Google at most 60 times a
+  minute; an attempt refused by the limit answers "busy" with the time
+  the limit reopens and is not remembered as the address's failure.
+  Contract, revised: a failure held is not asked again before its
+  retry; if it cannot be held, provider attempts are bounded by the
+  limit. Tests: a failure survives ten thousand resolved addresses; with
+  failures unkeepable (a failure budget below one entry), 200 lookups in
+  a minute make 60 calls and the next minute one more. Removing the
+  limit or putting failures back beside resolved addresses fails them in
+  each of three runs (diagnostic-JmwLEo); green
+  diagnostic-wVHWCR; groups addresses and synchronization exit 0,
+  Server 1948, Client 747 (diagnostic-uVFm3L). The limit, 60, is a new
+  bound on imports that resolve many new addresses at once; the owner
+  may tune it.
+
+- **F27 re-read against the code.** Each item, as it stands at this
+  branch:
+  - IFTA rates keyed without currency - verified, latent: the unique
+    index is (jurisdiction, fuel type, effective from) and the import
+    matches the same way, overwriting currency and unit, so a source
+    with one row per currency keeps the last; the production table is
+    empty (read only).
+  - A delivery status arriving before the provider id is saved -
+    verified in both paths (dispatchers' replies and module texts): it
+    is dropped, with no retry. The harmful case is an early "failed",
+    after which the attempt keeps showing accepted. Owner Messaging;
+    design: keep unmatched statuses briefly (bounded, by provider id)
+    and apply them when the id is saved.
+  - A second Total RPM formula - partly: the division has one owner
+    (`DispatchRates.PerMile`); the loaded-plus-empty composition and its
+    guard are written twice, identically (store and display fallback).
+  - Stored savings the read ignores - verified: `FuelPriceCalculator`
+    replaces the stored retail-minus-discount with retail minus the
+    price paid; the column is redundant.
+  - Litres per gallon - four literal copies, one in the Client; the
+    Client also derives yesterday's price as today's minus the change,
+    against the rule that the Client formats server values only.
+  - Fuel-stop price day - verified: the arrival's local calendar day
+    (`FuelPriceCalendar`), not the Toronto business day that pricing
+    dates use elsewhere; a late-evening arrival in a western zone is
+    priced a day early.
+  - Stop geocoding - see F26.
+  - The deadhead publication re-check - verified dead: it compares the
+    captured connection's signature with itself; the protection is the
+    publication's re-read of the history under the truck's lock, which
+    exists. Harmless, misleading.
+  - Diagnostics and readiness - verified: the Admin policy shows
+    process-wide figures, including other carriers' activity counts,
+    to any carrier's Admin; no personal data. Owner decision: an
+    operator role separate from a carrier's Admin.
+  - The credential store's and Identity's yes-or-no - verified and by
+    contract: a WhatsApp number held by another carrier is refused on
+    purpose, and a sign-in name is unique across carriers, so creating
+    a user with another carrier's e-mail reports it taken. No change;
+    the sign-in contract is kept.
+  - The forecast upsert without a company predicate - latent (the
+    conflict is on a leg's Guid); fixed on the current-work branch
+    (`cc6e53d8`, unreleased), not on this one.
+  - Caches keyed without company - out of date: Samsara hours history is
+    keyed by carrier; ETA memory and route display are keyed by Guids.
+  - Auditor guide - the register now lists every rule;
+    `storage.file-on-disconnected-storage` is still tested under
+    PostgreSQL only.
+  - Expired-lease reclaim tests - the road store has one; the planning
+    refresh store and the odometer capture lease still have none.
+  - Tests accepting any exception - five by the direct pattern
+    (`Assert.Throws*<Exception>`).
+  - `CheckpointLeaseStore` - verified: acquire and renew take the
+    caller's time, save and release read the system clock; equal in
+    production, wrong under a test clock.
+  - `migrate.sh` applied each migration to the configured database as
+    soon as it was added - fixed here: it only creates the migration.
+
+- **F15 re-read (authentication and providers).** Verified: a refresh
+  token is a stateless protected ticket checked for expiry and the
+  security stamp, reusable until then, with no reuse detection
+  (`AuthService.cs:70-110`); tokens are kept in `localStorage`, and
+  neither `firebase.json` nor `index.html` sets a Content-Security-Policy
+  or other security header; disconnecting Drive discards the secret
+  without revoking it at Google; the Drive consent is bound to a
+  single-use state (carrier, connection, nonce) with PKCE and an expiry,
+  not to the browser that began it; the WhatsApp webhook answers 404 for
+  an unknown carrier key and 401 for a bad signature
+  (`ReceiveDriverMessages.cs:80,97`), which tells a caller whether a key
+  exists; a Gmail push validates its history id but the import ignores
+  it and lists its window; both production maps use `DEMO_MAP_ID`. Out
+  of date: logout does not clear sessions on its own instance only - it
+  changes the security stamp, which ends every refresh token of the
+  user, and its session invalidation is relayed to other instances
+  (one relay round). The sign-in contract is kept; no change here.
+- **F12 re-read (verification hygiene).** Verified: 21 test classes
+  declare no `Kind`; `test.sh` has no Persistence group; the API names
+  `Domain` in seven files while the architecture test rejects only
+  `Domain.Entities`; `.dockerignore` has the `.env` and `secrets.json`
+  patterns but not `**/*credentials*.json`. Fixed here: a declared `Kind`
+  must be one `docs/testing.md` names (`TestCategoryTests`), red on
+  `MessageSearchPostgresTests` declaring "Performance" (diagnostic-3imBI3),
+  now `Integration`; `migrate.sh` (F27). PostgreSQL tests run where the
+  fixture is recorded and skip, saying so, where it is not; the gate on
+  a machine without one still passes them as skipped (open gap).
+  `.dockerignore` now also excludes every key and credential pattern
+  `.gitignore` names (`**/*credentials*.json`, `**/*token*.json`,
+  `**/*.pem`, `**/*.key`, `**/*.p12`): a local Docker build's context is
+  the working tree, ignored files included, and the API's content and
+  publish guards list names, not patterns. Cloud Build's upload already
+  excluded them (`.gcloudignore` includes `.gitignore`). Red on the old
+  file, green (diagnostic-PpPWIu).
+- **F12: the API names `Domain` in seven files - a rule conflict, not a
+  slip.** AGENTS.md says the API must not know Domain; the architecture
+  test allows it on purpose ("the web layer may name the vocabulary -
+  the models and policies ... but never a stored entity",
+  `LayerBoundaryTests`). The seven: request bodies taken as Domain models
+  (`RouteChoiceRequest`, `FleetConfigurationUpdate`,
+  `DriverContactUpdate`, the planning settings), options bound from
+  `Domain.Policies` in `OptionsRegistration`, and two JSON converters for
+  `RouteLeg` and `NextLoadConnection`. Following the rule means moving
+  the request types to Application contracts (two or three files each),
+  the converters beside the contracts they serialize, and the options
+  binding into Application's registration - JSON unchanged - then
+  tightening the test to reject `Domain.` in the API. `RouteLeg` alone
+  is named in 18 files, so it is not done during integration
+  preparation. Owner: root, to say which text is the rule.
+  Root ruled AGENTS.md authoritative; done. The request records moved to
+  `Application.Features.Routing.Models` and `...Fleet.Models` (namespace
+  only; JSON unchanged). The profile endpoint takes
+  `TruckRouteProfileBody`, the profile on the wire read with the caller's
+  options, so missing fields keep the profile's defaults; its one
+  observable difference is the model-state key of an invalid body with a
+  null `hazmat` (`Value.Hazmat` for `Hazmat`, still 400; the Client
+  always sends a string and reads no keys). The geometry converters, an
+  HTTP choice by header, and the options binding moved to Infrastructure,
+  registered from the API's composition root. `LayerBoundaryTests` now
+  rejects `Domain` anywhere in the API; a `Domain` using put back fails it.
+  Routing, fleet, dispatch (diagnostic-LBS01N) and fuel groups with
+  architecture green; wire tests `TruckRouteProfileBodyTests`
+  (diagnostic-dYozyC). diagnostic-GrCXEI invalid: a moved comment read
+  "the API." and met the Infrastructure rule; reworded.
+- **F19 re-read.** Verified: fuel stations are a shared table ("a place
+  in the world, the same for everyone"); any carrier's Admin can start
+  the discount import that creates and overwrites them; the Gmail push
+  is fixed to AMF (`GmailPushValidator`). Blocks a second carrier's
+  fuel intake, not today's operation; owner decision with the product
+  direction (per-client discounts, Gmail intake temporary).
+- **F10 re-read (the scan).** Verified in shape: each road-preparation
+  scan page observes every eligible load with one upsert, a no-op when
+  nothing changed - one round trip per eligible load per scan. Not
+  measured in production; the eligible set is small there.
+- **Runtime inventory: background liveness.** Seventeen hosted
+  services: the database initializer, the cache relay, and fifteen
+  operations behind `ApplicationWorker`. Only the synchronization loop
+  reports a heartbeat (`BackgroundHeartbeat`); the consistency auditor
+  has none on purpose (a stall shows as stale coverage); the other
+  thirteen have none. An exception escaping an operation stops the host
+  (the .NET default), which Cloud Run restarts; each loop catches its
+  round's failures, so what goes unseen is a stall - a call that never
+  returns. Design, owner each background owner: register an expected
+  interval and beat once per loop round, before the work, with an
+  interval well above the longest normal round, as the heartbeat tests
+  require (never call a working instance stalled); operations whose
+  rounds can legitimately take long (road preparation, ETA refresh)
+  first need a bounded round. No change made.
+
+- **F27 fixed: a delivery status before the provider id is saved.**
+  Reproduced (diagnostic-Voxdnm): a webhook, as another request during
+  the provider call, reported "failed" (131047); the attempt stayed
+  "accepted". Messaging now keeps such a status (`EarlyDeliveryStatuses`,
+  `PendingDeliveryStatuses`, migration 78 `KeepEarlyDeliveryStatuses`):
+  per carrier, channel, business number and provider id, once per
+  status, for an hour, at most 1,000 per carrier; and applies it when the
+  id is saved - by the fuel-text sender (`DriverTextDelivery`), by the
+  outbox when a reply finishes and when a late answer arrives - in the
+  same transaction as the id. Ordering (Root's review): the webhook takes
+  its carrier's admission lock, then message locks sorted by provider
+  id; the sender takes one message lock; under the lock the webhook
+  looks for the id again. So whichever comes second sees what the first
+  committed, the bound is counted by one webhook at a time, and opposite
+  batches cannot deadlock. PostgreSQL advisory locks, behind
+  `IDeliveryStatusLocks`; SQLite serializes writers already. Tests: the
+  race through the real sender and webhook, a repeated early status
+  kept and applied once, another carrier's status for the same id left
+  alone, a reply's early status at finish and at a late answer, expiry,
+  the bound (webhook class, green diagnostic-nhouBX and after the late
+  answer test the groups below); on PostgreSQL, owner-level overlaps in
+  two real transactions - webhooks against the bound, opposite batches,
+  the sender first and the webhook first (diagnostic-3joWht), and the
+  primitive lock (diagnostic-kswDRW). Mutations - the sender, the webhook
+  and the outbox at finish and at a late answer not applying, no expiry,
+  no bound, no de-duplication, no admission lock, no message lock on
+  either side, the lock a no-op - all fail (diagnostic-rFSEGT,
+  diagnostic-UFR69t, diagnostic-GDOWlB; in rFSEGT an outbox mutation
+  survived because it reached the untested late-answer path, since
+  tested, and in UFR69t one did not compile, rerun in GDOWlB). Groups
+  messaging and database exit 0, Server 1404, Client 147
+  (diagnostic-H5TfRf; the run before failed only because a messaging
+  fixture did not register the owner, diagnostic-7Fpbcx). Invalid runs
+  marked: diagnostic-ZzuVpg, diagnostic-QrN68t. Not covered: a status
+  for an id never saved stays an hour and applies to nothing; no
+  auditor rule, because a kept status that finds its id is applied by
+  construction.
+  Root's review of `b538ba7c`: taking kept statuses applied them without
+  checking their age, and pruning ran only when a webhook kept another,
+  so a sender saving the id after an hour with nothing received
+  meanwhile applied an expired status. Taking now discards expired rows
+  in the same transaction and applies only those within the hour. Red
+  diagnostic-IZQNIn; green, and a mutation applying expired rows fails
+  (diagnostic-lJLgaw).
+
+### Dark default: the server no longer invents a theme
+
+The owner requires dark as the default. The server stored `light` for
+every account that never chose (column NOT NULL DEFAULT 'light'), so the
+Client could not tell a choice from the default. Migration 79
+`LetThemeBeUnchosen` changes only the column default to an empty string,
+which means unchosen; the column stays NOT NULL and no row is updated:
+new accounts read `""`, existing rows keep their value (in production
+two light and one dark; whether a light was chosen is not knowable, so
+none is overwritten). A save still has to name light or dark. The
+released Client applies the server theme only when it is `light` or
+`dark`; the designer's Client bootstrap owns the dark default and must
+treat anything else, empty or null, as unchosen.
+
+Superseded first version (`b914da76`): it made the column nullable and
+claimed the previous API was unaffected. That was wrong. The released
+binary `0e6add5d`, run against a schema migrated by it
+(diagnostic-lKujST, -gjLyqP), maps `Theme` as required and threw
+`InvalidCastException: Column 'Theme' is null` reading or saving the
+appearance of a user created with a null theme, and loading that user
+as an entity; a rollback would have failed for every account created
+after the migration. The revised migration, same checks
+(diagnostic-TmQKay, -CHECIp): the released binary reads the empty theme
+(the released Client then ignores it), saves light or dark over it, and
+loads every user.
+
+Release and rollback, measured on PostgreSQL with that binary:
+
+- Apply 79 before the API. It changes only a default, so the previous
+  revision keeps serving throughout.
+- During the overlap the previous revision still creates users with
+  `light` (its entity sets it), which reads as a choice: an account
+  created in those minutes starts light and can switch. Bounded by the
+  overlap; not corrected afterwards, as it cannot be told from a choice.
+- Rollback of the API needs no Down: the previous binary serves the
+  schema as it is. Down (79 to 78) only restores the `light` default and
+  leaves empty themes empty; it ran with an unchosen user present.
+
+Checks: appearance, reset inventory and PostgreSQL migration tests
+diagnostic-h9CY4P (34); identity and architecture groups
+diagnostic-EaxPbk (Server 291, Client 83, JavaScript 67 and 7). The
+first version's runs diagnostic-sP3KzC and -A4qt2n checked what it
+changed, not its compatibility; diagnostic-TQzqoy is invalid (the API did
+not build).
+
+### F29 — P3: a webhook status left its conversation's revision
+
+Found while reconciling kept statuses. The outbox commits a reply's status
+with a new conversation revision; the webhook moved the status and signalled
+the conversation at its old revision. A tab whose change stream fails falls
+back to polling and re-reads an open conversation only when the listed
+revision differs, so it kept showing "accepted" after "read" until its
+stream resumed and resynchronized - bounded by that outage (the 503 bursts
+of September 27 were such outages). The webhook now advances the revision of
+each conversation whose reply moved, in its own commit, through the tracked
+entity as the inbox does; statuses that move nothing leave it. Red on the
+previous handler, green (diagnostic-uhGink, 85 tests). Not covered by a
+test: the path where the webhook finds, under the lock, an id saved
+meanwhile - it goes through the same call.
+
+## Release and rollback constraints (branch at `3e15aeba`)
+
+What the branch stores differently, measured against the released binary
+`0e6add5d` where stated. Everything else on the branch (D1, D2, D3, D6,
+F20, F22, F23, F25, F26, the messaging mailbox bounds) is code only and
+rolls back with the previous image. The Client changes one file
+(`MessagingSignals`, the mailbox kept across a rejoin); it uses the
+mailbox parameter the released API already accepts, so the frontend and
+the API can be released in either order.
+
+| Migration | Change | Previous binary on it | Down |
+| --- | --- | --- | --- |
+| 75 `RecordDispatchReadTickets` | table `DispatchImportReads`; `DispatchSourceLinks.ReadTicket` default 0 | run: imports, links with ticket 0 (diagnostic-vdc2U5) | drops both; tickets forgotten |
+| 76 `ScopeCarrierNaturalKeys` | keys of `DispatchNumberCounters`, `DriverHosReadings` start with `CompanyId` | run with one carrier (vdc2U5); its model keys by `Id` and driver id | refuses if two carriers repeat a key |
+| 77 `CountDispatchImportWrites` | `LastWrite` on the new table | not mapped (vdc2U5) | drops the column |
+| 78 `KeepEarlyDeliveryStatuses` | table `PendingDeliveryStatuses` | not mapped; by construction, not exercised | drops kept statuses (at most an hour's, 1,000 a carrier) |
+| 79 `LetThemeBeUnchosen` | `Users.Theme` default `''` | run: reads, saves, loads (diagnostic-CHECIp) | restores the `light` default; run with an unchosen user (diagnostic-TmQKay) |
+| 80 `RecordSendReleases` | table `SendReleases` | not mapped; by construction, not exercised | drops the records; every revision then holds until released again |
+
+Release order:
+
+1. Back up (`local-backups/`) and record the protected counts, as for
+   `0e6add5d`.
+2. Apply 75-80 as the EF idempotent script, in one transaction with a
+   5 s lock timeout, while the previous revision serves: the new API
+   reads the new columns and tables and fails without them, and a
+   no-traffic revision does not run start-up migrations. 76 rebuilds two
+   primary keys (an exclusive lock on two small tables). Then 79
+   migrations; the reset guard names 79.
+3. Deploy the new revision without traffic, verify its identity, move
+   traffic, and wait for the previous revision's drain (`TrafficShutDown`
+   true). No manual sync or history-tool run until then (F21).
+
+### The overlap: duration, recovery after the drain, and what is lost
+
+The overlap is the time both binaries run: from the new revision's
+first instance to the previous one's shutdown. Measured once, at the
+`0e6add5d` release: traffic moved 18:44:36, the new instance started
+18:44:39 (a revision without traffic had no instance, so it ran nothing
+before), the previous one logged its shutdown 18:44:55 - about 19 s. It
+is not bounded by anything we control: Cloud Run decides the drain, and
+the previous instance's background operations run until it stops. The
+release record must read both times again.
+
+**Load imports without a ticket (F21).** Recovered after the drain; no
+load data is lost. The previous binary's loop writes only while it
+holds the synchronization lease; the new loop waits for it (3 minutes
+at most after a stop that does not release it) and its process has no
+import snapshot, so its first pass reconciles every load from a fresh
+provider reading with tickets. Bound: drain + lease + one poll (60 s).
+One path is longer: a manual sync on the new instance during the
+overlap leaves a snapshot, and a later ticketless write behind it is
+seen only through the relay (10 s rounds; the previous binary publishes
+its invalidations after its commit) or, if the previous instance stops
+between its commit and its relay round, by the half-hourly repair pass
+- 30 minutes and a poll. Hence no manual sync or history-tool run
+during the change. What the older reading caused before it is corrected
+(execution changes, planning refresh, road demand) is recomputed from
+the corrected reading like any source change; execution history keeps
+the intermediate entries, as it keeps all history. Covered by the F21
+tests for a newer ticketed writer (diagnostic-e7IkMs, mutations
+diagnostic-kntNFq). The ticketless writer:
+`APreviousBinarysTicketlessWriteIsRepaired` - behind a warm process the
+next poll after the previous binary's relay round, and a process that
+has not imported on its first pass, put the newer reading back
+(diagnostic-kTVT83). Without the relay round the warm process's next
+poll keeps the older reading (the mutation fails with 150 for 200),
+which is the 30-minute bound above; a process that keeps its snapshot
+fails the cold case.
+
+**Delivery statuses before the provider id (F27) - lost, not
+recovered.** Two cases:
+
+- A message the previous binary sends during the overlap, whose first
+  status reaches the new binary before the previous one saves the id:
+  the new binary keeps it, but only a new binary that saves the id
+  applies kept statuses, and the previous binary takes no message lock,
+  so the kept row is never applied and is discarded after an hour.
+- A message the new binary sends while a webhook is still routed to the
+  previous revision (traffic propagation): the previous binary finds no
+  id and drops the status, as before F27.
+
+Later statuses of the same message (delivered, read) arrive after the id
+is saved and apply, so what is lost is the early one. When it was a
+terminal failure (131047 and the like) and nothing follows, the message
+stays accepted for good; WhatsApp offers no status query, and no auditor
+rule reports an accepted message without a status. Bound: messages sent
+in the overlap whose status arrived within the provider call (at the
+last release: driver messages 0, 57 conversation messages in total).
+The first case is now reported: `messaging.kept-status-unapplied`
+finds a kept status whose provider id a message of the same carrier,
+channel and business number already holds. Every Messaging writer that
+saves an outbound id takes kept statuses under the message's lock (the
+fuel-text sender, the outbox's finish and late answer; the inbox records
+inbound ids, for which the provider sends no status), so outside an
+overlap such a row cannot survive a commit. A finding lasts while the
+row is kept - up to an hour, until a webhook prunes it - and the auditor
+runs every 10 minutes. Detection test and SQL translation on PostgreSQL
+green; each branch (fuel text, reply) removed fails it
+(diagnostic-qEnFEa; the first run, diagnostic-e8TBeu, failed on the
+test's Guid case - invalid). Messaging and Dispatch groups green
+(diagnostic-mHnhKT).
+
+Root: detection is not recovery. `KeptStatusReconciliation` (Messaging)
+now applies such statuses: the outbox runs it once a minute per carrier;
+each message in its own transaction under its message lock - the lock
+a webhook and a sender take - read after the lock, statuses only
+forward, an expired one discarded; at most 20 messages a round. A
+message whose reconciliation fails is logged, stays kept and is skipped
+for 10 minutes (`KeptStatusRetries`, entries dropped when due), so it
+cannot hold the others; a failing reconciliation does not stop the
+outbox's sends; carriers are forgotten a minute after their last
+reconciliation. A reply's conversation moves to a new revision and is
+signalled; a fuel text's requester is told, as after a webhook.
+Evidence: diagnostic-RVsUnN (53 tests; mutations: no skip, no per-message
+catch, no outbox catch, no pruning, no retry, each failing) and
+diagnostic-hsJElx (PostgreSQL: a webhook holding the message lock while
+recording "read", the reconciliation waits and does not take it back to
+a kept "sent"; reading before the lock fails it). The rule now reports
+what reconciliation has not settled. The second case leaves no trace.
+
+Correction to the F27 evidence: its PostgreSQL overlap tests asserted
+that a party waited by checking it was unfinished after 500 ms, and
+opening a connection to the remote fixture can take that long, so the
+check passed without any wait (seen here: with the lock removed, the
+reconciliation still read after the webhook's commit, 520 ms late -
+scratch-KnWoQ5). Every overlap now waits until the waiting connection's
+advisory lock shows as not granted in `pg_locks`; removing the locks
+fails all five (diagnostic-hsJElx). diagnostic-3joWht and -kswDRW are
+marked accordingly.
+
+The second case - a status the previous binary dropped - leaves only a
+message still "accepted". `messaging.accepted-without-status` reviews
+fuel texts and replies the provider accepted and has reported nothing
+on past the auditor's pending grace (30 minutes; "sent" normally comes
+within seconds). It is a review, not a violation, and says delivery is
+unknown: the message may have been delivered, a lost notification or a
+subscription delivering elsewhere look the same, and nothing is marked
+failed or sent again. Texts recorded before the business number was
+kept, which no status moves, are excluded. Test and SQL translation on
+PostgreSQL green; removing the legacy exclusion, the grace or the
+replies fails it (diagnostic-XEjl8a; the first run, diagnostic-46AAw5,
+failed on a fixture that wrote the direction "outbound" where the
+product writes "out" - fixed, invalid). Messaging and Database groups
+with architecture green (diagnostic-GQjcTc).
+
+**Fuel publication and hand-overs (D6, F16, F17).** The truck's
+publication lock (`PlanningPublicationScope`, `FOR UPDATE SKIP LOCKED`)
+is unchanged, so the two binaries exclude each other. Until the drain,
+the previous binary still refuses publication for a truck with a stale
+sending attempt (the behaviour before F16); no loss - the next refresh
+publishes after it. A previous instance stopped during a provider call
+leaves the attempt sending (after 2 minutes the new binary reports it,
+`routing.fuel-handover-uncertain`, for a dispatcher to ask the driver)
+or accepted but unrecorded (`routing.fuel-handover-unrecorded`, recorded
+from the taken attempt when the plan is sent again). Recoverable by a
+person, and reported.
+
+**Users created by the previous binary** start with `light` stored,
+indistinguishable from a choice; not corrected. Bound: accounts created
+in the overlap.
+
+After the drain, read only: the previous revision `Active` false and
+its last log line; `messaging.kept-status-unapplied` within the hour;
+the two fuel hand-over rules; users created in the overlap.
+
+### Webhook drain and cutover plan (messaging)
+
+Root: no silent status loss, no deployment yet. What the overlap can do
+to a delivery status, after d0f52a16 and d20e51c9, and how each path
+ends - observed facts first: a revision deployed without traffic had no
+instance and ran nothing (the `0e6add5d` release); after traffic moves,
+new requests, webhooks included, reach the new revision; the previous
+one finishes its requests and runs its background work until it stops
+(19 s then).
+
+| Path | How it ends |
+| --- | --- |
+| The previous binary saves an id whose status the new one kept | applied by `KeptStatusReconciliation` within about a minute; `messaging.kept-status-unapplied` if not |
+| A webhook in flight to the previous revision at the switch, for an id it has not saved yet | dropped, as before F27; later statuses (delivered, read) still apply; if it was the last one - a failure - the message stays accepted and `messaging.accepted-without-status` reviews it after 30 minutes as delivery unknown |
+| The previous instance stops during a provider call | the attempt stays sending: the outbox marks the reply unknown, `routing.fuel-handover-uncertain` reviews a fuel text; a status for it is kept and discarded after an hour, as the id is never saved |
+| Statuses of messages sent before the release | applied by the new binary as they arrive |
+
+So no path ends silently, but the second loses the status itself - a
+failure is shown as "delivery unknown", not as failed with its code -
+because WhatsApp offers no status query.
+
+Correction (root's review of b541431e): the first version closed that
+window with a send freeze and a read-only check that nothing was in
+flight before moving traffic. A snapshot cannot close it: the previous
+binary's outbox, or a dispatcher, can send a moment after it.
+
+Second correction (root's review of b5672e93): the next version held
+this binary's sends while the synchronization lease was held by an
+unmarked owner. The lease is not HTTP liveness: a binary answers
+webhooks with no lease (the loop supports a live watcher without one)
+and after losing or releasing it, so its absence proved nothing and
+must not release sends. Withdrawn; diagnostic-dqlNf7 is superseded.
+
+Now: in production (`Messaging:SendHold:RequireRelease`) each deployed
+revision sends nothing to the provider until an administrator records
+its release (`POST api/diagnostics/sends/release`, table `SendReleases`,
+migration 80), after seeing the platform drain the revision before it.
+Nothing inferred releases it. The revision is the platform's name for
+it (`K_REVISION`); a restart of the same revision keeps its release, a
+new revision - a release or a roll-forward after a rollback - holds
+again. While held, queued replies wait in the outbox and a direct fuel
+send is refused with 503 before anything is recorded
+(`DriverTextResult.Held`, an explicit case where the sender's default
+would have reported it done), so nothing is lost or reported as sent.
+The hold reads the record at most every five seconds, one read shared
+by concurrent callers, and keeps a release for the process's life, as
+the record is kept. `GET api/diagnostics/sends` shows revision, whether
+held, and who released it when.
+
+Tests (diagnostic-3Q1Jxo): with no lease, an expired one, one held by
+another owner, or the previous revision's release, the hold stays; only
+this revision's record releases it; eight concurrent callers make one
+read; the command records once with who released it; a queued reply
+waits and a fuel send answers 503 until the release. Mutations - no
+coalescing, any revision's record, ignoring the requirement, the
+sender's missing case, the delivery's or outbox's hold removed - each
+fail. Messaging, fuel, database (PostgreSQL migrations) and
+synchronization groups green. `OnlyTheHeldPathsCallTheProvidersSend`
+(first named `EveryProviderSendIsHeld`, diagnostic-T728dK, -4PX3zN) is
+an inventory, not a proof of control flow: the provider's send is called
+from the outbox and Messaging's delivery only; that each holds is shown
+by the two behaviour tests above.
+
+Root's review of dacf2361, corrected: the release reaches every carrier,
+so it is a deployment operator's, not a carrier Admin's. The endpoint
+takes the `Operator` policy - Admin and an identity listed in
+`Operations:Operators`, the deployment's configuration; none listed,
+nobody - and the handler refuses anyone else with 403 as well. A
+required release with no valid `K_REVISION` (the platform's form:
+lowercase letters, digits, hyphens, a letter first, at most 63) fails
+closed: held without reading, never released by another process's
+record, and a release answers 409; there is no "local" default. Tests:
+`DeploymentOperatorTests` evaluates the real policies with their
+handlers (operator Admin passes; a carrier Admin, an operator without
+Admin, a signed-out caller and an empty list fail; Admin endpoints stay
+open to a carrier Admin) and the revision names;
+`ACarrierAdminWhoIsNotAnOperatorCannotRelease`,
+`ANamelessRevisionStaysHeldAndCannotBeReleased`; and on PostgreSQL
+`TwoOperatorsReleasingAtOnceLeaveOneRecord` - both find no record, the
+first insert is held until the other has committed, and the late one
+meets the unique index and answers with the first record. Mutations -
+the handler's operator check, the policy's operator requirement, a
+"local" fallback, the conflict handling - fail (diagnostic-NxKwCc);
+removing the nameless guard is equivalent, since EF answers a required
+column compared with null without reading and nothing matches. Identity,
+messaging and database groups green (diagnostic-BFwmaB). The operator
+list must be set in the deployment before a release is possible: an
+owner decision on which identities, recorded with the release.
+
+Root's follow-up: a failed read cleared the shared read without
+stamping the check, so sequential callers went back to the database at
+once. A failed read now holds like a read that finds nothing and counts
+as the check - the next is five seconds later, whatever the load - and
+is logged once when reads start failing, not on every retry.
+`AFailingReadHoldsIsRetriedOnlyAfterRecheckAndRecovers`: five calls
+during a failure make one read, the next comes after Recheck, one
+warning, and the first successful read that finds the record releases;
+mutations stamping only successful reads or logging every failure fail
+(diagnostic-YmrSnl, focused only).
+
+What it guarantees: no message this revision sends can have a status
+dropped by the revision before it, provided the release is recorded
+only after the platform shows that revision drained. What it does not
+change: statuses of messages the previous binary sends itself that reach
+it before it saves the id - the F27 race of that binary, ended by the
+release. The operator's evidence of drain is the guarantee's premise;
+the server cannot observe Cloud Run.
+
+Cutover steps:
+
+0. Owner, before the release: confirm where the business number's
+   webhooks go (on 2026-09-25 a WABA-level override sent them to the demo
+   company). No change to the Meta configuration is part of this plan.
+1. Apply migration 80 with 75-79 before the API; deploy without traffic.
+2. Move traffic. The new revision holds its sends: replies queue, a fuel
+   send answers 503; dispatchers are told sending resumes after the
+   switch.
+3. Prove the drain on the platform, read only: the previous revision
+   `Active` false and `TrafficShutDown` true, its last request log line
+   older than the traffic move, and no instance of it in the revision's
+   instance count.
+4. Only then a deployment operator calls
+   `POST api/diagnostics/sends/release`;
+   `GET api/diagnostics/sends` shows it released; the queued replies go
+   (`api/diagnostics/background`, outbox progressing).
+5. Two minutes after: `messaging.kept-status-unapplied` has no finding,
+   nor `messaging.outbound-overdue` or the two fuel hand-over rules.
+6. Thirty minutes after: `messaging.accepted-without-status` lists no
+   message sent around the switch.
+
+Every later release holds the same way until released, though its
+previous binary keeps early statuses too: the hold does not try to tell
+binaries apart.
+
+Rollback undoes this: the previous binary has neither the kept statuses
+nor the rules, so every early status is dropped again as before F27,
+and silently. Rolling back is a decision to accept that until the next
+release.
+
+Rollback of the API: redeploy the previous image; no Down is needed for
+any of 75-80. After it, the behaviours above return for as long as the
+previous binary runs; kept statuses stay unapplied until a new binary
+prunes or takes them; empty themes read as the released Client's
+default. Hard boundary: no second carrier while a
+binary older than 76 serves or is kept as the rollback target.
+
+Integration: `main` (`66f8801e`) does not yet contain the release
+`0e6add5d`; this branch and `claude/current-work-design` do. The latter
+adds no migration after 74, so 75-80 need no reordering. A trial merge
+of it into `3e15aeba` (not committed; a disposable worktree) conflicts
+in three places, each two lists of auditor rules added side by side -
+the DI registrations, `ConsistencyAuditSqlTests` and the auditor's
+register - and is resolved by keeping both. The merged tree passed the
+database, ETA, Dispatch and Routing groups with architecture (Server
+2,244, Client 747, JavaScript 16 and 67, none skipped; PostgreSQL tests
+ran): diagnostic-UVuFOS, with the merge diff. A second trial, of
+`f98cb44c` (with `messaging.kept-status-unapplied`, one more line in the
+same three lists), passed the messaging, fuel, identity, caching and
+synchronization groups with architecture (Server 3,264, Client 973,
+JavaScript 7, 16, 13 and 67, none skipped): diagnostic-jjVorf. Not run
+on a merged tree: the fleet, map, costs and styles groups, the full
+gate, the strict builds and the browser checks.
+
+## Owner decisions: proposals with examples
+
+Each item is a proposal; nothing below is implemented. The examples are
+illustrations of the mechanism, not measured production cases, unless a
+figure names its source.
+
+1. **D6 read cost - reuse within an operation.** Today a planning
+   refresh reads a truck's fuel hand-over records four times (summary,
+   display copy, refresh, fleet loop). Proposal: read once per operation
+   and truck, reused while the `fuel-hand-overs` generation is
+   unchanged. Example: 4 active trucks, one refresh each - 16 reads
+   become 4. Cost: a hand-over recorded by another instance during an
+   operation shows on the next one (seconds); with one instance, never.
+   The write-time option stays available but changes what Root accepted.
+2. **F25 cost semantics - one rule per question, in `FuelPlanCost`.**
+   Proposed answers, each its own release note:
+   - Access minutes (1): stored `DetourMinutes` everywhere. Example: a
+     stop 3 miles off the interstate by a one-way ramp stores 11
+     minutes; the replay derives 6 from miles and so charges less than
+     the optimizer chose on.
+   - Initial access (2): include it in `SavingsUsd`; ranking unchanged,
+     the saving shown stops overstating by that access.
+   - Schedule delay (3): keep the shown figure as "remaining" and label
+     it so; show the chosen total beside it. Example: a plan chosen at
+     $412 with $18 of delay shows $394 after publication today, which
+     reads as a saving that did not happen.
+   - Negative detours (4) and invalid prices (8): refuse at the owner and
+     report, as the replay does; the optimizer stops dropping silently.
+   - Arrival floor (5): `Max(Reserve, Minimum)` in one owner; a plan the
+     projection calls valid with 40 gallons can be invalid in the replay
+     when the reserve is 50.
+   - Future fuel on a price refresh (6): repriced at the new price, so
+     fuel left in the tank is valued as it would be bought today.
+   - Materiality (7): total-based, as the choice is; a per-stop test can
+     call a $2 difference on each of five stops immaterial while the
+     plan differs by $10.
+3. **Diagnostics - an operator role.** Proposal: a carrier's Admin sees
+   its own carrier's figures; process-wide figures (other carriers'
+   activity counts, memory, queues) only for an operator role held by
+   the product's owners. Example: with a second carrier, its Admin would
+   see how many loads AMF is running. No personal data is exposed today.
+4. **F19 shared fuel data - catalogue shared, discounts per carrier.**
+   Proposal: `FuelStations` keeps location and brand, written only by the
+   operator's import; each carrier's discount mail writes a carrier-owned
+   discount table, and pricing reads the serving carrier's discount.
+   Example: a second carrier's discount file today overwrites the rows
+   AMF plans with, so AMF's plans would use the other carrier's
+   discounts. Needs a migration; blocks selling, not today's work.
+5. **Background liveness - one heartbeat per operation.** Proposal:
+   each of the thirteen operations registers an expected interval and
+   beats once per round before its work; road preparation and ETA
+   refresh first get a bounded round. Example: an ETA refresh blocked on
+   a provider call that never returns leaves forecasts ageing with no
+   signal; with a heartbeat, readiness names the operation after its
+   interval.
+6. **Google address attempts - keep 60 a minute per process.** Example:
+   an import bringing 150 new addresses geocodes 60 in the first minute;
+   the rest answer "busy" (the saved route is kept), are not
+   remembered, and are asked again when next needed - three minutes at
+   the earliest; when a later import retries them is not measured.
+   Raise only if an import measures longer waits than dispatchers
+   accept; the limit is one constant.
+7. **F18 role model - no limited role yet.** Every signed-in non-Admin
+   is Dispatch and reaches 65 state-changing endpoints. Proposal: keep
+   it while each carrier's users are its own dispatchers; define a
+   limited role (read, messaging, no broker/expense/driver-number edits)
+   before selling to carriers with outside staff.
+8. **Kept, no decision proposed.** The sign-in contract (a sign-in name
+   unique across carriers; a WhatsApp number held by another carrier
+   refused) stays as it is. D4 key custody and D5 proxy limits keep
+   their designs above; they need owner and platform access.
 
 ## Open gaps, owners and completion criteria
 
 - **Which exception holds 1341 and 1355.** Owner: Routing (D1). Done
   when D1 is deployed and a reason is logged for each.
+- **A skipped fuel-import message is only logged (F20).** Done: a
+  skipped message is recorded (`FuelImportSkips`, migration 81) once, under
+  the import's lock, and warned once; importing it later - a corrected
+  parser - removes the record; `fuel.import-message-skipped` reviews those
+  within the 30-day mailbox window; records older than 180 days are
+  removed by the next pass. Replaces the process-local memory of skips.
+  Mutations - keeping the record after import, recording every pass,
+  dropping the window or the pruning - fail (diagnostic-utgEZy); fuel,
+  database and messaging groups green (diagnostic-gaIv0y).
+- **Road requests for completed loads never finish (F23).** Owner:
+  Routing. Done when, with D1 released, the step is known for the 30
+  requests, and completed legs either get their road or settle without
+  retrying hourly - by a decision of the road's owner, not by a cap.
 - **Per-statement production counts.** Owner: operations with root.
   Done when `pg_stat_statements` is enabled by owner decision, or a
   sampled statement log exists, and F2 and F5 are re-measured.
@@ -520,10 +1936,47 @@ remains.
   referrer and API restrictions are confirmed in the console.
 - **Payload sizes of locations, HOS and planning.** Owner: Client (F6).
   Done when measured in a browser trace.
-- **Reported findings not re-read (F10 scan, F12, F15).** Owner: this
-  audit. Done when each is re-read, or fixed with its test.
-- **Liveness of operations without a heartbeat.** Owner: the background
-  owners. Done when each has a heartbeat or a documented reason.
+- **Findings re-read.** Every reported finding has been re-read against
+  the code (F10-F27); what remains open is listed with its owner above.
+- **Role model (F18).** Owner: the owner. Done when a limited role is
+  chosen or explicitly declined.
+- **PostgreSQL fixture.** Owner: tests. Done when an isolated fixture,
+  not in Docker, runs the 42 skipped tests in the gate.
+- **Delivery statuses lost in a release overlap.** Owner: Messaging.
+  Kept statuses whose id names a saved message are reconciled; an
+  accepted message with no status past the grace is reviewed as
+  unknown; a new revision sends nothing until a deployment operator
+  releases it after the platform shows the previous one drained
+  (`SendHold`), so no status of what it sends can land on the previous
+  binary. Left: the previous binary's own race for what it sends itself
+  (F27, present every minute it runs, ended by the release); done when
+  root accepts that, and the operator identities are set.
+- **Liveness of operations without a heartbeat.** Done: root decided
+  per-operation progress reports stale work and never restarts the only
+  instance. `BackgroundProgress` (apart from the liveness
+  `BackgroundHeartbeat`) is fed by the 13 operations - ten periodic, three
+  on demand (ETA, driver hours, truck history, stale only while a round
+  overruns) - and read at `api/diagnostics/background` and as degraded
+  readiness. The synchronization loop keeps its heartbeat; the audit's
+  stall shows as stale coverage. An architecture test requires every new
+  operation to report. Groups routing, fleet, messaging, fuel and
+  synchronization green (diagnostic-6R5g0n); returning Unhealthy, calling
+  idle on-demand work stale, or dropping one operation's registration
+  fails the tests (diagnostic-NuIYG6). No alert reads it yet: owner
+  operations, done when a monitor polls readiness or the report.
+  Root's review of ad7f5c69: the readiness check in Infrastructure
+  called Application's `BackgroundProgress.Read` directly, which the
+  constructor-only boundary test cannot see. An IL scan of Infrastructure
+  (diagnostic-npGpkr) found three such calls: that one, the liveness
+  check's `BackgroundHeartbeat.Stalled` (older) and `PerformanceStages`
+  in the TomTom provider and `ExecutionReadScope`. They now go through
+  `IBackgroundState` and `IStageTimings`, declared in Application and
+  implemented there. `InfrastructureCallsApplicationOnlyThroughContracts`
+  reads every Infrastructure method's IL and allows only contract data
+  (interfaces, records, value types, exceptions, Models, Interfaces and
+  Options types) - never a command or query, never another concrete
+  class; putting either static call back fails it. Routing, dispatch and
+  synchronization groups green (diagnostic-E8MCq5).
 
 The audit is not complete until these are closed or explicitly accepted
 by root.

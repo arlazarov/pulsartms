@@ -21,6 +21,12 @@ public sealed partial class BaseRouteOperation
   private async Task PrepareAsync(SourceRoadWork work, CancellationToken ct)
   {
     Guid? truckId = work.TruckId;
+    // The inputs the wait is about: their signature once read, the claimed
+    // version until then.
+    var signature = $"v{work.Version}";
+    // Which step the road is waiting on, set before each: the reason is the
+    // owner that stopped it, never the text it said.
+    var stage = WaitStage.Inputs;
     using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
     timeout.CancelAfter(TimeSpan.FromMinutes(2));
     try
@@ -31,6 +37,8 @@ public sealed partial class BaseRouteOperation
         .ServiceProvider.GetRequiredService<SourceRoadInputs>()
         .ReadAsync(work.DispatchId, timeout.Token);
       if (observation is not null)
+      {
+        signature = observation.Signature;
         await scope
           .ServiceProvider.GetRequiredService<ISourceRoadStore>()
           .ObserveAsync(
@@ -43,6 +51,7 @@ public sealed partial class BaseRouteOperation
             time.GetUtcNow().UtcDateTime,
             timeout.Token
           );
+      }
       var token = timeout.Token;
       var load = await db
         .Dispatches.AsNoTracking()
@@ -58,8 +67,10 @@ public sealed partial class BaseRouteOperation
       {
         var addresses =
           scope.ServiceProvider.GetRequiredService<ExecutionStopAddressService>();
+        stage = WaitStage.Address;
         foreach (var legId in sections.Select(x => x.ExecutionLegId!.Value))
           await addresses.VerifyAsync(legId, token);
+        stage = WaitStage.Inputs;
         native = await ExecutionRouteSections.ReadAsync(db, [load], token);
         sections = native[load.Id];
         var pending = sections
@@ -73,15 +84,19 @@ public sealed partial class BaseRouteOperation
         var bases =
           scope.ServiceProvider.GetRequiredService<BaseRouteService>();
         RoutePlanningException? failure = null;
+        var failedStage = stage;
         foreach (var leg in pending)
         {
           try
           {
+            stage = WaitStage.Profile;
             var nativeProfile = await nativePlans.ProfileAsync(
               leg.TruckId!.Value,
               token
             );
+            stage = WaitStage.Road;
             await bases.EnsureAsync(leg, nativeProfile, token);
+            stage = WaitStage.Deadhead;
             await scope
               .ServiceProvider.GetRequiredService<DeadheadService>()
               .EnsureAsync(leg, nativeProfile, token);
@@ -100,9 +115,12 @@ public sealed partial class BaseRouteOperation
           }
           catch (RoutePlanningException ex)
           {
+            if (failure is null)
+              failedStage = stage;
             failure ??= ex;
           }
         }
+        stage = failedStage;
         if (failure is not null)
           throw failure;
         await FinishAsync(work, true, null, ct);
@@ -118,9 +136,11 @@ public sealed partial class BaseRouteOperation
       var plans =
         scope.ServiceProvider.GetRequiredService<RoutePlanningService>();
       load = load.TruckItinerary();
+      stage = WaitStage.Address;
       await scope
         .ServiceProvider.GetRequiredService<StopAddressService>()
         .VerifyAsync(load.Stops, token);
+      stage = WaitStage.Assignment;
       var resolved =
         load.Status != "unassigned"
           ? await plans.ResolveAssignmentAsync(load, token)
@@ -134,15 +154,19 @@ public sealed partial class BaseRouteOperation
         )
         .Select(x => x.AddressRetryAfter)
         .Min();
+      stage = WaitStage.Address;
       if (addressRetry is not null)
         throw new RoutePlanningException(
           "Stop address verification is pending.",
           addressRetry
         );
+      stage = WaitStage.Profile;
       var profile = await plans.ProfileAsync(truckId ?? Guid.Empty, token);
+      stage = WaitStage.Road;
       await scope
         .ServiceProvider.GetRequiredService<BaseRouteService>()
         .EnsureAsync(resolved, profile, token);
+      stage = WaitStage.Deadhead;
       await scope
         .ServiceProvider.GetRequiredService<DeadheadService>()
         .EnsureAsync(resolved, profile, token);
@@ -165,6 +189,7 @@ public sealed partial class BaseRouteOperation
     catch (RoutePlanningException ex)
     {
       await FinishAsync(work, false, ex.RetryAfter, ct);
+      ReportWait(work, signature, stage, ex);
     }
     catch (OperationCanceledException)
     {

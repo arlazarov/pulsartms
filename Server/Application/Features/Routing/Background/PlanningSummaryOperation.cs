@@ -1,3 +1,4 @@
+using Application.Diagnostics;
 using Application.Features.Eta.Services;
 using Application.Features.Routing.Services.Routes;
 using Application.Interfaces;
@@ -40,8 +41,10 @@ public sealed class PlanningSummaryOperation(
   private async Task KeepRunningWorkAsync(CancellationToken ct)
   {
     using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30), time);
+    BackgroundProgress.Expect("PlanningSummary", TimeSpan.FromSeconds(30));
     do
     {
+      BackgroundProgress.Started("PlanningSummary");
       try
       {
         await using var scope = scopes.CreateAsyncScope();

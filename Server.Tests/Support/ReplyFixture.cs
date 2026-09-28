@@ -1,6 +1,7 @@
 using Application.Features.Messaging.Background;
 using Application.Features.Messaging.Commands;
 using Application.Features.Messaging.Interfaces;
+using Application.Features.Messaging.Options;
 using Application.Features.Messaging.Queries;
 using Application.Features.Messaging.Services;
 using Application.Interfaces;
@@ -34,6 +35,8 @@ internal sealed class ReplyFixture : IAsyncDisposable
   public MessagingEvents Events { get; } = new();
   public OutboxSignal Signal { get; } = new();
   public ManualTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
+  public TestCompany Company { get; } = new();
+  public SendHoldOptions HoldOptions { get; } = new();
   public AppDbContext Db => sync.Db;
   public OutboundMessageOperation Worker =>
     new(
@@ -52,7 +55,7 @@ internal sealed class ReplyFixture : IAsyncDisposable
       f.sync.NewContext([.. f.Interceptors])
     );
     collection.AddSingleton<IDriverMessaging>(f.Messaging);
-    collection.AddSingleton<ICurrentCompany>(new TestCompany());
+    collection.AddSingleton<ICurrentCompany>(f.Company);
     collection.AddSingleton(FileStorageTests.Configuration());
     collection.AddSingleton<TimeProvider>(f.Clock);
     collection.AddSingleton<IStorageSecrets>(
@@ -67,6 +70,19 @@ internal sealed class ReplyFixture : IAsyncDisposable
     collection.AddScoped<StorageTargets>();
     collection.AddScoped<FileStore>();
     collection.AddScoped<ApprovedTemplates>();
+    collection.AddScoped<IDeliveryStatusLocks>(sp => new DeliveryStatusLocks(
+      (AppDbContext)sp.GetRequiredService<IAppDbContext>()
+    ));
+    collection.AddScoped<EarlyDeliveryStatuses>();
+    collection.AddSingleton(f.Events);
+    collection.AddLogging();
+    collection.AddScoped<KeptStatusReconciliation>();
+    collection.AddSingleton<KeptStatusRetries>();
+    collection.AddSingleton<IDeploymentRevision>(
+      new TestSendHold.Revision("test")
+    );
+    collection.AddSingleton(Options.Create(f.HoldOptions));
+    collection.AddSingleton<SendHold>();
     f.services = collection.BuildServiceProvider();
     foreach (var name in new[] { "me", "colleague" })
       f.Db.Users.Add(

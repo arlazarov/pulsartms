@@ -1,4 +1,5 @@
 using Application.Caching;
+using Application.Diagnostics;
 using Application.Features.Dispatch.Queries;
 using Application.Features.Eta.Interfaces;
 using Application.Features.Eta.Services;
@@ -111,14 +112,14 @@ internal sealed class PlanningTestServices : IDisposable
     Transfers = new(db);
     Itineraries = new(
       db,
-      new ExecutionReadScope((AppDbContext)db),
+      new ExecutionReadScope((AppDbContext)db, new StageTimings()),
       Names,
       Transfers
     );
     PlanningInputs = new(
       db,
       Itineraries,
-      new ExecutionReadScope((AppDbContext)db),
+      new ExecutionReadScope((AppDbContext)db, new StageTimings()),
       Reads,
       Hos,
       new SavedRoutePlanReader(
@@ -131,7 +132,7 @@ internal sealed class PlanningTestServices : IDisposable
     DeadheadHistory = new(
       db,
       new DeadheadHistoryReader((AppDbContext)db),
-      new ExecutionReadScope((AppDbContext)db),
+      new ExecutionReadScope((AppDbContext)db, new StageTimings()),
       Names,
       Transfers
     );
@@ -208,7 +209,7 @@ internal sealed class PlanningTestServices : IDisposable
     );
     FuelInputs = new(
       Itineraries,
-      new ExecutionReadScope((AppDbContext)db),
+      new ExecutionReadScope((AppDbContext)db, new StageTimings()),
       PlanningInputs
     );
     FuelMemory = new(new TestCompany());
@@ -219,12 +220,12 @@ internal sealed class PlanningTestServices : IDisposable
         (AppDbContext)db,
         NullLogger<SavedRoutePlanReader>.Instance
       ),
-      new ExecutionReadScope((AppDbContext)db)
+      new ExecutionReadScope((AppDbContext)db, new StageTimings())
     );
     SavedFuelInputs = new(
       Roads,
       DeadheadHistory,
-      new ExecutionReadScope((AppDbContext)db),
+      new ExecutionReadScope((AppDbContext)db, new StageTimings()),
       Reads
     );
     FuelPlans = new(
@@ -240,7 +241,7 @@ internal sealed class PlanningTestServices : IDisposable
       SavedFuelInputs,
       Issues = new FuelIssueRecords(
         db,
-        new PlanningSummaryCache(TimeProvider.System),
+        Summaries,
         new TestCompany(),
         Options.Create(new FuelIssueOptions()),
         TimeProvider.System,
@@ -272,7 +273,7 @@ internal sealed class PlanningTestServices : IDisposable
     EtaInputs = new(
       db,
       Itineraries,
-      new ExecutionReadScope((AppDbContext)db),
+      new ExecutionReadScope((AppDbContext)db, new StageTimings()),
       profiles,
       new SavedRoutePlanReader(
         (AppDbContext)db,

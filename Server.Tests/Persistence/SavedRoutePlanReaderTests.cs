@@ -1,12 +1,17 @@
 using System.Text.Json;
+using Application.Features.Routing.Interfaces;
+using Application.Interfaces;
 using Domain.Entities;
 using Domain.Entities.Dispatch;
 using Domain.Entities.Execution;
 using Domain.Entities.Fleet;
+using Domain.Models.Routing;
 using Infrastructure.Persistence;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using Server.Tests.Support;
 using Load = Domain.Entities.Dispatch.Dispatch;
 
 namespace Server.Tests.Persistence;
@@ -34,6 +39,65 @@ public sealed class SavedRoutePlanReaderTests
     await db.Database.EnsureCreatedAsync();
 
     await CheckAsync(db, probe);
+  }
+
+  // The metadata is read in raw SQL, which the company filter does not
+  // reach. Another carrier asking by these very ids reads nothing; the
+  // owner still reads them.
+  [Fact]
+  public async Task AnotherCarrierReadsNoneOfThesePlansByTheirIds()
+  {
+    await using var connection = new SqliteConnection("Data Source=:memory:");
+    await connection.OpenAsync();
+    var company = new TestCompany();
+    await using var db = new AppDbContext(
+      new DbContextOptionsBuilder<AppDbContext>()
+        .UseSqlite(connection)
+        .UseApplicationServiceProvider(
+          new ServiceCollection()
+            .AddSingleton<ICurrentCompany>(company)
+            .BuildServiceProvider()
+        )
+        .Options
+    );
+    await db.Database.EnsureCreatedAsync();
+
+    await ForeignCheckAsync(db, company);
+  }
+
+  internal static async Task ForeignCheckAsync(
+    AppDbContext db,
+    TestCompany company
+  )
+  {
+    var work = await SeedAsync(db);
+    var reader = new SavedRoutePlanReader(
+      db,
+      NullLogger<SavedRoutePlanReader>.Instance
+    );
+
+    SavedRoutePlanMetadataSet foreign;
+    SavedRoutePlanMetadata? single;
+    using (company.As(Guid.NewGuid()))
+    {
+      foreign = await reader.ReadWorkAsync(
+        [work.Plain, work.Carried],
+        [work.Leg],
+        default
+      );
+      single = await reader.ReadAsync(work.Carried, default);
+    }
+    var own = await reader.ReadWorkAsync(
+      [work.Plain, work.Carried],
+      [work.Leg],
+      default
+    );
+
+    Assert.Empty(foreign.Loads);
+    Assert.Empty(foreign.Legs);
+    Assert.Null(single);
+    Assert.Equal(2, own.Loads.Count);
+    Assert.Single(own.Legs);
   }
 
   internal static async Task CheckAsync(AppDbContext db, QueryColumnProbe probe)
@@ -164,5 +228,19 @@ public sealed class SavedRoutePlanReaderPostgresTests
     await using var db = fixture.Connect(probe);
 
     await SavedRoutePlanReaderTests.CheckAsync(db, probe);
+  }
+
+  [RequiresPostgresFact]
+  public async Task AnotherCarrierReadsNoneOfThesePlansByTheirIds()
+  {
+    await using var fixture = await PostgresFixture.CreateAsync();
+    var company = new TestCompany();
+    await using var db = fixture.Connect(
+      new ServiceCollection()
+        .AddSingleton<ICurrentCompany>(company)
+        .BuildServiceProvider()
+    );
+
+    await SavedRoutePlanReaderTests.ForeignCheckAsync(db, company);
   }
 }
