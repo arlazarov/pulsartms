@@ -1162,3 +1162,52 @@
     grid-area: chain;
   }
 }
+
+// The light theme as an instrument in daylight (the owner, September 27:
+// the light mode lacked the dark one's HUD character). White and the map's
+// own colours stay; what makes it a HUD is the bright cyan the dark theme
+// glows with - fine grid lines, accent labels, lit value bars and a glow
+// on the chosen row - never grey fills.
+:root[data-theme='light'] {
+  .fleet-truck-facts {
+    border-color: ui.clr('cyan', 200, 0.9);
+    &__fact {
+      border-color: ui.clr('cyan', 200, 0.7);
+      > svg {
+        color: ui.clr('cyan', 500);
+      }
+    }
+    dt {
+      color: ui.clr('cyan', 700);
+    }
+  }
+  .driver-hours__clock {
+    border-color: ui.clr('cyan', 200, 0.9);
+    background:
+      linear-gradient(ui.clr('cyan', 500), ui.clr('cyan', 500)) top center /
+        calc(100% - 2 * #{ui.radius(sm)}) 2px no-repeat,
+      ui.theme(surface);
+    box-shadow: none;
+  }
+  .driver-hours__label {
+    color: ui.clr('cyan', 700);
+  }
+  .fleet-truck-list__columns,
+  .fleet-map-inspector__eyebrow {
+    color: ui.clr('cyan', 700);
+  }
+  .fleet-truck-list__row.is-selected {
+    background: ui.clr('cyan', 50);
+    box-shadow:
+      inset 3px 0 0 ui.clr('cyan', 500),
+      inset 12px 0 16px -12px ui.clr('cyan', 400, 0.5);
+  }
+  .fleet-map-controls {
+    border-color: ui.clr('cyan', 400, 0.45);
+    .map-action-icon,
+    .fleet-map-controls__button {
+      color: ui.clr('cyan', 700);
+    }
+  }
+}
+

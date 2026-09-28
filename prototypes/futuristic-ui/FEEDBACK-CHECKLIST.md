@@ -20,6 +20,7 @@ visual inspection only, never acceptance.
 | Light chain: trips strung on a fine line through filled step tokens; white tiles with a straight colour line along the top (clear of the corners), soft-tint phase chips; chosen trip rimmed in its colour, softly lit and lifted | Built |
 | Each later trip in the chain wears its own road's colour (its place among the map's next loads picks the series colour; lighter shade on dark) | Built |
 | Light emblems (truck, stop P / D, pump): a lit accent disc with a white glyph; a passed stop stays dashed | Built |
+| Light HUD character: bright cyan (not dark teal) for panel rims, ticks, emblems (glowing cyan discs), fact grid lines and icons, accent labels, lit bars on the clocks, a glowing cyan bar on the chosen list row, cyan tool bar icons | Built, Seen light 1100 px |
 | Fleet list as tall as its trucks; weather credit a quiet line, not a plate | Built |
 | Theme switch applies without a page reload: the map is made again in place (Google fixes its scheme at creation), keeping camera, chosen truck, Follow, list, chain and panel | Built, Seen dark→light |
 | Theme switch is smooth: the page cross-fades its colours; the last map stays under the new one until it has drawn, then fades out | Built |
