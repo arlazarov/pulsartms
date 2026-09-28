@@ -21,6 +21,7 @@ visual inspection only, never acceptance.
 | Each later trip in the chain wears its own road's colour (its place among the map's next loads picks the series colour; lighter shade on dark) | Built |
 | Light emblems (truck, stop P / D, pump): a lit accent disc with a white glyph; a passed stop stays dashed | Built |
 | Light HUD character: bright cyan (not dark teal) for panel rims, ticks, emblems (glowing cyan discs), fact grid lines and icons, accent labels, lit bars on the clocks, a glowing cyan bar on the chosen list row, cyan tool bar icons | Built, Seen light 1100 px |
+| Arc Reactor navy bands (top bar and panel heads) tried and rejected: the light theme stays white with cyan light | Reverted |
 | HUD motion: a thin cyan light sweeping along the light panels' top edges (7 s); a dashed sight ring turning around the truck, stop and pump emblems (14 s, both themes); a slow current of cyan dashes along the light chain's line | Built |
 | Fleet list as tall as its trucks; weather credit a quiet line, not a plate | Built |
 | Theme switch applies without a page reload: the map is made again in place (Google fixes its scheme at creation), keeping camera, chosen truck, Follow, list, chain and panel | Built, Seen dark→light |
