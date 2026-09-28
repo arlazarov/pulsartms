@@ -77,7 +77,6 @@
     color: ui.theme(text);
   }
   &__street,
-  &__locality,
   &__facility {
     font-size: ui.fs(body);
     color: ui.theme(text-secondary);
@@ -113,7 +112,6 @@
       > .dispatch-load__stop-heading,
       > .dispatch-load__location,
       > .dispatch-load__street,
-      > .dispatch-load__locality,
       > .dispatch-load__facility {
         grid-column: 1;
       }

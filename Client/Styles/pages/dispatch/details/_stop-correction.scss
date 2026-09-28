@@ -92,8 +92,7 @@
     border-block-start: 1px solid ui.theme(border-subtle);
   }
 
-  &__actions,
-  label.stop-correction__toggle {
+  &__actions {
     display: flex;
     flex-wrap: wrap;
     align-items: center;

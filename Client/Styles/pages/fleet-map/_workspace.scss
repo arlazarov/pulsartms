@@ -95,14 +95,6 @@
   }
 }
 
-// Every panel of the workspace is glass with corner ticks; the map is a
-// panel too, its ticks drawn by the stage around it.
-#fleet-map {
-  border-color: ui.theme(accent, 0.2);
-  border-radius: ui.radius(panel);
-  box-shadow: ui.shadow(panel);
-}
-
 .fleet-map-info-reserved {
   border: 1px solid ui.theme(accent, 0.2);
 }
@@ -130,6 +122,14 @@
   background: ui.theme(surface, 0.86);
   backdrop-filter: blur(10px);
   box-shadow: ui.shadow(panel);
+  // In daylight the bar is rimmed in the cyan glow and its icons are cyan.
+  :root[data-theme='light'] & {
+    border-color: ui.theme(hud-glow, 0.45);
+    .map-action-icon,
+    .fleet-map-controls__button {
+      color: ui.theme(accent);
+    }
+  }
   &__layers {
     position: relative;
   }
@@ -219,13 +219,10 @@
     }
   }
   // A phone's card floats over the map's top: the bar sits low in the
-  // corner, clear of it; fingers zoom, and the layers are in Filters.
+  // corner, clear of it; the layers are in Filters.
   @include ui.below(map-mobile) {
     align-self: end;
     margin-bottom: ui.pg(section);
-    &__button--zoom {
-      display: none;
-    }
   }
 }
 
@@ -368,6 +365,9 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
+    :root[data-theme='light'] & {
+      color: ui.theme(accent);
+    }
     > :last-child {
       text-align: right;
     }
@@ -394,6 +394,12 @@
     &.is-selected {
       background: ui.theme(accent, 0.1);
       box-shadow: inset 3px 0 0 ui.theme(accent);
+      :root[data-theme='light'] & {
+        background: ui.theme(selected);
+        box-shadow:
+          inset 3px 0 0 ui.theme(hud-line),
+          inset 12px 0 16px -12px ui.theme(hud-glow, 0.5);
+      }
     }
   }
   &__unit {
@@ -634,16 +640,22 @@
   }
 }
 
+// The driver's clocks as cells with bars. Docked, edged in the accent;
+// in daylight drawn in the cyan instrument lines with a lit top edge.
 .fleet-truck-clocks {
   margin: 0 ui.pg(lg) ui.pg(md);
-}
-
-// The concept's panel - next stop, facts, clocks - replaces the card's
-// dense head rows on every screen; on a phone too (the owner, September
-// 27: the mobile pass), where Details opens the facts and the clocks.
-.fleet-map-inspector[data-inspector-mode='truck'] {
-  .fleet-map-route-info > :not(.fleet-map-route-info__messages) {
-    display: none;
+  @include ui.above(fleet-docked) {
+    --hos-cell-border: #{ui.theme(accent, 0.2)};
+    --hos-cell-shadow: inset 0 1px 0 #{ui.theme(accent, 0.35)};
+  }
+  :root[data-theme='light'] & {
+    --hos-cell-border: #{ui.theme(selection-border, 0.9)};
+    --hos-cell-background:
+      linear-gradient(#{ui.theme(hud-line)}, #{ui.theme(hud-line)}) top center /
+        calc(100% - 2 * #{ui.radius(sm)}) 2px no-repeat,
+      #{ui.theme(surface)};
+    --hos-cell-shadow: none;
+    --hos-cell-label: #{ui.theme(accent)};
   }
 }
 
@@ -718,9 +730,8 @@
   }
 }
 
-// The truck panel as the stop cards are drawn (the owner, September 27): a
-// truck emblem at its head, a lit frame over its facts, HUD labels, and
-// clocks edged in the accent.
+// The truck panel's head as the stop cards are drawn (the owner,
+// September 27): a truck emblem beside the unit.
 @include ui.above(fleet-docked) {
   .fleet-map-inspector[data-inspector-mode='truck'] {
     // On the head itself: it stays sticky, and its grid is untouched. No
@@ -737,10 +748,6 @@
       &::after {
         left: calc(#{ui.pg(lg)} + #{ui.pg(sm)});
       }
-    }
-    .fleet-truck-clocks {
-      --hos-cell-border: #{ui.theme(accent, 0.2)};
-      --hos-cell-shadow: inset 0 1px 0 #{ui.theme(accent, 0.35)};
     }
   }
 }
@@ -763,6 +770,9 @@
     font-weight: 600;
     letter-spacing: 0.14em;
     text-transform: uppercase;
+    :root[data-theme='light'] & {
+      color: ui.theme(accent);
+    }
   }
   // A phone's head has no room for the eyebrow.
   @include ui.below(map-mobile) {
@@ -772,8 +782,8 @@
   }
 }
 
-// The trip chain: every trip of the truck as a card, wrapping into rows;
-// nothing in it scrolls sideways. A phone lists them down, scrolling.
+// The trip chain: every trip of the truck as a card in one row that
+// scrolls across (the mouse wheel moves it sideways), on phones too.
 .fleet-trip-chain {
   @include ui.glass-panel;
   display: grid;
@@ -1035,6 +1045,58 @@
   }
 }
 
+// The chain in daylight (the owner, September 27): the trips strung on
+// a fine line through their step tokens; each trip a clean white tile
+// with a straight line of its colour along the top edge (clear of the
+// rounded corners), the phase a soft tint without a rim; the chosen trip
+// rimmed in its colour, softly lit and lifted.
+:root[data-theme='light'] {
+  // The line the trips hang on carries a slow current of cyan dashes.
+  .fleet-trip-chain__links {
+    background: repeating-linear-gradient(
+        90deg,
+        ui.theme(hud-glow, 0.85) 0 6px,
+        transparent 6px 14px
+      )
+      0 50% / 100% 1px no-repeat;
+    background-attachment: local;
+    animation: hud-flow 1.2s linear infinite;
+  }
+  .fleet-trip-chain__number {
+    width: 1.5rem;
+    height: 1.5rem;
+    border: 0;
+    background:
+      linear-gradient(
+        color-mix(in srgb, currentColor 16%, transparent),
+        color-mix(in srgb, currentColor 16%, transparent)
+      ),
+      ui.theme(surface);
+  }
+  .fleet-trip-chain__card {
+    border: 1px solid ui.theme(border);
+    background:
+      linear-gradient(currentColor, currentColor) top center /
+        calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
+      ui.theme(surface);
+    box-shadow: 0 2px 8px ui.theme(shadow, 0.06);
+  }
+  .fleet-trip-chain .is-selected .fleet-trip-chain__card {
+    border-color: color-mix(in srgb, currentColor 60%, transparent);
+    background:
+      linear-gradient(currentColor, currentColor) top center /
+        calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
+      ui.theme(surface);
+    box-shadow:
+      0 0 14px color-mix(in srgb, currentColor 18%, transparent),
+      0 6px 16px ui.theme(shadow, 0.1);
+  }
+  .fleet-trip-chain__phase {
+    border: 0;
+    background: color-mix(in srgb, currentColor 12%, transparent);
+  }
+}
+
 // The layout comes last: its narrow-screen rules override the components'
 // own display above, by order at equal specificity.
 @include ui.above(fleet-docked) {
@@ -1053,15 +1115,6 @@
     gap: ui.pg(md);
     position: relative;
     padding: ui.pg(md);
-  }
-  // The map lies under the whole workspace; the list, the panel and the
-  // chain float over it as tempered glass (the owner, September 27). The
-  // camera keeps what it shows clear of them.
-  .fleet-map-stage > #fleet-map {
-    position: absolute;
-    inset: 0;
-    width: auto;
-    border-radius: ui.radius(panel);
   }
   .fleet-truck-list,
   .fleet-trip-chain,
@@ -1101,57 +1154,6 @@
     > .fleet-map-info-reserved.fleet-map-inspector.has-selection {
     align-self: start;
     max-height: 100%;
-  }
-  // The chain in daylight (the owner, September 27): the trips strung on
-  // a fine line through their step tokens; each trip a clean white tile
-  // with a straight line of its colour along the top edge (clear of the
-  // rounded corners), the phase a soft tint without a rim; the chosen trip
-  // rimmed in its colour, softly lit and lifted.
-  :root[data-theme='light'] {
-    // The line the trips hang on carries a slow current of cyan dashes.
-    .fleet-trip-chain__links {
-      background: repeating-linear-gradient(
-          90deg,
-          ui.theme(hud-glow, 0.85) 0 6px,
-          transparent 6px 14px
-        )
-        0 50% / 100% 1px no-repeat;
-      background-attachment: local;
-      animation: hud-flow 1.2s linear infinite;
-    }
-    .fleet-trip-chain__number {
-      width: 1.5rem;
-      height: 1.5rem;
-      border: 0;
-      background:
-        linear-gradient(
-          color-mix(in srgb, currentColor 16%, transparent),
-          color-mix(in srgb, currentColor 16%, transparent)
-        ),
-        ui.theme(surface);
-    }
-    .fleet-trip-chain__card {
-      border: 1px solid ui.theme(border);
-      background:
-        linear-gradient(currentColor, currentColor) top center /
-          calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
-        ui.theme(surface);
-      box-shadow: 0 2px 8px ui.theme(shadow, 0.06);
-    }
-    .fleet-trip-chain .is-selected .fleet-trip-chain__card {
-      border-color: color-mix(in srgb, currentColor 60%, transparent);
-      background:
-        linear-gradient(currentColor, currentColor) top center /
-          calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
-        ui.theme(surface);
-      box-shadow:
-        0 0 14px color-mix(in srgb, currentColor 18%, transparent),
-        0 6px 16px ui.theme(shadow, 0.1);
-    }
-    .fleet-trip-chain__phase {
-      border: 0;
-      background: color-mix(in srgb, currentColor 12%, transparent);
-    }
   }
   .fleet-map-info-reserved {
     // No scrollbar lane: the head reaches the panel's right edge; the
@@ -1218,24 +1220,6 @@
   }
 }
 
-// On a phone the card opens closed: the head and its next stop, with an
-// explicit Details / Hide details; Follow is the map bar's (the owner,
-// September 27: a second Follow in the head repeated its icon).
-@include ui.below(fleet-docked) {
-  @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
-    .fleet-map-inspector[data-inspector-mode='truck']
-      .fleet-map-mobile-summary__toggle {
-      display: inline-flex;
-    }
-    .fleet-map-inspector.is-mobile-collapsed .fleet-map-info-content,
-    .fleet-map-inspector.is-mobile-collapsed .fleet-trip-stops,
-    .fleet-map-inspector.is-mobile-collapsed .fleet-truck-facts,
-    .fleet-map-inspector.is-mobile-collapsed .fleet-truck-clocks {
-      display: none;
-    }
-  }
-}
-
 // Narrower screens: the current floating inspector over the map, the
 // chain beneath it, and the list left to search.
 @include ui.below(fleet-docked) {
@@ -1260,39 +1244,5 @@
   }
   .fleet-trip-chain {
     grid-area: chain;
-  }
-}
-
-// The light theme as an instrument in daylight (the owner, September 27:
-// the light mode lacked the dark one's HUD character). White and the map's
-// own colours stay; what makes it a HUD is the bright cyan the dark theme
-// glows with - fine grid lines, accent labels, lit value bars and a glow
-// on the chosen row - never grey fills.
-:root[data-theme='light'] {
-  .fleet-truck-clocks {
-    --hos-cell-border: #{ui.theme(selection-border, 0.9)};
-    --hos-cell-background:
-      linear-gradient(#{ui.theme(hud-line)}, #{ui.theme(hud-line)}) top center /
-        calc(100% - 2 * #{ui.radius(sm)}) 2px no-repeat,
-      #{ui.theme(surface)};
-    --hos-cell-shadow: none;
-    --hos-cell-label: #{ui.theme(accent)};
-  }
-  .fleet-truck-list__columns,
-  .fleet-map-inspector__eyebrow {
-    color: ui.theme(accent);
-  }
-  .fleet-truck-list__row.is-selected {
-    background: ui.theme(selected);
-    box-shadow:
-      inset 3px 0 0 ui.theme(hud-line),
-      inset 12px 0 16px -12px ui.theme(hud-glow, 0.5);
-  }
-  .fleet-map-controls {
-    border-color: ui.theme(hud-glow, 0.45);
-    .map-action-icon,
-    .fleet-map-controls__button {
-      color: ui.theme(accent);
-    }
   }
 }

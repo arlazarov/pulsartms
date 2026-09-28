@@ -52,6 +52,10 @@
     border-radius: ui.radius(sm);
   }
 
+  // The map is a panel of the workspace, with its shadow. Docked, it lies
+  // under the whole stage and the list, panel and chain float over it as
+  // tempered glass (the owner, September 27); the camera keeps what it
+  // shows clear of them.
   #fleet-map {
     position: relative;
     width: 100%;
@@ -59,9 +63,16 @@
     min-height: 0;
     border: 1px solid ui.theme(border-subtle);
     border-radius: ui.radius(sm);
+    box-shadow: ui.shadow(panel);
     overflow: hidden;
     isolation: isolate;
     transform: translateZ(0);
+    @include ui.above(fleet-docked) {
+      position: absolute;
+      inset: 0;
+      width: auto;
+      border-radius: ui.radius(panel);
+    }
   }
 
   .fleet-map-host {

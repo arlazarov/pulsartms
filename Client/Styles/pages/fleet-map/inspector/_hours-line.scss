@@ -1,16 +1,23 @@
 @use '../../../base' as ui;
 
-// The head's Details button and the closed card it opens.
+// The head's Details button and the closed card it opens. Where the card
+// floats over the map (below the docked layout) it opens closed: the head
+// and the next stop, Details opening the facts and clocks (the owner,
+// September 27). The docked panel has the room and is always open, so the
+// button exists only below the docked layout.
 .fleet-map-inspector[data-inspector-mode='truck'] {
-  // A wide card opens closed behind Details: the head says most of it. A
-  // phone's card (narrower than the compact columns) is open whole and
-  // scrolls instead, so the closed state and its button exist only here.
-  @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {
-    &.is-mobile-collapsed .fleet-map-info-content {
-      display: none;
+  @include ui.below(fleet-docked) {
+    &.is-mobile-collapsed {
+      .fleet-map-info-content,
+      .fleet-truck-facts,
+      .fleet-truck-clocks {
+        display: none;
+      }
     }
-    &.is-mobile-collapsed .fleet-map-inspector__header {
-      border-bottom: 0;
+    @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {
+      &.is-mobile-collapsed .fleet-map-inspector__header {
+        border-bottom: 0;
+      }
     }
   }
   // Says what it does, with an arrow that says which way. Both words sit in
@@ -23,12 +30,15 @@
     --button-border: #{ui.theme(link)};
     --button-hover-text: #{ui.theme(link)};
     --button-hover-border: #{ui.theme(link)};
-    display: inline-flex;
+    display: none;
     align-items: center;
     gap: ui.pg(xs);
     min-block-size: ui.size(control-compact);
     font-weight: 600;
     white-space: nowrap;
+    @include ui.below(fleet-docked) {
+      display: inline-flex;
+    }
     > svg {
       inline-size: 1.1em;
       block-size: 1.1em;
@@ -55,9 +65,6 @@
   @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {
     .fleet-map-inspector__header {
       gap: ui.pg(sm);
-    }
-    .fleet-map-inspector__actions .map-action-icon.btn--primary {
-      background: ui.theme(action);
     }
   }
 }

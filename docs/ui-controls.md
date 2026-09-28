@@ -253,9 +253,10 @@ a rule that runs the width of the card:
   then a labelled Details / Hide details button and Close, separated by a
   hairline. Both toggle words share one cell, so the button keeps its
   width. Closed, the card keeps its head through the clocks and hides the
-  duty and rest line with the rest. On a card narrower than
-  `map-compact-columns` (a phone) the button is hidden and the card is
-  open whole, taking at most half the stage and scrolling (September 26);
+  duty and rest line with the rest. Superseded on September 27: the
+  floating card (below the docked layout, phones included) opens closed
+  behind Details, which opens the facts and clocks; the docked panel is
+  always open and has no Details button;
 - the load number as a link to its page, the order to copy, and the
   tracked stop's visit and name; at the right, ETA, and under it the
   Appointment for the same stop in that stop's zone (the forecast's zone
@@ -1303,10 +1304,10 @@ Empty miles as the orange dash.
 
 On phones the map stage keeps at least half the screen (`50dvh`; the page
 scrolls past the toolbar for it) and the floating panel may take half of
-the stage - the map is what the page is for - so the card, open whole
-with its Details button hidden, scrolls for the rest and the fuel plan's Stations, Edit plan and Send
-actions stay within reach by scrolling the panel rather than vanishing
-under its own heading.
+the stage - the map is what the page is for; opened Details may take
+85% of it - so the card scrolls for the rest and the fuel plan's
+Stations, Edit plan and Send actions stay within reach by scrolling the
+panel rather than vanishing under its own heading.
 
 Saved fuel stations remain visible independently of the Next loads road layer.
 When the same assignment's fuel plan needs updating, retain its station markers
