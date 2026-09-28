@@ -2794,24 +2794,54 @@ try {
       };
       // A cold panel: on a phone it opens closed on the next stop, with the
       // facts and the clocks behind Details; wider, it shows them whole.
+      // Follow is the map tool bar's alone: the owner removed the phone
+      // head's duplicate (owner decision of 2026-09-28).
+      const toolBarFollow = page
+        .locator('.fleet-map-controls')
+        .getByRole('button', { name: 'Follow', exact: true });
       const cold = {
         facts: await page.locator('.fleet-truck-facts').isVisible(),
         clocks: await page.locator('.fleet-truck-clocks').isVisible(),
         toggle: await page
           .locator(`${panelSelector} .fleet-map-mobile-summary__toggle`)
           .isVisible(),
-        quickFollow: await page
-          .getByRole('button', { name: 'Follow truck', exact: true })
-          .isVisible(),
+        headFollow: await page
+          .locator(`${panelSelector} .fleet-map-inspector__header`)
+          .getByRole('button', { name: /^Follow/ })
+          .count(),
+        toolBarFollow:
+          (await toolBarFollow.isVisible()) &&
+          (await toolBarFollow.isEnabled()) &&
+          (await toolBarFollow.evaluate(element => {
+            // Reachable: inside the viewport and on top at its centre.
+            const box = element.getBoundingClientRect();
+            const top = document.elementFromPoint(
+              box.left + box.width / 2,
+              box.top + box.height / 2,
+            );
+            return (
+              box.left >= 0 &&
+              box.right <= innerWidth &&
+              box.top >= 0 &&
+              box.bottom <= innerHeight &&
+              !!top &&
+              element.contains(top)
+            );
+          })),
       };
       check(
         phone
-          ? !cold.facts && !cold.clocks && cold.toggle && cold.quickFollow
-          : cold.facts && cold.clocks,
+          ? !cold.facts &&
+              !cold.clocks &&
+              cold.toggle &&
+              cold.headFollow === 0 &&
+              cold.toolBarFollow
+          : cold.facts && cold.clocks && cold.toolBarFollow,
         `${name}: a cold ${
           phone
-            ? 'phone panel is closed with Details and Follow'
-            : 'panel shows its facts and clocks'
+            ? 'phone panel is closed with Details in its head and Follow ' +
+              'in the tool bar'
+            : 'panel shows its facts and clocks, Follow in the tool bar'
         } (${JSON.stringify(cold)})`,
       );
       await expandTruckCard(page, `${name}-cold`);

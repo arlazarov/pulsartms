@@ -106,8 +106,9 @@ provider calls or database operations are involved. JavaScript heap readings do
 not establish .NET WASM heap, GPU or production memory retention.
 
 The default hours forecast matrix also checks the phone truck panel
-(`mobileTruckScrolling.mjs`): it opens closed on the next stop with Details,
-Follow and Close; Details opens the facts and the clocks. In portrait, a
+(`mobileTruckScrolling.mjs`): it opens closed on the next stop with Details
+and Close in its head, Follow reachable in the map tool bar only (owner
+decision of 2026-09-28); Details opens the facts and the clocks. In portrait, a
 600px-tall screen and 200% text, closed and open, the panel stays over the
 map within its stylesheet cap (half the map closed, 85% open), scrolls only
 vertically, never sideways, and reaches its last clock.
