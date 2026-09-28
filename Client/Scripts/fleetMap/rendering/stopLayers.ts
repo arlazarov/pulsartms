@@ -3,11 +3,7 @@ import type { DeckLayer, DeckLayerFactory } from './deckLayer.ts';
 import type { StopRow } from './stopMarkerLayout.ts';
 import type { LabelFonts } from './sceneMetrics.ts';
 import { memoizeLast } from './layerCache.ts';
-import {
-  stopAppearance,
-  stopBadgeCheckRoom,
-  stopMarkerIcon,
-} from './stopAppearance.ts';
+import { stopAppearance, stopMarkerIcon } from './stopAppearance.ts';
 import { sceneMetrics as metrics, labelSubLayers } from './sceneMetrics.ts';
 
 // What a stop's three layers were built from. Rebuilt only when one of
@@ -96,8 +92,8 @@ export function createStopLayers({
           stop.standing,
           stop.stacked,
           stop.markerLabel ?? '',
-          stop.highlighted === true && !stop.standing,
-          stop.done === true,
+          (stop.highlighted === true || stop.selected === true) &&
+            !stop.standing,
         );
         const layers = [
           ...(stop.markerOffsetX || stop.markerOffsetY
@@ -129,15 +125,11 @@ export function createStopLayers({
             iconMapping: { circle: { ...circle, x: 0, y: 0 } },
             // Deck resolves packed frames through an accessor, not a constant attribute.
             getIcon: () => 'circle',
-            // A completed badge's check is drawn around it too, so the
-            // badge itself keeps the size of every other.
-            getSize:
-              (stop.standing
-                ? metrics.stopBadgeStandingDiameter
-                : stop.stacked
-                  ? metrics.stopBadgeStackedDiameter
-                  : metrics.stopBadgeDiameter) +
-              (stop.done ? stopBadgeCheckRoom * 2 : 0),
+            getSize: stop.standing
+              ? metrics.stopBadgeStandingDiameter
+              : stop.stacked
+                ? metrics.stopBadgeStackedDiameter
+                : metrics.stopBadgeDiameter,
             sizeUnits: 'pixels',
             getPixelOffset: (s: StopRow) => [s.markerOffsetX, s.markerOffsetY],
             billboard: true,

@@ -126,7 +126,9 @@ export function routeLayers(
         : muted
           ? metrics.routeMutedOpacity
           : upcoming && !line.routeSelected
-            ? metrics.routeFutureOpacity
+            ? isLightMap()
+              ? metrics.routeFutureOpacityLight
+              : metrics.routeFutureOpacity
             : 1,
     getPath: (path: unknown) => path,
     widthUnits: 'pixels',
@@ -158,7 +160,13 @@ export function routeLayers(
   // The dark map's roads and their casing are a fifth finer (the owner,
   // September 28).
   const light = isLightMap();
-  const drawnWidth = light ? Math.max(3, width * 0.75) : width * 0.8;
+  // Daylight later roads a little wider than the others, so they read
+  // (the owner, September 28).
+  const drawnWidth = light
+    ? upcoming && !line.routeSelected
+      ? Math.max(4, width)
+      : Math.max(3, width * 0.75)
+    : width * 0.8;
   const outlineWidth = light
     ? drawnWidth + 5
     : drawnWidth + metrics.routeOutlineWidth * 0.8;
@@ -171,17 +179,20 @@ export function routeLayers(
   const outlineDash = pattern.map(
     (value: number) => (value * drawnWidth) / outlineWidth,
   );
+  // Empty miles - the route's own empty roles (deadhead, current-empty,
+  // traveled-empty), never read from colour - are orange dashes, apart
+  // from every loaded road's trip colour (the owner, September 28).
   if (light && !traveled) {
-    const core = empty ? [217, 119, 6, 235] : color;
+    const core = empty ? emptyColor : color;
     return (line.cachedLayer = [
       new PathLayer({
         ...shared,
         ...(dashed || empty ? { extensions, dashJustified: false } : {}),
         id: line.id,
         getColor: core,
-        getWidth: empty ? 2.5 : drawnWidth,
+        getWidth: empty ? 3 : drawnWidth,
         ...(empty
-          ? { getDashArray: [2.2, 2.2] }
+          ? { getDashArray: [2.4, 1.8] }
           : dashed
             ? { getDashArray: pattern }
             : {}),
@@ -193,7 +204,7 @@ export function routeLayers(
     // orange casing did not belong): a fine dashed amber line over a faint
     // amber halo, no white casing - still told from loaded road by colour
     // and dashes.
-    const amber = isLightMap() ? [217, 119, 6] : [251, 191, 36];
+    const amber = isLightMap() ? [234, 88, 12] : [251, 146, 60];
     return (line.cachedLayer = [
       new PathLayer({
         ...shared,
@@ -218,7 +229,14 @@ export function routeLayers(
     // fine line of the instrument ink over a faint wide halo of the same,
     // with no white casing; empty miles keep their dashes (the owner,
     // September 27).
-    const ink = isLightMap() ? [14, 116, 144] : [34, 211, 238];
+    // Empty miles already driven stay orange; loaded ones take the ink.
+    const ink = empty
+      ? isLightMap()
+        ? [234, 88, 12]
+        : [251, 146, 60]
+      : isLightMap()
+        ? [14, 116, 144]
+        : [34, 211, 238];
     // Daylight: the driven road as one fine line, no halo.
     if (light)
       return (line.cachedLayer = [

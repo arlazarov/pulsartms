@@ -58,9 +58,8 @@ export function stopMarkerIcon(
   // A picked load's badge: the same trip colour, a heavier rim - never a
   // generic colour in its place (the owner, September 28).
   emphasis = false,
-  // A completed stop keeps its full size; a small check in its trip's
-  // colour on its upper right says it is done (the owner, September 28).
-  done = false,
+  // In daylight a stacked badge (over a truck it has not reached) stands on
+  // no casing of its own: one crisp rim only (the owner, September 28).
 ) {
   const paint = (value: string | readonly number[]) =>
     typeof value === 'string' ? value : `rgb(${value.slice(0, 3).join(',')})`;
@@ -101,24 +100,15 @@ export function stopMarkerIcon(
   // rim, so the disc behind it reads as a truck and not a smudge. Neither
   // mark may be moved to make room: the gap between them is how far the
   // truck still has to go.
-  const halo = stacked ? pill(half - radius - 2.5, `fill="${casing}"`) : '';
-  // Room for the check, the same on every side so the badge's centre stays
-  // the icon's anchor (stopLayers draws the icon that much larger).
-  const margin = done ? stopBadgeCheckRoom : 0;
-  const outerWidth = width + margin * 2,
-    outerHeight = span + margin * 2;
-  const checkX = margin + width - (half - radius) - 3,
-    checkY = margin + (half - radius) + 3;
-  const check = done
-    ? `<g transform="translate(${checkX - 6} ${checkY - 6})"><circle cx="6" cy="6" r="6" fill="${paint([...border.slice(0, 3)] as number[])}" stroke="${light ? 'rgb(255,255,255)' : casing}" stroke-width="1.2"/><path d="M3.4 6.2 5.3 8l3.4-3.6" fill="none" stroke="rgb(255,255,255)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></g>`
-    : '';
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${outerWidth * 4}" height="${outerHeight * 4}" viewBox="0 0 ${outerWidth} ${outerHeight}"><g transform="translate(${margin} ${margin})">${around}${halo}${badge}</g>${check}</svg>`;
+  const halo =
+    stacked && !light ? pill(half - radius - 2.5, `fill="${casing}"`) : '';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * 4}" height="${span * 4}" viewBox="0 0 ${width} ${span}">${around}${halo}${badge}</svg>`;
   return {
     url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    width: outerWidth * 4,
-    height: outerHeight * 4,
-    anchorX: outerWidth * 2,
-    anchorY: outerHeight * 2,
+    width: width * 4,
+    height: span * 4,
+    anchorX: width * 2,
+    anchorY: span * 2,
     mask: false,
   };
 }
@@ -132,6 +122,3 @@ function badgeTextWidth(label: string) {
     width += /[0-9]/.test(character) ? 7.3 : /[A-Z]/.test(character) ? 9 : 3.7;
   return width;
 }
-
-// The room a completed badge's check takes around it, in pixels per side.
-export const stopBadgeCheckRoom = 5;

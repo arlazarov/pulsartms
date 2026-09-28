@@ -402,17 +402,28 @@ public partial class FleetMap
       ? DriverDutySummary.StatusName(status)
       : "—";
 
-  // The server's reading of the driver's logs (HosDutyStatus), used only
-  // when fresh and in agreement with the live status. It is never the
-  // truck's motion: parked or engine off is not rest (the owner, September
-  // 28).
-  private DriverDutyStatus? DutyReading =>
-    _hos?.CurrentDutyStatus is { } live
-    && HeadDutyStatus is { } duty
-    && duty.Status == live
-    && duty.ObservedAt >= DateTimeOffset.UtcNow.AddMinutes(-3)
-      ? duty
-      : null;
+  // The server's reading of the driver's logs, never the truck's motion:
+  // parked or engine off is not rest (the owner, September 28). The
+  // truck's own reading (GetTruckDutyStatus) comes first; a server without
+  // it leaves the planning ETA's. Either is used only when fresh and in
+  // agreement with the live status.
+  private DriverDutyStatus? DutyReading
+  {
+    get
+    {
+      var duty =
+        _truckDuty is { Duty: { } own } && _truckDuty.TruckId == _activeTruckId
+          ? own
+          : HeadDutyStatus;
+      return
+        _hos?.CurrentDutyStatus is { } live
+        && duty is not null
+        && duty.Status == live
+        && duty.ObservedAt >= DateTimeOffset.UtcNow.AddMinutes(-3)
+        ? duty
+        : null;
+    }
+  }
 
   // How long the driver has been in that status, under its name.
   private string? DutySince =>
@@ -422,32 +433,41 @@ public partial class FleetMap
     : "Time in status unavailable";
 
   // While resting, the rest in its own labelled rows under the clocks: how
-  // long so far, the cycle reset the server counts down, and the clock
-  // time hours come back - which has no source yet, so it says so rather
-  // than being worked out here.
+  // long so far, when the daily rest is complete and when the cycle reset
+  // is - the server's times, never worked out here. A time the server did
+  // not give reads Unavailable. A daily rest whose time has passed says it
+  // is complete; whether the hours are back is the clocks' answer above.
   private IReadOnlyList<(string Label, string Value)> RestRows =>
     DutyReading is { RestMinutes: { } rest } duty
       ?
       [
         ("Rest so far", DriverDutySummary.Duration(rest)),
-        .. duty
-          is {
-            CycleResetHours: > 0 and var hours,
-            CycleResetRemainingMinutes: >= 0 and var remaining,
-          }
-          ?
-          [
-            (
-              $"{hours}h reset",
-              remaining > 0
-                ? $"in {DriverDutySummary.Duration(remaining)}"
-                : "Done"
-            ),
-          ]
-          : Array.Empty<(string, string)>(),
-        ("Hours restored at", "Unavailable"),
+        (
+          "10h rest complete",
+          RestTime(duty.DailyRestCompleteAt, duty.DailyRestRemainingMinutes)
+        ),
+        (
+          duty.CycleResetHours is > 0 and var hours
+            ? $"{hours}h reset"
+            : "Cycle reset",
+          RestTime(duty.CycleResetCompleteAt, duty.CycleResetRemainingMinutes)
+        ),
       ]
       : [];
+
+  private string RestTime(DateTimeOffset? at, int? remaining) =>
+    (at, remaining) switch
+    {
+      ({ } time, > 0) =>
+        $"{RestClock(time)} (in {DriverDutySummary.Duration(remaining.Value)})",
+      ({ } time, _) => $"Done at {RestClock(time)}",
+      (null, > 0) => $"in {DriverDutySummary.Duration(remaining.Value)}",
+      (null, 0) => "Done",
+      _ => "Unavailable",
+    };
+
+  private static string RestClock(DateTimeOffset time) =>
+    time.ToLocalTime().ToString("MMM d, h:mm tt", CultureInfo.InvariantCulture);
 
   // The panel shows where the truck is as its locality - town, region and
   // postal code - by the shared address formatter; the street stays in the

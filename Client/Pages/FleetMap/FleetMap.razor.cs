@@ -262,6 +262,7 @@ public partial class FleetMap : IAsyncDisposable
     await PublishInspectorSuspensionAsync();
     await ReflectSelectionAsync();
     await RefreshChainIfDueAsync();
+    await RefreshTruckDutyIfChosenAsync();
     if (!firstRender)
       return;
     await _visibility.StartAsync(JS);

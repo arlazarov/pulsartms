@@ -70,6 +70,8 @@ export const sceneMetrics = Object.freeze({
   // so 0.75 here was drawn at 0.88 and read as no step at all, and 0.45
   // (drawn at 0.7) still as none; 0.3 is drawn at about 0.58.
   routeFutureOpacity: 0.3,
+  // Daylight later roads are too faint at the dark map's strength.
+  routeFutureOpacityLight: 0.7,
   routeTraveledOpacity: 0.22,
   routeOutlineWidth: 2,
   // Empty miles are dashed: nothing is on board. Dash units are half
