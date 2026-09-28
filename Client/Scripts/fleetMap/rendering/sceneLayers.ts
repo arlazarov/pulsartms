@@ -345,11 +345,12 @@ type FlowPath = {
 };
 const flowPaths = new WeakMap<object, FlowPath>();
 // Screen pixels: between charges, a charge's head and its tail. Dense, so
-// the road reads as current, not as a few sparks; calm, about 38 px/s.
-const tracerSpacing = 38;
-const tracerHead = 6;
-const tracerTail = 30;
-const tracerLimit = 1500;
+// the road reads as current, not as a few sparks: many fine grains, calm,
+// about 38 px/s.
+const tracerSpacing = 13;
+const tracerHead = 3;
+const tracerTail = 9;
+const tracerLimit = 4000;
 
 function flowPath(data: unknown): FlowPath | null {
   if (!data || typeof data !== 'object') return null;
@@ -454,7 +455,7 @@ function flowLayers(
     return piece;
   };
   // The tail in steps of rising light towards the head.
-  const steps = [0.12, 0.3, 0.55];
+  const steps = [0.2, 0.5];
   const tails: { piece: number[][]; alpha: number }[] = [];
   const heads: { piece: number[][]; alpha: number }[] = [];
   const first = Math.max(0, Math.floor(range[0] / spacing) - 1);
@@ -501,7 +502,7 @@ function flowLayers(
         ...core,
         Math.round(255 * row.alpha * strength),
       ],
-      getWidth: 2.25,
+      getWidth: 1.5,
     }),
     new PathLayer({
       ...shared,
@@ -511,7 +512,7 @@ function flowLayers(
         ...glow,
         Math.round(120 * strength * row.alpha),
       ],
-      getWidth: 8,
+      getWidth: 5,
     }),
     new PathLayer({
       ...shared,
@@ -521,7 +522,7 @@ function flowLayers(
         ...core,
         Math.round(255 * strength * row.alpha),
       ],
-      getWidth: 3,
+      getWidth: 2,
     }),
   ];
 }

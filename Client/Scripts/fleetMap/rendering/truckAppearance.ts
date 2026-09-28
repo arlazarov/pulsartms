@@ -49,11 +49,10 @@ const engineOn = '#16a34a';
 const engineQuiet = '#475569';
 const ringQuiet = '#64748b';
 const body = '#1e293b';
-// The dark map's instrument marks: the lit top of the glass body, the halo
-// and the spine.
-const bodyLit = '#f0fdff';
-const bodyDeep = '#9ee3f5';
-const halo = '#22d3ee';
+// The dark map's instrument marks: the glass body by engine state, the
+// casing and the spine.
+const glassOn = { lit: '#ecfdf5', deep: '#6ee7a0' };
+const glassOff = { lit: '#f1f5f9', deep: '#94a3b8' };
 const casing = '#020617';
 const spine = '#0b1626';
 
@@ -87,9 +86,9 @@ function lightTruckIcon(engine: unknown, speed: number) {
 
 // The dark map's marks: the engine-edge truck drawn as an instrument that
 // stands out from the dark ground (the owner, September 27: dark bodies
-// sank into the map) - a bright pale-cyan glass body lit from the nose, a
-// dark casing and a cyan glow around it, a fine dark spine or core; the
-// edge still says the engine.
+// sank into the map) - a bright glass body in a dark casing with a fine
+// dark spine or core, green and glowing while the engine runs, grey while
+// it is off.
 export function truckIcon(engine: unknown, speed = 0) {
   if (isLightMap()) return lightTruckIcon(engine, speed);
   const motion = truckMotion(speed);
@@ -104,16 +103,24 @@ export function truckIcon(engine: unknown, speed = 0) {
         : reading === 'off'
           ? `stroke="${engineQuiet}" stroke-width="2"`
           : `stroke="${engineQuiet}" stroke-width="2" stroke-dasharray="3 2"`;
-    const glass = `<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${bodyLit}"/><stop offset="1" stop-color="${bodyDeep}"/></linearGradient></defs>`;
+    // The engine is told by the whole mark, not a thin edge alone: running,
+    // green glass with a green glow; off or unknown, grey glass with no
+    // glow (unknown keeps its dashed edge).
+    const tone = reading === 'on' ? glassOn : glassOff;
+    const glass = `<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${tone.lit}"/><stop offset="1" stop-color="${tone.deep}"/></linearGradient></defs>`;
+    const glow =
+      reading === 'on'
+        ? `stroke="${engineOn}" stroke-opacity="0.55"`
+        : `stroke="${casing}" stroke-opacity="0"`;
     const shape =
       motion === 'moving'
         ? `
-<path d="${silhouette}" fill="none" stroke="${halo}" stroke-opacity="0.4" stroke-width="6" stroke-linejoin="round"/>
+<path d="${silhouette}" fill="none" ${glow} stroke-width="6" stroke-linejoin="round"/>
 <path d="${silhouette}" fill="none" stroke="${casing}" stroke-opacity="0.9" stroke-width="4.5" stroke-linejoin="round"/>
 <path d="${silhouette}" fill="url(#b)" ${edge} stroke-linejoin="round"/>
 <path d="M13 6.5 L13 17.5" stroke="${spine}" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.75"/>`
         : `
-<circle cx="13" cy="13" r="11" fill="none" stroke="${halo}" stroke-opacity="0.4" stroke-width="6"/>
+<circle cx="13" cy="13" r="11" fill="none" ${glow} stroke-width="6"/>
 <circle cx="13" cy="13" r="11" fill="none" stroke="${casing}" stroke-opacity="0.9" stroke-width="4.5"/>
 <circle cx="13" cy="13" r="11" fill="url(#b)" ${edge}/>
 <circle cx="13" cy="13" r="4.2" fill="none" stroke="${spine}" stroke-width="1.3" stroke-opacity="0.75"/>

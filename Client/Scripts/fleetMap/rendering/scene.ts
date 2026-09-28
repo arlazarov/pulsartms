@@ -99,7 +99,7 @@ export function createScene(
   // and picks it up again when shown.
   const sonarPeriod = 4400;
   const routePulsePeriod = 5200;
-  const routeFlowPeriod = 1000;
+  const routeFlowPeriod = 340;
   const sonarFrame = 40;
   const sonarBreathPeriod = 3000;
   const sonarBreathFrame = 80;
