@@ -10,6 +10,7 @@ started again under the current project policy.
 
 ### Reviews and implementation records
 
+- [Server and frontend release c, September 28](2026-09/release-2026-09-28c.md)
 - [Frontend release, September 28](2026-09/release-2026-09-28-frontend.md)
 - [Current-work release](2026-09/release-2026-09-27-current-work.md)
 - [Current-work publication candidate](2026-09/current-work-candidate-2026-09-27.md)
