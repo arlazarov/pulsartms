@@ -72,7 +72,9 @@ function lightTruckIcon(engine: unknown, speed: number) {
     const silhouette = 'M13 1 L24 23 Q25 26 22 25 L13 22 L4 25 Q1 26 2 23 Z';
     // One flat shape with one thin rim of a deeper shade of its own colour:
     // no white casing or dark outline stacked around it (the owner,
-    // September 28: a stopped truck read as a grey halo in rims).
+    // September 28: a stopped truck read as a grey halo in rims). The
+    // standing circle is a little larger than the first flat cut (r 9),
+    // the owner, September 28; the picking disc is separate and unchanged.
     const fill = key === 'light:off' ? ringQuiet : engineOn;
     const rim = key === 'light:off' ? engineQuiet : lightRimOn;
     const shape =
@@ -80,7 +82,7 @@ function lightTruckIcon(engine: unknown, speed: number) {
         ? `
 <path d="${silhouette}" fill="${fill}" stroke="${rim}" stroke-width="1.5" stroke-linejoin="round"/>`
         : `
-<circle cx="13" cy="13" r="9" fill="${fill}" stroke="${rim}" stroke-width="1.5"/>`;
+<circle cx="13" cy="13" r="10.5" fill="${fill}" stroke="${rim}" stroke-width="1.5"/>`;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="120" viewBox="-1 -1 28 30">${shape}</svg>`;
     icons.set(key, {
       url: 'data:image/svg+xml,' + encodeURIComponent(svg),
@@ -136,8 +138,8 @@ export function truckIcon(engine: unknown, speed = 0) {
           `
 <circle cx="13" cy="13" r="12.4" fill="none" stroke="${ring}" stroke-opacity="0.45" stroke-width="3.4"/>
 <circle cx="13" cy="13" r="12.4" fill="none" stroke="${ring}" stroke-width="2"/>
-<circle cx="13" cy="13" r="8.6" fill="none" stroke="${casing}" stroke-opacity="0.9" stroke-width="3"/>
-<circle cx="13" cy="13" r="8.6" fill="url(#b)" ${edge}/>
+<circle cx="13" cy="13" r="9.4" fill="none" stroke="${casing}" stroke-opacity="0.9" stroke-width="3"/>
+<circle cx="13" cy="13" r="9.4" fill="url(#b)" ${edge}/>
 <circle cx="13" cy="13" r="2.2" fill="${spine}"/>`;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="120" viewBox="-1 -1 28 30">${glass}${shape}</svg>`;
     icons.set(key, {
