@@ -402,41 +402,52 @@ public partial class FleetMap
       ? DriverDutySummary.StatusName(status)
       : "—";
 
-  // How long the driver has been in that duty status, and while resting
-  // how far the rest has come - the driver's logs as the server reads them
-  // (HosDutyStatus), never the truck's motion: parked or engine off is not
-  // rest (the owner, September 28). Shown only when the server's reading
-  // is fresh and agrees with the live status. The clock time hours are
-  // restored has no source yet, so it is said to be unavailable rather
-  // than worked out here.
-  private string? DutyDetail
-  {
-    get
-    {
-      if (_hos?.CurrentDutyStatus is not { } live)
-        return null;
-      if (
-        HeadDutyStatus is not { StatusMinutes: { } minutes } duty
-        || duty.Status != live
-        || duty.ObservedAt < DateTimeOffset.UtcNow.AddMinutes(-3)
-      )
-        return "Time in status unavailable";
-      var since = $"for {DriverDutySummary.Duration(minutes)}";
-      if (duty.RestMinutes is not { } rest)
-        return since;
-      var reset = duty
-        is {
-          CycleResetHours: > 0 and var hours,
-          CycleResetRemainingMinutes: >= 0 and var remaining,
-        }
-        ? remaining > 0
-          ? $" · {hours}h reset in {DriverDutySummary.Duration(remaining)}"
-          : $" · {hours}h reset done"
-        : "";
-      return $"{since} · resting {DriverDutySummary.Duration(rest)}"
-        + $"{reset} · 10h restore time unavailable";
-    }
-  }
+  // The server's reading of the driver's logs (HosDutyStatus), used only
+  // when fresh and in agreement with the live status. It is never the
+  // truck's motion: parked or engine off is not rest (the owner, September
+  // 28).
+  private DriverDutyStatus? DutyReading =>
+    _hos?.CurrentDutyStatus is { } live
+    && HeadDutyStatus is { } duty
+    && duty.Status == live
+    && duty.ObservedAt >= DateTimeOffset.UtcNow.AddMinutes(-3)
+      ? duty
+      : null;
+
+  // How long the driver has been in that status, under its name.
+  private string? DutySince =>
+    _hos?.CurrentDutyStatus is null ? null
+    : DutyReading?.StatusMinutes is { } minutes
+      ? $"for {DriverDutySummary.Duration(minutes)}"
+    : "Time in status unavailable";
+
+  // While resting, the rest in its own labelled rows under the clocks: how
+  // long so far, the cycle reset the server counts down, and the clock
+  // time hours come back - which has no source yet, so it says so rather
+  // than being worked out here.
+  private IReadOnlyList<(string Label, string Value)> RestRows =>
+    DutyReading is { RestMinutes: { } rest } duty
+      ?
+      [
+        ("Rest so far", DriverDutySummary.Duration(rest)),
+        .. duty
+          is {
+            CycleResetHours: > 0 and var hours,
+            CycleResetRemainingMinutes: >= 0 and var remaining,
+          }
+          ?
+          [
+            (
+              $"{hours}h reset",
+              remaining > 0
+                ? $"in {DriverDutySummary.Duration(remaining)}"
+                : "Done"
+            ),
+          ]
+          : Array.Empty<(string, string)>(),
+        ("Hours restored at", "Unavailable"),
+      ]
+      : [];
 
   // The panel shows where the truck is as its locality - town, region and
   // postal code - by the shared address formatter; the street stays in the
