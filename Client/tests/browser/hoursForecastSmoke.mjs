@@ -1051,9 +1051,42 @@ async function measureTruckControls(page, name) {
   return result;
 }
 
+// The panel's parts arrive with a short one-shot motion (hud-arrive: a
+// 3px rise and a fade, staggered; the owner, September 28). A box read
+// mid-arrival is off by part of that rise, so geometry is read once every
+// finite animation in the inspector has finished. The glass's endless
+// sweep is not waited for. Bounded: after 3s the read goes ahead and any
+// movement still shows as a failure.
+async function settleArrivals(page) {
+  await page.evaluate(
+    () =>
+      new Promise(done => {
+        const started = performance.now();
+        const wait = () => {
+          const moving = document
+            .getAnimations()
+            .filter(
+              animation =>
+                animation.playState === 'running' &&
+                animation.effect?.getComputedTiming().iterations !== Infinity &&
+                animation.effect?.target?.closest?.('.fleet-map-inspector'),
+            );
+          if (!moving.length || performance.now() - started > 3000) done();
+          else
+            Promise.race([
+              Promise.all(moving.map(animation => animation.finished)),
+              new Promise(resume => setTimeout(resume, 3000)),
+            ]).then(wait, wait);
+        };
+        wait();
+      }),
+  );
+}
+
 // Where each part of the panel stands, against the panel's own scrolled
 // content, and what the next stop has received so far.
 async function truckLoadingGeometry(page) {
+  await settleArrivals(page);
   return page.locator(panelSelector).evaluate(host => {
     const rect = node => {
       if (!node || node.getClientRects().length === 0) return null;
@@ -1336,6 +1369,7 @@ async function checkNextStopLine(page, name, units) {
 // the fixtures give and the saved temperature unit.
 async function checkPanelFacts(page, name, units) {
   const facts = page.locator(`${panelSelector} .fleet-truck-facts`);
+  await settleArrivals(page);
   const expectedTemperature =
     units.temperatureUnit === 'fahrenheit' ? '72.5 °F' : '22.5 °C';
   const result = await facts.evaluate(element => {
