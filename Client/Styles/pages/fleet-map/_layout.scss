@@ -68,5 +68,18 @@
     &--initializing {
       visibility: hidden;
     }
+    // A theme switch: the new map fades in over the last one's picture.
+    &--entering {
+      animation: fleet-map-host-in 360ms ease-out;
+    }
+    &--leaving {
+      pointer-events: none;
+    }
+  }
+}
+
+@keyframes fleet-map-host-in {
+  from {
+    opacity: 0;
   }
 }

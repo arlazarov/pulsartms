@@ -4,7 +4,22 @@
 // once it is read.
 export function applyTheme(theme: string): void {
   const value = theme === 'dark' ? 'dark' : 'light';
-  document.documentElement.dataset.theme = value;
+  const root = document.documentElement;
+  const apply = () => {
+    root.dataset.theme = value;
+  };
+  // A switch cross-fades the page rather than snapping every colour at
+  // once; the first paint and an unchanged theme just apply.
+  const doc = document as Document & {
+    startViewTransition?: (update: () => void) => unknown;
+  };
+  if (
+    root.dataset.theme &&
+    root.dataset.theme !== value &&
+    doc.startViewTransition
+  )
+    doc.startViewTransition(apply);
+  else apply();
   try {
     localStorage.setItem('pulsr.theme', value);
   } catch {

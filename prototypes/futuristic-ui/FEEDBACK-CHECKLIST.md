@@ -15,6 +15,7 @@ visual inspection only, never acceptance.
 | Rail of destinations, glass panels with corner ticks, canvas glows | Built, Seen |
 | Dark is the default theme; no white flash at start | Built (client start); server "never chosen" is Dispatch's |
 | Theme switch applies without a page reload: the map is made again in place (Google fixes its scheme at creation), keeping camera, chosen truck, Follow, list, chain and panel | Built, Seen dark→light |
+| Theme switch is smooth: the page cross-fades its colours; the last map stays under the new one until it has drawn, then fades out | Built |
 | Phone shell (pulse top bar, bottom nav) | Open (mobile pass later) |
 
 ## Fleet head, list, filters
@@ -45,7 +46,7 @@ visual inspection only, never acceptance.
 | Unselected later routes: fine dashes with the softer glow | Built (not yet seen) |
 | Travelled road as a HUD trace: fine instrument-ink line over a faint halo, no white casing; empty miles dashed | Built |
 | Selected P / D / fuel: HUD reticle with four ticks and soft glow | Built |
-| Direction motion on the current road and every later load's road: larger dark-cased white chevrons, 3.2 s cycle, bright on the chosen road, softer on the others | Built |
+| Direction motion on the current road and every later load's road, like a river's current: thin soft light streaks with faint tails drifting inside the road, bending with it, a fixed screen distance apart; no arrows; brighter on the chosen road | Built |
 | P / D on the map or in the chain (current and later loads): one press opens it, zoom kept (an off-screen stop is panned into view); a double press centres it at zoom 15, satellite by the zoom rule; Follow ends on a camera move | Built |
 | Passed (completed) stops openable from chain and map | Open |
 

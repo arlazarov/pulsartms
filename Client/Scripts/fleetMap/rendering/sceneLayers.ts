@@ -74,6 +74,7 @@ export function createSceneLayers({
     sonarBreath = 0,
     routePulse = 1,
     routeFlow = 0,
+    routeFlowView = null,
   }: {
     lines: Iterable<SceneRouteLine & { map?: unknown; path?: unknown[] }>;
     stationData: StationMark[];
@@ -103,6 +104,8 @@ export function createSceneLayers({
     routePulse?: number;
     // How far the chosen road's direction marks have slid, 0..1.
     routeFlow?: number;
+    // Where the camera is, so the marks keep their screen spacing.
+    routeFlowView?: FlowView | null;
   }): DeckLayer[] => {
     const fonts = labelFonts([pixelRatio, stopLabelStyle.size], () =>
       createLabelFonts(pixelRatio, stopLabelStyle.size),
@@ -132,11 +135,12 @@ export function createSceneLayers({
     );
     const flow = sorted.flatMap(line =>
       flowLayers(
-        IconLayer,
+        PathLayer,
         line,
         hasSelectedNextRoute && line.routeSelected !== true,
         hasSelectedNextRoute,
         routeFlow,
+        routeFlowView,
       ),
     );
     const drawn = sorted.flatMap(line =>
@@ -324,15 +328,26 @@ function reticleLayers(
   ];
 }
 
-// Which way the roads ahead run: fine chevrons along the current road and
-// every later load's road, sliding slowly forward with the map's animation
-// (the owner, September 27). The chosen road's marks are the brighter; an
-// unchosen later road's are faint. A cue of direction, not of the truck's
-// progress. The road's lengths are measured once per geometry; each frame
-// only places a dozen marks per road. Never picked.
-type FlowPath = { points: number[][]; lengths: number[]; total: number };
+// Which way the roads ahead run, as a river shows its current: soft,
+// thin streaks of light drifting along inside the current road and every
+// later load's road (the owner, September 27) - no arrows, nothing larger
+// than the road. Each streak is a short piece of the road's own geometry
+// with a faint tail, so it bends with the road. They stand a fixed screen
+// distance apart whatever the road's length and only those in view are
+// made; the road's lengths are measured once per geometry. Never picked.
+export type FlowView = { zoom: number; bounds: number[] | null };
+type FlowPath = {
+  points: number[][];
+  lengths: number[];
+  total: number;
+  scale: number;
+};
 const flowPaths = new WeakMap<object, FlowPath>();
-const flowCount = 18;
+// Screen pixels: between streaks, a streak's bright head, its tail.
+const flowSpacing = 120;
+const flowHead = 14;
+const flowTail = 46;
+const flowLimit = 3000;
 
 function flowPath(data: unknown): FlowPath | null {
   if (!data || typeof data !== 'object') return null;
@@ -354,49 +369,79 @@ function flowPath(data: unknown): FlowPath | null {
     const dx = (x1 - x0) * Math.cos((((y0 + y1) / 2) * Math.PI) / 180);
     lengths.push(lengths[i - 1] + Math.hypot(dx, y1 - y0));
   }
-  const path = { points, lengths, total: lengths.at(-1)! };
+  const meanLat =
+    points.reduce((sum, point) => sum + point[1], 0) / points.length;
+  const path = {
+    points,
+    lengths,
+    total: lengths.at(-1)!,
+    scale: Math.cos((meanLat * Math.PI) / 180),
+  };
   flowPaths.set(data, path);
   return path.total > 0 ? path : null;
 }
 
-function flowMarks(path: FlowPath, phase: number) {
-  const marks: { position: number[]; angle: number }[] = [];
-  let segment = 1;
-  for (let i = 0; i < flowCount; i++) {
-    const at = ((i + phase) / flowCount) * path.total;
-    while (segment < path.lengths.length - 1 && path.lengths[segment] < at)
-      segment++;
-    const [x0, y0] = path.points[segment - 1];
-    const [x1, y1] = path.points[segment];
-    const span = path.lengths[segment] - path.lengths[segment - 1] || 1;
-    const t = (at - path.lengths[segment - 1]) / span;
-    const dx = (x1 - x0) * Math.cos((y0 * Math.PI) / 180);
-    const bearing = (Math.atan2(dx, y1 - y0) * 180) / Math.PI;
-    marks.push({
-      position: [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t],
-      angle: -bearing,
-    });
-  }
-  return marks;
+// The piece of the road between two distances along it.
+function flowPiece(path: FlowPath, from: number, to: number, hint: number) {
+  const { points, lengths } = path;
+  const at = (distance: number, index: number) => {
+    const span = lengths[index] - lengths[index - 1] || 1;
+    const t = (distance - lengths[index - 1]) / span;
+    const [x0, y0] = points[index - 1];
+    const [x1, y1] = points[index];
+    return [x0 + (x1 - x0) * t, y0 + (y1 - y0) * t];
+  };
+  let i = Math.max(1, hint);
+  while (i < lengths.length - 1 && lengths[i] < from) i++;
+  const start = i;
+  const piece = [at(from, i)];
+  while (i < lengths.length - 1 && lengths[i] < to) piece.push(points[i++]);
+  piece.push(at(Math.min(to, path.total), i));
+  return { piece, start };
 }
 
-const chevron = {
-  url: `data:image/svg+xml,${encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 12 12"><path d="M2.6 8.6 6 5l3.4 3.6" fill="none" stroke="rgba(2,6,23,0.55)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.6 8.6 6 5l3.4 3.6" fill="none" stroke="rgb(255,255,255)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-  )}`,
-  width: 48,
-  height: 48,
-  anchorX: 24,
-  anchorY: 24,
-};
+function flowStreaks(path: FlowPath, phase: number, view: FlowView) {
+  const heads: number[][][] = [];
+  const tails: number[][][] = [];
+  const unit = (360 / (256 * 2 ** view.zoom)) * path.scale;
+  const spacing = flowSpacing * unit;
+  if (!(spacing > 0)) return { heads, tails };
+  const [west, south, east, north] = view.bounds ?? [-180, -90, 180, 90];
+  const padX = (east - west) * 0.05,
+    padY = (north - south) * 0.05;
+  const inView = ([x, y]: number[]) =>
+    x >= west - padX &&
+    x <= east + padX &&
+    y >= south - padY &&
+    y <= north + padY;
+  let hint = 1;
+  for (let k = 0; k < flowLimit; k++) {
+    const end = (k + phase) * spacing;
+    if (end - flowTail * unit > path.total) break;
+    const headFrom = Math.max(0, end - flowHead * unit);
+    const tailFrom = Math.max(0, end - flowTail * unit);
+    if (end <= 0 || tailFrom >= path.total) continue;
+    const tail = flowPiece(path, tailFrom, Math.min(end, path.total), hint);
+    hint = tail.start;
+    if (!tail.piece.some(inView)) continue;
+    tails.push(tail.piece);
+    if (headFrom < path.total)
+      heads.push(
+        flowPiece(path, headFrom, Math.min(end, path.total), hint).piece,
+      );
+  }
+  return { heads, tails };
+}
 
 function flowLayers(
-  IconLayer: DeckLayerFactory,
+  PathLayer: DeckLayerFactory,
   line: SceneRouteLine,
   selectionMuted: boolean,
   laterPicked: boolean,
   phase: number,
+  view: FlowView | null,
 ): DeckLayer[] {
+  if (!view) return [];
   if (line.routeRole !== 'current' && line.routeRole !== 'future') return [];
   const chosen =
     (line.routeRole === 'current' && !laterPicked) ||
@@ -404,19 +449,30 @@ function flowLayers(
   if (line.visible === false || selectionMuted) return [];
   const path = flowPath(line.data);
   if (!path) return [];
+  const { heads, tails } = flowStreaks(path, phase, view);
+  const shared = {
+    getPath: (piece: number[][]) => piece,
+    widthUnits: 'pixels',
+    capRounded: true,
+    jointRounded: true,
+    pickable: false,
+    parameters: { depthCompare: 'always' },
+  };
+  const strength = chosen ? 1 : 0.6;
   return [
-    new IconLayer({
-      id: `${line.id}-flow`,
-      data: flowMarks(path, phase),
-      getPosition: (mark: { position: number[] }) => mark.position,
-      getAngle: (mark: { angle: number }) => mark.angle,
-      getIcon: () => chevron,
-      getSize: chosen ? 16 : 13,
-      sizeUnits: 'pixels',
-      opacity: chosen ? 1 : 0.7,
-      billboard: true,
-      pickable: false,
-      parameters: { depthCompare: 'always' },
+    new PathLayer({
+      ...shared,
+      id: `${line.id}-flow-tail`,
+      data: tails,
+      getColor: [255, 255, 255, Math.round(70 * strength)],
+      getWidth: 2,
+    }),
+    new PathLayer({
+      ...shared,
+      id: `${line.id}-flow-head`,
+      data: heads,
+      getColor: [255, 255, 255, Math.round(200 * strength)],
+      getWidth: 2,
     }),
   ];
 }

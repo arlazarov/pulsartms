@@ -184,6 +184,21 @@ export function createScene(
     const sonar = chosen ? (now % sonarPeriod) / sonarPeriod : null;
     const sonarBreath = 0;
     const routeFlow = (now % routeFlowPeriod) / routeFlowPeriod;
+    const zoom = map.getZoom?.();
+    const box = map.getBounds?.();
+    const routeFlowView = Number.isFinite(zoom)
+      ? {
+          zoom: zoom!,
+          bounds: box
+            ? [
+                box.getSouthWest().lng(),
+                box.getSouthWest().lat(),
+                box.getNorthEast().lng(),
+                box.getNorthEast().lat(),
+              ]
+            : null,
+        }
+      : null;
     const routePulse =
       0.5 + 0.5 * Math.cos((2 * Math.PI * now) / routePulsePeriod);
     if (chosen && !globalThis.document?.hidden && sonarTimer === null)
@@ -197,6 +212,7 @@ export function createScene(
         sonarBreath,
         routePulse,
         routeFlow,
+        routeFlowView,
         lines: routeEditing
           ? [...lines].filter(line => line.routeRole === 'preview')
           : lines,
