@@ -4,6 +4,7 @@ using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Fleet;
 using Client.Models.DTO.Planning;
 using Client.Services;
+using Client.Shared.Dispatch;
 using Client.Shared.DriverStatus.DriverDutySummary;
 using Client.Shared.Trucks;
 using Microsoft.AspNetCore.Components;
@@ -133,10 +134,32 @@ public partial class FleetMap
     return null;
   }
 
+  // The chain's stop badges ("1 · P"), made once per chain read by their
+  // one owner and shared by the trip cards and the map.
+  private IReadOnlyList<DispatchResponse>? _badgesFor;
+  private IReadOnlyDictionary<Guid, string> _stopBadges =
+    new Dictionary<Guid, string>();
+  private IReadOnlyDictionary<Guid, string> StopBadges
+  {
+    get
+    {
+      if (!ReferenceEquals(_badgesFor, _chainLoads))
+      {
+        _badgesFor = _chainLoads;
+        _stopBadges = StopMarkers.ChainBadges(_chainLoads);
+      }
+      return _stopBadges;
+    }
+  }
+
   private async Task PushStopCompletionsAsync()
   {
     if (_map is null || _disposed)
       return;
+    await _map.InvokeVoidAsync(
+      "setStopBadges",
+      StopBadges.ToDictionary(x => x.Key.ToString(), x => x.Value)
+    );
     var completed = _chainLoads
       .SelectMany(load => load.Stops)
       .Where(stop => stop.IsCompleted)
@@ -378,6 +401,42 @@ public partial class FleetMap
     _hos?.CurrentDutyStatus is { } status
       ? DriverDutySummary.StatusName(status)
       : "—";
+
+  // How long the driver has been in that duty status, and while resting
+  // how far the rest has come - the driver's logs as the server reads them
+  // (HosDutyStatus), never the truck's motion: parked or engine off is not
+  // rest (the owner, September 28). Shown only when the server's reading
+  // is fresh and agrees with the live status. The clock time hours are
+  // restored has no source yet, so it is said to be unavailable rather
+  // than worked out here.
+  private string? DutyDetail
+  {
+    get
+    {
+      if (_hos?.CurrentDutyStatus is not { } live)
+        return null;
+      if (
+        HeadDutyStatus is not { StatusMinutes: { } minutes } duty
+        || duty.Status != live
+        || duty.ObservedAt < DateTimeOffset.UtcNow.AddMinutes(-3)
+      )
+        return "Time in status unavailable";
+      var since = $"for {DriverDutySummary.Duration(minutes)}";
+      if (duty.RestMinutes is not { } rest)
+        return since;
+      var reset = duty
+        is {
+          CycleResetHours: > 0 and var hours,
+          CycleResetRemainingMinutes: >= 0 and var remaining,
+        }
+        ? remaining > 0
+          ? $" · {hours}h reset in {DriverDutySummary.Duration(remaining)}"
+          : $" · {hours}h reset done"
+        : "";
+      return $"{since} · resting {DriverDutySummary.Duration(rest)}"
+        + $"{reset} · 10h restore time unavailable";
+    }
+  }
 
   // The panel shows where the truck is as its locality - town, region and
   // postal code - by the shared address formatter; the street stays in the

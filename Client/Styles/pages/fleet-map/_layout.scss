@@ -30,6 +30,9 @@
   font-size: ui.fs(micro);
   letter-spacing: 0.04em;
   text-shadow: 0 0 6px ui.theme(canvas);
+  :root[data-theme='light'] & {
+    text-shadow: none;
+  }
 }
 
 .fleet-map-page {

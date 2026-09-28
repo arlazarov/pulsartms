@@ -47,12 +47,23 @@ export function createCameraViewport(
   // them. Any other move - a route fitted, a zoom, our own pan - ends in an
   // idle, where the pick's place is measured again against the camera at
   // rest, so the reveal converges whatever else moved the map meanwhile.
+  // The reader's own gesture - a drag, the wheel, a pinch or a touch, a
+  // key - takes the camera back for good: the pick is no longer kept in
+  // view, not at the next idle and not when its card changes shape later
+  // (the owner, September 28: a zoom sometimes recentred the map on the
+  // last pick). Only an explicit move (a stop, a fit, Follow) reveals
+  // again.
+  const release = () => {
+    pending = null;
+    current = null;
+  };
   const taken = [
-    map.addListener?.('dragstart', () => {
-      pending = null;
-    }),
+    map.addListener?.('dragstart', release),
     map.addListener?.('idle', () => remeasure()),
   ];
+  const gestures = ['wheel', 'touchstart', 'keydown'] as const;
+  for (const gesture of gestures)
+    element.addEventListener?.(gesture, release, { passive: true });
   const observed = new Set<HTMLElement>();
   const Resize = view?.ResizeObserver;
   const Mutation = view?.MutationObserver;
@@ -327,6 +338,8 @@ export function createCameraViewport(
       pending = null;
       current = null;
       for (const listener of taken) listener?.remove?.();
+      for (const gesture of gestures)
+        element.removeEventListener?.(gesture, release);
       changed = () => {};
       resize?.disconnect();
       mutation?.disconnect();

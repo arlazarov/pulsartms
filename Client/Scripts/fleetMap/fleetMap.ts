@@ -12,6 +12,7 @@ import { createMapHost } from './provider/mapHost.ts';
 import { mergeRoutePayload } from './routes/routePayload.ts';
 import { createStopEtaWindow } from './routes/stopEtaWindow.ts';
 import { watchInspectorScroll } from './ui/inspectorScroll.ts';
+import { setStopBadges } from './routes/stopBadges.ts';
 import { createCameraViewport } from './ui/cameraViewport.ts';
 import { createFuelEditorFocus } from './ui/fuelEditorFocus.ts';
 import { createDockedDetails } from './ui/dockedDetails.ts';
@@ -606,6 +607,10 @@ export async function createFleetMap(
       },
       setStopCompletions(list: { id: string; at: string | null }[]) {
         if (!disposed) route.setCompletions(list);
+      },
+      // The chain's stop badges, one label per stop id, from the page.
+      setStopBadges(record: unknown) {
+        if (!disposed) setStopBadges(record);
       },
       setLoadReference(payload: any) {
         if (!disposed) route.setLoadReference(payload);

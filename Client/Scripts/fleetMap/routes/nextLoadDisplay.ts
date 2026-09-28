@@ -1,7 +1,7 @@
 import type { NextLoad, NextLoadStop, RoutePoint } from '../contracts.d.ts';
 import type { RouteColor } from '../rendering/routePalette.ts';
 import { futureRouteColor } from '../rendering/routePalette.ts';
-import { tripStopLabels } from './stopLabels.ts';
+import { stopBadge } from './stopBadges.ts';
 
 // Which load a badge stands for, and which of its stops the card opens on.
 // A stop on a leg already being driven names that leg as well.
@@ -60,7 +60,7 @@ export function nextLoadDisplay(loads: NextLoad[]) {
       : points.length > 1 && lastPoint
         ? [{ ...lastPoint, job: 'Pickup' }]
         : [];
-    const labels = tripStopLabels(stops.map(stop => stop.job));
+    const labels = stops.map(stop => stopBadge(stop.id, stop.job));
     for (const [index, stop] of stops.entries()) {
       const number = ++stopNumber;
       groups.push({

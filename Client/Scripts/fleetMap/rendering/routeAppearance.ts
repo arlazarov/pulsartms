@@ -152,9 +152,9 @@ export function routeLayers(
               ? metrics.routeCurrentWidthScale
               : metrics.routeWidthScale),
         );
-  // In daylight a road is a crisp line of its colour in a soft haze of the
-  // same colour - no white casing, a little finer (the owner, September
-  // 27: the light roads were heavy). The dark map keeps its casing.
+  // In daylight a road is one crisp, slim line of its own colour - no
+  // casing, haze or glow (the owner, September 28: the bands read as a
+  // muddy tube). The dark map keeps its casing.
   // The dark map's roads and their casing are a fifth finer (the owner,
   // September 28).
   const light = isLightMap();
@@ -171,6 +171,23 @@ export function routeLayers(
   const outlineDash = pattern.map(
     (value: number) => (value * drawnWidth) / outlineWidth,
   );
+  if (light && !traveled) {
+    const core = empty ? [217, 119, 6, 235] : color;
+    return (line.cachedLayer = [
+      new PathLayer({
+        ...shared,
+        ...(dashed || empty ? { extensions, dashJustified: false } : {}),
+        id: line.id,
+        getColor: core,
+        getWidth: empty ? 2.5 : drawnWidth,
+        ...(empty
+          ? { getDashArray: [2.2, 2.2] }
+          : dashed
+            ? { getDashArray: pattern }
+            : {}),
+      }),
+    ]);
+  }
   if (empty && !traveled) {
     // Empty miles as the HUD draws them (the owner, September 27: the
     // orange casing did not belong): a fine dashed amber line over a faint
@@ -202,6 +219,19 @@ export function routeLayers(
     // with no white casing; empty miles keep their dashes (the owner,
     // September 27).
     const ink = isLightMap() ? [14, 116, 144] : [34, 211, 238];
+    // Daylight: the driven road as one fine line, no halo.
+    if (light)
+      return (line.cachedLayer = [
+        new PathLayer({
+          ...shared,
+          ...dash,
+          id: line.id,
+          opacity: 1,
+          getColor: [...ink, 170],
+          getWidth: metrics.routeTraveledWidth * 0.6,
+          ...(dashed ? { getDashArray: metrics.routeDashArray } : {}),
+        }),
+      ]);
     return (line.cachedLayer = [
       new PathLayer({
         ...shared,
@@ -299,9 +329,8 @@ export function routeGlowLayers(
       getWidth: width + extra,
       updateTriggers: { getColor: [step, chosen] },
     });
-  // In daylight only the chosen road glows, and softly: a haze on every
-  // road read as fuzz (the owner, September 27).
-  if (light && !chosen) return [];
+  // Daylight roads carry no glow at all (the owner, September 28).
+  if (light) return [];
   // The dark glow is a fifth narrower, with its road (the owner,
   // September 28).
   const tier = light

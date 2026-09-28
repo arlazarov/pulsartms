@@ -1,6 +1,7 @@
 import type { NextLoad } from '../contracts.d.ts';
 import type { StopSelection } from './nextLoadDisplay.ts';
 import { nextLoadDisplay, nextLoadKey } from './nextLoadDisplay.ts';
+import { onStopBadgesChanged } from './stopBadges.ts';
 
 // What this layer draws with. Both come from the scene, which owns the
 // vendor; the layer asks only for what it uses.
@@ -165,7 +166,7 @@ export function createNextLoadsLayer(
     loadMembers = new Map();
     hoveredId = null;
   }
-  return {
+  const layer = {
     clearSelection,
     // One later load chosen whole (its trip card): its road is the picked
     // one, with no stop open and no card; the page already knows.
@@ -208,6 +209,7 @@ export function createNextLoadsLayer(
     dispose() {
       if (disposed) return;
       disposed = true;
+      stopBadgesWatch();
       this.clear();
     },
     set(loads: NextLoad[]) {
@@ -295,4 +297,11 @@ export function createNextLoadsLayer(
       applyPending();
     },
   };
+  // The chain's numbers can arrive after the loads: draw them again.
+  const stopBadgesWatch = onStopBadgesChanged(() => {
+    if (disposed || !cachedLoads) return;
+    previous = null;
+    layer.set(cachedLoads);
+  });
+  return layer;
 }

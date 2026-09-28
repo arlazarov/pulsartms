@@ -1,4 +1,4 @@
-import { tripStopLabels } from './stopLabels.ts';
+import { onStopBadgesChanged, stopBadge } from './stopBadges.ts';
 import type { LoadReference, PlanStop, RoutePoint } from '../contracts.d.ts';
 import type { StopEtaLabel } from './stopEtaLabels.ts';
 import type { StopFacts } from './stopCardContent.ts';
@@ -48,6 +48,18 @@ export function createRouteStops(
   let fuelArrivals: any[] = [];
   // The stops the server says are completed, and when; not GPS passage.
   let completions = new Map<string, string | null>();
+  // The chain's numbers can arrive after the route: relabel in place.
+  const stopBadgesWatch = onStopBadgesChanged(() => {
+    for (const entry of entries.values()) {
+      const label = stopBadge(entry.stop.id, entry.stop.job);
+      entry.marker.setNumber?.(label);
+      if (entry.details) {
+        entry.details = { ...entry.details, number: label };
+        entry.metadata = JSON.stringify(entry.details);
+      }
+      refreshContent(entry);
+    }
+  });
 
   function updateDistance(entry: Entry) {
     const valid = Number.isFinite(progress) && Number.isFinite(entry.miles);
@@ -210,7 +222,7 @@ export function createRouteStops(
       // a truck is standing on one, where the mark it makes with the truck
       // says it already.
       const ordered = orderedStops(plan);
-      const labels = tripStopLabels(ordered.map(stop => stop.job));
+      const labels = ordered.map(stop => stopBadge(stop.id, stop.job));
       const nextId = plan?.tracking?.nextStopId ?? null;
       const nextIndex = ordered.findIndex(stop => stop.id === nextId);
       const previousId =
@@ -312,6 +324,9 @@ export function createRouteStops(
       selectedId = null;
       popup.hide();
       markSelected();
+    },
+    dispose() {
+      stopBadgesWatch();
     },
     clear() {
       for (const entry of entries.values()) entry.marker.map = null;

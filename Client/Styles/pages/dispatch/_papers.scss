@@ -53,6 +53,10 @@
   }
   &.is-selected .dispatch-paper__tab {
     background: ui.theme(selected);
+    // Daylight: chosen by its accent edge on clean white.
+    :root[data-theme='light'] & {
+      background: ui.theme(surface);
+    }
   }
 }
 .dispatch-paper {

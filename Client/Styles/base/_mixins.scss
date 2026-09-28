@@ -161,16 +161,14 @@
 // else.
 
 // Daylight panels (the owner's approved light concept, September 28):
-// matte, near-opaque white over the map - it only softens behind them -
-// a quiet graphite hairline and a low, soft shadow. No neon: the panel
-// carries no sweeping light or corner ticks in daylight.
+// matte, near-opaque clean white over the map - it only softens behind
+// them - and a thin neutral border; no shadow (only floating menus and
+// dialogs cast one). No neon: no sweeping light or corner ticks.
 @mixin light-glass {
   border-color: fn.theme(border-subtle);
   background-color: fn.theme(surface, 0.97);
-  backdrop-filter: blur(8px);
-  box-shadow:
-    0 1px 2px fn.theme(shadow, 0.05),
-    0 4px 14px fn.theme(shadow, 0.06);
+  backdrop-filter: var(--panel-blur, blur(8px));
+  box-shadow: none;
 }
 
 @mixin glass-panel {
@@ -178,7 +176,7 @@
   border: 1px solid fn.theme(accent, 0.2);
   border-radius: fn.radius(panel);
   background: fn.theme(surface, 0.86);
-  backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: var(--panel-blur, blur(16px) saturate(1.2));
   box-shadow: fn.shadow(panel);
 
   &::before,
@@ -228,7 +226,7 @@
   background:
     linear-gradient(180deg, fn.theme(text, 0.05), transparent 38%),
     fn.theme(surface, 0.44);
-  backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: var(--panel-blur, blur(22px) saturate(1.5));
   box-shadow:
     inset 0 1px 0 fn.theme(text, 0.12),
     fn.shadow(panel);
@@ -354,6 +352,9 @@
       fn.theme(accent, 0.35)
     );
     box-shadow: 0 0 6px fn.theme(hud-glow, 0.5);
+    :root[data-theme='light'] & {
+      box-shadow: none;
+    }
   }
 }
 
@@ -413,7 +414,8 @@ $hud-glyphs: (
     // A dashed sight ring turning slowly around the disc.
     outline: 1px dashed fn.theme(accent, 0.6);
     outline-offset: calc(#{$ring} - 1px);
-    animation: hud-spin 14s linear infinite;
+    // Still on phones and touch screens (global/_root: --hud-spin).
+    animation: var(--hud-spin, hud-spin 14s linear infinite);
     background: radial-gradient(
       circle at 35% 30%,
       fn.theme(accent, 0.34),

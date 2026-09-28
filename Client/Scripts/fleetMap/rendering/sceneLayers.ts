@@ -75,6 +75,7 @@ export function createSceneLayers({
     routePulse = 1,
     routeFlow = 0,
     routeFlowView = null,
+    lite = false,
   }: {
     lines: Iterable<SceneRouteLine & { map?: unknown; path?: unknown[] }>;
     stationData: StationMark[];
@@ -106,6 +107,9 @@ export function createSceneLayers({
     routeFlow?: number;
     // Where the camera is, so the marks keep their screen spacing.
     routeFlowView?: FlowView | null;
+    // A phone or touch screen: the sonar keeps two rings (the owner,
+    // September 28: the map lagged on phones).
+    lite?: boolean;
   }): DeckLayer[] => {
     const fonts = labelFonts([pixelRatio, stopLabelStyle.size], () =>
       createLabelFonts(pixelRatio, stopLabelStyle.size),
@@ -182,15 +186,19 @@ export function createSceneLayers({
           selectStation,
           fonts,
         }),
+        ...reticleLayers(IconLayer, stopData, stationData),
+        ...stops({ stopData, setHover, selectStop, fonts }),
+        ...cards,
+        // The trucks come last: nothing covers a truck's mark or number -
+        // other stops, fuel and stop labels yield to it (the owner,
+        // September 28). A truck standing on its own stop is not drawn
+        // here; its stop's badge wears it as a ring.
         ...fleet.clusters,
         ...(sonar === null
           ? []
-          : sonarLayers(ScatterplotLayer, trucks, sonar, sonarBreath)),
+          : sonarLayers(ScatterplotLayer, trucks, sonar, sonarBreath, lite)),
         ...fleet.icons,
-        ...reticleLayers(IconLayer, stopData, stationData),
-        ...stops({ stopData, setHover, selectStop, fonts }),
         ...fleet.labels,
-        ...cards,
       ] as DeckLayer[]
     ).filter(
       layer => layer.props.visible !== false && layer.props.data?.length > 0,
@@ -207,6 +215,7 @@ function sonarLayers(
   trucks: LabelledTruck[],
   sonar: number | 'still',
   breath = 0,
+  lite = false,
 ): DeckLayer[] {
   const chosen = trucks.filter(t => t.selected);
   // Bright cyan on the dark map; on the light one the deep accent, a little
@@ -242,8 +251,12 @@ function sonarLayers(
       parameters: { depthCompare: 'always' },
     });
   };
-  return sonar === 'still'
-    ? [ring('truck-sonar', 'still')]
+  if (sonar === 'still') return [ring('truck-sonar', 'still')];
+  return lite
+    ? [
+        ring('truck-sonar', sonar),
+        ring('truck-sonar-echo-2', (sonar + 0.5) % 1),
+      ]
     : [
         ring('truck-sonar', sonar),
         ring('truck-sonar-echo', (sonar + 0.25) % 1),
@@ -429,7 +442,10 @@ function flowLayers(
   phase: number,
   view: FlowView | null,
 ): DeckLayer[] {
-  if (!view || line.visible === false || selectionMuted) return [];
+  // Daylight roads are one crisp line: no current runs along them (the
+  // owner, September 28: the bands read as a muddy tube).
+  if (!view || line.visible === false || selectionMuted || isLightMap())
+    return [];
   if (line.routeRole !== 'current' && line.routeRole !== 'future') return [];
   const chosen =
     (line.routeRole === 'current' && !laterPicked) ||

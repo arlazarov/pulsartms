@@ -22,7 +22,8 @@
                     {
                         <span class="fleet-route-popup__number
                             @(Stop is not null && StopCompleted ? "is-done" : "")"
-                            >@Marker</span>
+                            >@Marker@if (StopMarkers.LoadIcon(Stop?.Job) is { } load)
+                            {<ActionIcon Kind="@load" />}</span>
                     }
                     <div class="fleet-route-popup__identity">
                         <strong class="fleet-route-popup__job"

@@ -162,6 +162,11 @@
 .dispatch-table tr.dispatch-table__row:hover td,
 .dispatch-table tr.dispatch-table__row:focus-within td {
   background: ui.theme(selected);
+  // Daylight: a quiet tone; the accent bar at the edge marks the row
+  // (the owner, September 28: cyan fills read cluttered).
+  :root[data-theme='light'] & {
+    background: ui.theme(surface-soft);
+  }
 }
 .dispatch-table tr.dispatch-table__row:hover td:first-child,
 .dispatch-table tr.dispatch-table__row:focus-within td:first-child {
@@ -238,7 +243,7 @@
 // their rims, tints and lines; only floating panels keep a faint shadow.
 :root[data-theme='light'] {
   .dispatch-load--current {
-    box-shadow: 0 1px 3px ui.theme(shadow, 0.08);
+    box-shadow: none;
   }
   .dispatch-load__stop-number,
   .dispatch-details__tab[aria-current='page'] {

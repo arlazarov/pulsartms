@@ -385,7 +385,8 @@
                 </div>
                 <div class="fleet-truck-facts__fact">
                     <ActionIcon Kind="clock" />
-                    <div><dt>Duty</dt><dd>@DutyFact</dd></div>
+                    <div><dt>Duty</dt><dd>@DutyFact</dd>@if (DutyDetail is { } dutyDetail)
+                        {<small class="fleet-truck-facts__detail">@dutyDetail</small>}</div>
                 </div>
                 <div class="fleet-truck-facts__fact">
                     <ActionIcon Kind="fuel" />
@@ -567,6 +568,7 @@
                     Selected="ChooseChainLoadAsync"
                     StopSelected="ChooseChainStopAsync"
                     FocusedStopId="_tripStop"
+                    Badges="StopBadges"
                     LoadHref="@(load => ReturnNavigation.Load(load.Id, ReturnOrigin))" />
     </div>
 

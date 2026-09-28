@@ -232,6 +232,7 @@ export function createRouteLayer(
       () => idleListener.remove(),
       () => dragListener.remove(),
       () => setPlan(null, false),
+      () => stops.dispose(),
       () => (disposed = true),
       () => (serverProgress = null),
       () => popup.dispose(),

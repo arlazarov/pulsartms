@@ -38,7 +38,6 @@
                 <li class="fleet-trip-chain__link @PhaseClass(load) @RouteClass(load, index) @(selected ? "is-selected" : "")"
                     @key="(load.Id, load.ExecutionLegId)"
                     style="--hud-index: @index">
-                    <span class="fleet-trip-chain__number" aria-hidden="true">@(index + 1)</span>
                     <div class="fleet-trip-chain__card">
                         <button type="button" class="fleet-trip-chain__trip"
                                 aria-pressed="@(selected ? "true" : "false")"
@@ -64,17 +63,25 @@
                             {
                                 var stop = visit.Stop;
                                 var focused = selected && stop.Id == FocusedStopId;
+                                var badge = Badge(stop);
+                                var loadIcon = StopMarkers.LoadIcon(stop.Job);
                                 @if (at > 0)
                                 { <span class="fleet-trip-chain__arrow" aria-hidden="true">→</span> }
                                 <span class="fleet-trip-chain__place"
                                       title="@($"{stop.Job} · {DispatchBoardRow.Location(stop)}{(stop.IsCompleted ? " · completed" : "")}")">
+                                    @* The stop's chain number in its trip's
+                                       own colour, and a small icon for
+                                       pickup or delivery (the owner,
+                                       September 28): no P / D letters or
+                                       separate colours. *@
                                     <button type="button"
-                                            class="fleet-trip-chain__stop @DispatchStopPresentation.Tone(stop) @(stop.IsCompleted ? "is-done" : "")"
+                                            class="fleet-trip-chain__stop @(stop.IsCompleted ? "is-done" : "")"
                                             aria-pressed="@(focused ? "true" : "false")"
-                                            aria-label="@($"{visit.Marker}, {stop.Job}{(stop.IsCompleted ? ", completed" : "")}")"
+                                            aria-label="@($"Stop {badge}, {stop.Job}{(stop.IsCompleted ? ", completed" : "")}".Replace("Stop , ", "Stop, "))"
                                             @onclick="() => StopSelected.InvokeAsync((load, stop.Id))"
                                             @onclick:stopPropagation="true"
-                                        >@visit.Marker@if (stop.IsCompleted)
+                                        >@badge@if (loadIcon is not null)
+                                        {<ActionIcon Kind="@loadIcon" />}@if (stop.IsCompleted)
                                         {<ActionIcon Kind="check" />}</button>
                                     <span class="fleet-trip-chain__city">@DispatchBoardRow.Location(stop)</span>
                                 </span>

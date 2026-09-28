@@ -80,10 +80,25 @@
     justify-content: center;
     flex-shrink: 0;
     align-self: start;
-    inline-size: 2.75rem;
+    // Round for a letter, a pill as wide as "12 · D" (the owner,
+    // September 28).
+    min-inline-size: 2.75rem;
     block-size: 2.75rem;
+    padding-inline: ui.pg(sm);
+    gap: ui.pg(hair);
+    white-space: nowrap;
+    // Pickup or delivery: cargo into or out of the box.
+    svg {
+      inline-size: 0.8em;
+      block-size: 0.8em;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 2.2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
     border: 1.5px solid ui.theme(accent);
-    border-radius: 50%;
+    border-radius: ui.radius(pill);
     background: radial-gradient(
       circle at 35% 30%,
       ui.theme(accent, 0.34),
@@ -105,9 +120,9 @@
       position: absolute;
       inset: -6px;
       border: 1px dashed ui.theme(accent, 0.6);
-      border-radius: 50%;
+      border-radius: ui.radius(pill);
+      // Still: a pill does not turn like a ring.
       pointer-events: none;
-      animation: hud-spin-free 14s linear infinite;
     }
     &.is-done::after {
       content: none;
@@ -307,6 +322,9 @@
         ui.theme(accent)
       );
       box-shadow: 0 0 6px ui.theme(hud-glow, 0.55);
+      :root[data-theme='light'] & {
+        box-shadow: none;
+      }
     }
     &::-moz-progress-bar {
       border-radius: ui.radius(pill);

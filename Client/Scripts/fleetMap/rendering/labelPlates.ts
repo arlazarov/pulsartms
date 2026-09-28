@@ -45,18 +45,11 @@ const palettes = {
     tick: 'rgb(103,232,249)',
     sheen: 'rgba(125,211,252,0.14)',
   },
-  light: {
-    truck: { fill: 'rgba(255,255,255,0.92)', line: 'rgba(14,116,144,0.55)' },
-    chosen: { fill: 'rgba(224,247,252,0.96)', line: 'rgb(14,116,144)' },
-    cluster: { fill: 'rgba(255,255,255,0.94)', line: 'rgba(14,116,144,0.75)' },
-    tick: 'rgb(8,145,178)',
-    sheen: 'rgba(255,255,255,0.7)',
-  },
 };
 
-// The ink the text is drawn in over its plate.
+// The ink the text is drawn in over its plate: graphite in daylight.
 export function plateText(kind: PlateKind): number[] {
-  if (isLightMap()) return kind === 'chosen' ? [8, 51, 68] : [12, 38, 54];
+  if (isLightMap()) return [29, 37, 48];
   return kind === 'chosen' ? [236, 254, 255] : [220, 238, 250];
 }
 
@@ -68,7 +61,27 @@ export function labelPlate(text: string, kind: PlateKind, padding: number[]) {
   const key = `${light}|${kind}|${width}|${height}`;
   const cached = plates.get(key);
   if (cached) return cached;
-  const theme = light ? palettes.light : palettes.dark;
+  // Daylight (the owner, September 28): a compact clean white tag with a
+  // thin neutral edge - the chosen truck's edge in the accent - and no
+  // sheen, ticks, glow or bevel. Same size as the dark plate.
+  if (light) {
+    const s = 2;
+    const edge = kind === 'chosen' ? 'rgb(22,119,154)' : 'rgb(211,217,224)';
+    const svg =
+      `<svg xmlns="http://www.w3.org/2000/svg" width="${width * s}" height="${height * s}" viewBox="0 0 ${width * s} ${height * s}">` +
+      `<rect x="${s / 2}" y="${s / 2}" width="${(width - 1) * s}" height="${(height - 1) * s}" rx="${3 * s}" fill="rgb(255,255,255)" stroke="${edge}" stroke-width="${s}"/>` +
+      `</svg>`;
+    const plate = {
+      url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
+      width: width * s,
+      height: height * s,
+      anchorX: (width * s) / 2,
+      anchorY: (height * s) / 2,
+    };
+    plates.set(key, plate);
+    return plate;
+  }
+  const theme = palettes.dark;
   const { fill, line } = theme[kind];
   const s = 2,
     w = width * s,

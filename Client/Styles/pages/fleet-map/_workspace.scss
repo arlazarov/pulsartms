@@ -581,6 +581,13 @@
     --facts-icon: #{ui.theme(hud-line)};
     --facts-label: #{ui.theme(accent)};
   }
+  // Under the duty status: how long, and how far a rest has come.
+  &__detail {
+    display: block;
+    color: ui.theme(text-muted);
+    font-size: ui.fs(caption);
+    line-height: 1.3;
+  }
   &__fact {
     display: flex;
     gap: ui.pg(sm);
@@ -755,6 +762,12 @@
         );
       box-shadow: 0 0 24px ui.theme(accent, 0.12);
       animation: fleet-radar-sweep 6s linear infinite;
+      :root[data-theme='light'] & {
+        box-shadow: none;
+      }
+      @media (max-width: 767px), (pointer: coarse) {
+        animation: none;
+      }
     }
   }
 }
@@ -808,8 +821,9 @@
     // The emblem is the head's: in the stop card below, the stop's letter
     // is a small badge beside what happens there, as on the map.
     .fleet-route-popup__number {
-      inline-size: ui.size(popup-stop-badge);
+      min-inline-size: ui.size(popup-stop-badge);
       block-size: ui.size(popup-stop-badge);
+      padding-inline: ui.pg(xs);
       align-self: center;
       border-width: 1px;
       box-shadow: none;
@@ -909,17 +923,6 @@
     min-width: 0;
     color: ui.theme(text-muted);
   }
-  &__number {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: ui.size(control-compact);
-    height: ui.size(control-compact);
-    border: 1.5px solid currentColor;
-    border-radius: 50%;
-    font-size: ui.fs(caption);
-    font-weight: 700;
-  }
   // A trip new to the chain arrives as the HUD shows new information; a
   // poll that changes nothing keeps the card and plays nothing.
   &__card {
@@ -997,7 +1000,6 @@
     gap: ui.pg(xs);
     min-width: 0;
     overflow: hidden;
-    color: ui.theme(text-secondary);
     font-size: ui.fs(caption);
     white-space: nowrap;
   }
@@ -1009,13 +1011,16 @@
   }
   &__city {
     overflow: hidden;
+    color: ui.theme(text-secondary);
     text-overflow: ellipsis;
   }
   &__arrow {
     flex: none;
     color: ui.theme(text-muted);
   }
-  // Each stop as a small marker; a check once the server says it is done.
+  // Each stop as its chain badge ("1 · P") in its trip's own colour, as
+  // the map draws it (the owner, September 28: no separate P / D
+  // colours); a check once the server says it is done.
   &__stop {
     display: inline-flex;
     align-items: center;
@@ -1024,33 +1029,27 @@
     min-width: ui.pg(xl);
     height: ui.pg(xl);
     padding: 0 ui.pg(xs);
-    border: 1.5px solid ui.theme(text-muted);
+    border: 1.5px solid currentColor;
     border-radius: ui.radius(pill);
     background: none;
-    color: ui.theme(text);
+    color: inherit;
     font-family: inherit;
     font-size: ui.fs(micro);
     cursor: pointer;
     font-weight: 700;
     line-height: 1;
+    white-space: nowrap;
     justify-content: center;
-    &.is-pickup {
-      border-color: ui.theme(pickup);
-      color: ui.theme(pickup);
-    }
-    &.is-delivery {
-      border-color: ui.theme(delivery);
-      color: ui.theme(delivery);
-    }
     &[aria-pressed='true'] {
       box-shadow:
         0 0 0 2px ui.theme(surface),
         0 0 0 3px currentColor;
     }
+    // Done: the same colour, dashed and quiet, with its check - as the
+    // map draws a stop behind the truck.
     &.is-done {
-      background: ui.theme(success-text, 0.14);
-      border-color: ui.theme(success-text);
-      color: ui.theme(success-text);
+      border-style: dashed;
+      background: color-mix(in srgb, currentColor 12%, transparent);
     }
     svg {
       width: ui.pg(sm);
@@ -1127,24 +1126,6 @@
 // approved.
 @include ui.above(fleet-docked) {
   :root[data-theme='light'] {
-    // The line the trips hang on: a quiet graphite hairline (the approved
-    // light concept has no moving neon).
-    .fleet-trip-chain__links {
-      background: linear-gradient(ui.theme(border), ui.theme(border)) 0 50% /
-        100% 1px no-repeat;
-      background-attachment: local;
-    }
-    // Palette only: the two themes share every size (the owner,
-    // September 28), so rims turn transparent rather than go.
-    .fleet-trip-chain__number {
-      border-color: transparent;
-      background:
-        linear-gradient(
-          color-mix(in srgb, currentColor 16%, transparent),
-          color-mix(in srgb, currentColor 16%, transparent)
-        ),
-        ui.theme(surface);
-    }
     .fleet-trip-chain__card {
       border-style: solid;
       border-color: ui.theme(border);
@@ -1161,11 +1142,13 @@
           calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
         ui.theme(surface);
       // Chosen by its rim, not a glow (the owner, September 28).
-      box-shadow: 0 1px 3px ui.theme(shadow, 0.08);
+      box-shadow: none;
     }
+    // The phase is a quiet near-neutral chip with its colour in the word
+    // only (the owner, September 28: the Current fill was too strong).
     .fleet-trip-chain__phase {
       border-color: transparent;
-      background: color-mix(in srgb, currentColor 12%, transparent);
+      background: ui.theme(surface-muted);
     }
   }
 }
@@ -1346,7 +1329,7 @@
   // their rim and tint; a focus keeps its fine ring.
   .fleet-map-toolbar .search-input input:focus,
   .fleet-map-motion__chip[aria-pressed='true'],
-  .fleet-map-controls__button[aria-pressed='true'] {
+  .fleet-map-controls .map-action-icon[aria-pressed='true'] {
     box-shadow: 0 0 0 1px ui.theme(accent, 0.3);
   }
   .fleet-station-popup__day.is-current {
