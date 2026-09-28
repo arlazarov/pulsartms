@@ -71,3 +71,74 @@ device, and production browsers.
   (September 27); it is not gated. Owner: the probe owner.
 - Loads 1385 and 1395 (incident 11006) are recovered by Root through the
   load page after this release; this release changes no data.
+
+## Second publication: dark only (12:31 UTC)
+
+The owner asked to publish the follow-up and then to disable light-theme
+selection before publication ("Ok публикуй"). Firebase Hosting,
+12:31:08-12:31:14 UTC, 288 files; no API deploy, no data written.
+
+### Package
+
+`453c4e95` on `claude/release-2026-09-28b`: the first publication's
+record `fc373bf5`, then
+
+- `23f03483` (designer): the phone truck card always open (no Details
+  toggle), one stable card box per breakpoint, Appointment copies itself,
+  the truck panel parks instead of hiding (no replayed arrival), each
+  card opens from its head (scroll reset on mode change), the booking
+  time wraps at enlarged text;
+- `baa8ddbb` (designer): one head for every map card, translucent light
+  glass, no decorative glow in light;
+- `35bd620e` (designer): dark is the only effective theme, from the
+  first paint (`<html data-theme="dark">`, no localStorage bootstrap),
+  no theme toggle or selector; the account's saved theme is kept and a
+  units change sends it unchanged (an unchosen `""` sends `dark`, the
+  only value besides `light` the live server accepts). The candidate
+  before this fix could not load preferences for an unchosen account;
+  production has 3 users and none unchosen (read-only count);
+- probes only (`40b472d4`, `34fb63af`): truck panel probes, the arrival
+  animation read after it finishes and counted from a mark with a
+  positive control, the phone card open, the stable box, dark only.
+
+### Gates
+
+- `adf89cab` failed once in bUnit (`release-J2yaX1`): no product race;
+  the Dispatch board's first render costs about 2.5-3 s of one core
+  cold and a CPU burner reproduces the failure (`diagnostic-cv05Ug`).
+  Contention during that gate is consistent, not proven.
+- `9e1c6074` passed (`release-yp2smA`), superseded by dark only.
+- `453c4e95`, with other sessions' heavy work paused, exit 0:
+  JavaScript 669, Client 1,341, Server 4,041, uiSmoke
+  `browser-ui-Y2lX9t`, messaging `browser-messaging-tabs-nJmRNs`;
+  artifact `release-5vB9hT`, pinned. The probe owner's dark-only runs
+  on `35bd620e`: uiSmoke 12/12, messaging, appearanceSmoke, hours and
+  fuel pass their dark-only checks.
+
+### Verification
+
+`tms.amfcarrier.com` serves, SHA-256 equal to the artifact:
+`index.html` (`<html lang="en" data-theme="dark">`),
+`css/main.css?v=f9b9d956ae239488`, `appsettings.json`, and the
+fingerprinted `blazor.webassembly`, `dotnet`, `dotnet.native` and
+`Client` files; entry HTML `no-cache`; `/api/health/live` 200. Before:
+`main.css?v=f74168069f28f65e`.
+
+### Incident 11006
+
+Root saved AMF1385's and AMF1395's deliveries through the load page
+after the first publication (about 12:07 and 12:12). A read-only
+readback: both loads and their legs completed, every native stop
+complete (1395's pickup by the owner's rule), source trailers and actual
+times unchanged, no transfer, planning changes processed in 1-6 s with
+none pending; the truck's current work is load 1412. Left with owners:
+1395's source review banner (Root); the truck's fuel plan (04:11)
+predates 1412's route plan (12:08) (fuel); 1412 has no saved ETA
+forecast (ETA).
+
+### Known gaps
+
+The phone fuel editor at 390x667; the Dispatch workspace ETA rows 4 px
+too wide at 1200; about 20 ungated probes still loop a light theme;
+workspaceSmoke stale since September 27. The unified card head
+(`claude/card-header-unify`) is included; nothing newer is.
