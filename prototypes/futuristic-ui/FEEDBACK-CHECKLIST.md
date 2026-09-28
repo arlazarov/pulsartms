@@ -54,7 +54,7 @@ visual inspection only, never acceptance.
 
 | Request | Status |
 | --- | --- |
-| Map lies under the whole workspace; list, panel and chain float over it as tempered glass (thinner, strongly blurred, lit top edge); the camera keeps fits and reveals clear of them | Built, Seen dark 1440 px |
+| Map lies under the whole workspace; list, panel and chain float over it as tempered glass (thinner, strongly blurred, lit top edge); the camera keeps fits and reveals clear of them and of the map's tool bar | Built, Seen dark 1440 px |
 | Panel head reaches the panel's right edge (no scrollbar lane); inner blocks stay solid (translucent inner blocks were rejected) | Built |
 
 ## Right panel
@@ -69,6 +69,7 @@ visual inspection only, never acceptance.
 | Load number opens the load; no large Open load button | Built, Seen |
 | Stop card stacks in the narrow panel; no mid-word breaks | Built, Seen |
 | Stop the server completed (IsCompleted, not GPS or load state), current and next cards: no ETA, Left, Fuel on arrival, cycle or late warnings; Completed status, completion time only when recorded; address, load link, appointment kept | Built |
+| Truck panel, station card and fuel plan drawn as the stop cards: glass emblem (truck / pump), lit frame with corner brackets, HUD labels, accent-edged clocks and visit numbers | Built |
 
 ## Trip chain
 

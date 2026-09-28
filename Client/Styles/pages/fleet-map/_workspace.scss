@@ -597,6 +597,39 @@
   }
 }
 
+// The truck panel as the stop cards are drawn (the owner, September 27): a
+// truck emblem at its head, a lit frame over its facts, HUD labels, and
+// clocks edged in the accent.
+@include ui.above(fleet-docked) {
+  .fleet-map-inspector[data-inspector-mode='truck'] {
+    // On the head itself: it stays sticky, and its grid is untouched.
+    .fleet-map-inspector__header {
+      @include ui.hud-emblem(truck, 2.75rem, sticky);
+      // Clear of the glass's corner tick, as the words were.
+      padding-top: ui.pg(md);
+      padding-bottom: ui.pg(sm);
+      padding-left: calc(
+        2.75rem + #{ui.pg(lg)} + #{ui.pg(sm)} + #{ui.pg(md)}
+      );
+      &::before,
+      &::after {
+        left: calc(#{ui.pg(lg)} + #{ui.pg(sm)});
+      }
+    }
+    .fleet-truck-facts {
+      @include ui.hud-frame;
+      border-color: ui.theme(accent, 0.22);
+      dt {
+        @include ui.hud-label;
+      }
+    }
+    .driver-hours__clock {
+      border-color: ui.theme(accent, 0.2);
+      box-shadow: inset 0 1px 0 ui.theme(accent, 0.35);
+    }
+  }
+}
+
 // The truck panel's head, as the concept drew it: a quiet eyebrow over the
 // unit.
 .fleet-map-inspector {

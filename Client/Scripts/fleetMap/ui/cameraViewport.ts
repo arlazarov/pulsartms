@@ -13,6 +13,8 @@ const selectors = [
   // On the wide workspace the map lies under the list and the chain too.
   '.fleet-truck-list',
   '.fleet-trip-chain',
+  // The map's own tool bar covers it too.
+  '.fleet-map-controls',
 ];
 
 export function createCameraViewport(
