@@ -18,10 +18,13 @@
 .fleet-station-popup__day {
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  // Each day centred in its equal column, so the gaps either side of
+  // today's rim are equal (the owner, September 27).
+  align-items: center;
   gap: ui.pg(xs);
   min-width: 0;
   white-space: nowrap;
+  text-align: center;
   padding: ui.pg(xs) ui.pg(sm);
   border: 1px solid transparent;
   border-radius: ui.radius(sm);
@@ -68,5 +71,6 @@
     flex-direction: row;
     flex-wrap: wrap;
     align-items: baseline;
+    text-align: left;
   }
 }
