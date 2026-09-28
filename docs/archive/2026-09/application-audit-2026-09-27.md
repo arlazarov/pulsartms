@@ -1484,17 +1484,88 @@ Release order:
    traffic, and wait for the previous revision's drain (`TrafficShutDown`
    true). No manual sync or history-tool run until then (F21).
 
-During the overlap, bounded by it: the previous binary writes loads
-without a ticket (corrected within one relay round and one poll, F21);
-its webhook drops a delivery status that arrives before the provider id
-is saved (the behaviour before F27); it creates users with `light`; and
-a stale sending attempt still blocks that truck's fuel publication
-(the behaviour before D6/F16).
+### The overlap: duration, recovery after the drain, and what is lost
+
+The overlap is the time both binaries run: from the new revision's
+first instance to the previous one's shutdown. Measured once, at the
+`0e6add5d` release: traffic moved 18:44:36, the new instance started
+18:44:39 (a revision without traffic had no instance, so it ran nothing
+before), the previous one logged its shutdown 18:44:55 - about 19 s. It
+is not bounded by anything we control: Cloud Run decides the drain, and
+the previous instance's background operations run until it stops. The
+release record must read both times again.
+
+**Load imports without a ticket (F21).** Recovered after the drain; no
+load data is lost. The previous binary's loop writes only while it
+holds the synchronization lease; the new loop waits for it (3 minutes
+at most after a stop that does not release it) and its process has no
+import snapshot, so its first pass reconciles every load from a fresh
+provider reading with tickets. Bound: drain + lease + one poll (60 s).
+One path is longer: a manual sync on the new instance during the
+overlap leaves a snapshot, and a later ticketless write behind it is
+seen only through the relay (10 s rounds; the previous binary publishes
+its invalidations after its commit) or, if the previous instance stops
+between its commit and its relay round, by the half-hourly repair pass
+- 30 minutes and a poll. Hence no manual sync or history-tool run
+during the change. What the older reading caused before it is corrected
+(execution changes, planning refresh, road demand) is recomputed from
+the corrected reading like any source change; execution history keeps
+the intermediate entries, as it keeps all history. Covered by the F21
+tests for a newer ticketed writer (diagnostic-e7IkMs, mutations
+diagnostic-kntNFq); the
+ticketless writer during an overlap is not tested - the argument above
+is from the code.
+
+**Delivery statuses before the provider id (F27) - lost, not
+recovered.** Two cases:
+
+- A message the previous binary sends during the overlap, whose first
+  status reaches the new binary before the previous one saves the id:
+  the new binary keeps it, but only a new binary that saves the id
+  applies kept statuses, and the previous binary takes no message lock,
+  so the kept row is never applied and is discarded after an hour.
+- A message the new binary sends while a webhook is still routed to the
+  previous revision (traffic propagation): the previous binary finds no
+  id and drops the status, as before F27.
+
+Later statuses of the same message (delivered, read) arrive after the id
+is saved and apply, so what is lost is the early one. When it was a
+terminal failure (131047 and the like) and nothing follows, the message
+stays accepted for good; WhatsApp offers no status query, and no auditor
+rule reports an accepted message without a status. Bound: messages sent
+in the overlap whose status arrived within the provider call (at the
+last release: driver messages 0, 57 conversation messages in total).
+The first case is detectable after the drain with a read-only query -
+kept rows whose provider id now names a saved message; recovery would
+need a Messaging decision (apply them, or report them for a
+dispatcher). Owner: Messaging. The second case leaves no trace.
+
+**Fuel publication and hand-overs (D6, F16, F17).** The truck's
+publication lock (`PlanningPublicationScope`, `FOR UPDATE SKIP LOCKED`)
+is unchanged, so the two binaries exclude each other. Until the drain,
+the previous binary still refuses publication for a truck with a stale
+sending attempt (the behaviour before F16); no loss - the next refresh
+publishes after it. A previous instance stopped during a provider call
+leaves the attempt sending (after 2 minutes the new binary reports it,
+`routing.fuel-handover-uncertain`, for a dispatcher to ask the driver)
+or accepted but unrecorded (`routing.fuel-handover-unrecorded`, recorded
+from the taken attempt when the plan is sent again). Recoverable by a
+person, and reported.
+
+**Users created by the previous binary** start with `light` stored,
+indistinguishable from a choice; not corrected. Bound: accounts created
+in the overlap.
+
+After the drain, read only: the previous revision `Active` false and
+its last log line; kept delivery statuses whose id names a saved
+message (count only); the two fuel hand-over rules; users created in
+the overlap.
 
 Rollback of the API: redeploy the previous image; no Down is needed for
-any of 75-79. After it, those four behaviours return; kept statuses stay
-unapplied until a new binary prunes or takes them; empty themes read as
-the released Client's default. Hard boundary: no second carrier while a
+any of 75-79. After it, the behaviours above return for as long as the
+previous binary runs; kept statuses stay unapplied until a new binary
+prunes or takes them; empty themes read as the released Client's
+default. Hard boundary: no second carrier while a
 binary older than 76 serves or is kept as the rollback target.
 
 Integration: `main` (`66f8801e`) does not yet contain the release
