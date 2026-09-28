@@ -218,9 +218,9 @@
       cursor: default;
     }
   }
-  // A phone's card floats over the map's top: the bar sits low in the
-  // corner, clear of it; the layers are in Filters.
-  @include ui.below(map-mobile) {
+  // Wherever the card floats over the map's top (below the docked
+  // layout), the bar sits low, clear of it and of its head's controls.
+  @include ui.below(fleet-docked) {
     align-self: end;
     margin-bottom: ui.pg(section);
   }
@@ -538,14 +538,13 @@
 // narrow for two labels side by side (a phone at enlarged text) stacks the
 // cells in one column instead of pushing labels past them.
 .fleet-truck-facts {
-  --facts-rim: #{ui.theme(accent, 0.22)};
+  --facts-rim: #{ui.theme(border)};
   --facts-line: #{ui.theme(border-subtle)};
   --facts-icon: #{ui.theme(accent)};
   --facts-label: #{ui.theme(text-muted)};
-  @include ui.hud-frame;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: ui.pg(xs) ui.pg(lg) ui.pg(md);
+  margin: 0 ui.pg(lg) ui.pg(md);
   border: 1px solid var(--facts-rim);
   border-radius: ui.radius(md);
   background-color: ui.theme(surface);
@@ -579,8 +578,19 @@
     }
   }
   dt {
-    @include ui.hud-label;
     color: var(--facts-label);
+    font-size: ui.fs(caption);
+    letter-spacing: 0.04em;
+  }
+  // Docked, the facts wear the instrument frame and HUD labels.
+  @include ui.above(fleet-docked) {
+    --facts-rim: #{ui.theme(accent, 0.22)};
+    @include ui.hud-frame;
+    margin-top: ui.pg(xs);
+    dt {
+      @include ui.hud-label;
+      color: var(--facts-label);
+    }
   }
   dd {
     margin: ui.pg(hair) 0 0;
@@ -624,6 +634,13 @@
   }
 }
 
+// Too narrow for four clocks abreast (enlarged text): two by two.
+@container map-truck-card (width < #{ui.breakpoint(truck-clocks-stacked)}) {
+  .fleet-truck-clocks {
+    --hos-cell-columns: repeat(2, minmax(0, 1fr));
+    --hos-cell-flow: row;
+  }
+}
 @container map-truck-card (width < #{ui.breakpoint(truck-facts-stacked)}) {
   .fleet-truck-facts {
     grid-template-columns: minmax(0, 1fr);
@@ -1049,51 +1066,54 @@
 // a fine line through their step tokens; each trip a clean white tile
 // with a straight line of its colour along the top edge (clear of the
 // rounded corners), the phase a soft tint without a rim; the chosen trip
-// rimmed in its colour, softly lit and lifted.
-:root[data-theme='light'] {
-  // The line the trips hang on carries a slow current of cyan dashes.
-  .fleet-trip-chain__links {
-    background: repeating-linear-gradient(
-        90deg,
-        ui.theme(hud-glow, 0.85) 0 6px,
-        transparent 6px 14px
-      )
-      0 50% / 100% 1px no-repeat;
-    background-attachment: local;
-    animation: hud-flow 1.2s linear infinite;
-  }
-  .fleet-trip-chain__number {
-    width: 1.5rem;
-    height: 1.5rem;
-    border: 0;
-    background:
-      linear-gradient(
-        color-mix(in srgb, currentColor 16%, transparent),
-        color-mix(in srgb, currentColor 16%, transparent)
-      ),
-      ui.theme(surface);
-  }
-  .fleet-trip-chain__card {
-    border: 1px solid ui.theme(border);
-    background:
-      linear-gradient(currentColor, currentColor) top center /
-        calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
-      ui.theme(surface);
-    box-shadow: 0 2px 8px ui.theme(shadow, 0.06);
-  }
-  .fleet-trip-chain .is-selected .fleet-trip-chain__card {
-    border-color: color-mix(in srgb, currentColor 60%, transparent);
-    background:
-      linear-gradient(currentColor, currentColor) top center /
-        calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
-      ui.theme(surface);
-    box-shadow:
-      0 0 14px color-mix(in srgb, currentColor 18%, transparent),
-      0 6px 16px ui.theme(shadow, 0.1);
-  }
-  .fleet-trip-chain__phase {
-    border: 0;
-    background: color-mix(in srgb, currentColor 12%, transparent);
+// rimmed in its colour, softly lit and lifted. Docked layout only, as
+// approved.
+@include ui.above(fleet-docked) {
+  :root[data-theme='light'] {
+    // The line the trips hang on carries a slow current of cyan dashes.
+    .fleet-trip-chain__links {
+      background: repeating-linear-gradient(
+          90deg,
+          ui.theme(hud-glow, 0.85) 0 6px,
+          transparent 6px 14px
+        )
+        0 50% / 100% 1px no-repeat;
+      background-attachment: local;
+      animation: hud-flow 1.2s linear infinite;
+    }
+    .fleet-trip-chain__number {
+      width: 1.5rem;
+      height: 1.5rem;
+      border: 0;
+      background:
+        linear-gradient(
+          color-mix(in srgb, currentColor 16%, transparent),
+          color-mix(in srgb, currentColor 16%, transparent)
+        ),
+        ui.theme(surface);
+    }
+    .fleet-trip-chain__card {
+      border: 1px solid ui.theme(border);
+      background:
+        linear-gradient(currentColor, currentColor) top center /
+          calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
+        ui.theme(surface);
+      box-shadow: 0 2px 8px ui.theme(shadow, 0.06);
+    }
+    .fleet-trip-chain .is-selected .fleet-trip-chain__card {
+      border-color: color-mix(in srgb, currentColor 60%, transparent);
+      background:
+        linear-gradient(currentColor, currentColor) top center /
+          calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
+        ui.theme(surface);
+      box-shadow:
+        0 0 14px color-mix(in srgb, currentColor 18%, transparent),
+        0 6px 16px ui.theme(shadow, 0.1);
+    }
+    .fleet-trip-chain__phase {
+      border: 0;
+      background: color-mix(in srgb, currentColor 12%, transparent);
+    }
   }
 }
 
@@ -1179,6 +1199,11 @@
     > :not(.fleet-map-inspector__empty) {
       display: none;
     }
+  }
+  // The fuel plan editor takes the column while it is open; the reserved
+  // panel under it is not drawn.
+  .fleet-map-stage:has(.fuel-plan-editor) .fleet-map-info-reserved {
+    display: none;
   }
   .fleet-truck-list {
     grid-area: list;

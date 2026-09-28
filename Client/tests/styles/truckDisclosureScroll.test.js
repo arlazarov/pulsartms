@@ -25,13 +25,21 @@ test('mobile truck panels scroll normally within the bounded map inspector', () 
     /\.fleet-map-info-content\s*\{[^}]*position: absolute/,
   );
   // The closed state belongs to the floating card (below the docked
-  // layout), phone or wide: the facts, clocks and details close together
-  // (the owner, September 27).
+  // layout): its details close; a narrow card (a phone) also closes the
+  // facts and clocks (the owner, September 27).
   assert.match(
     css,
     new RegExp(
       String.raw`@media \(width < 1100px\)\s*\{\s*` +
-        `${selector}\\.is-mobile-collapsed \\.fleet-map-info-content,` +
+        `${selector}\\.is-mobile-collapsed \\.fleet-map-info-content` +
+        String.raw`\s*\{\s*display: none;`,
+    ),
+  );
+  assert.match(
+    css,
+    new RegExp(
+      String.raw`@container map-truck-card \(width < 40rem\)\s*\{\s*` +
+        `${selector}\\.is-mobile-collapsed \\.fleet-truck-facts,` +
         String.raw`[\s\S]*?\.fleet-truck-clocks\s*\{\s*display: none;`,
     ),
   );

@@ -2,16 +2,22 @@
 
 // The head's Details button and the closed card it opens. Where the card
 // floats over the map (below the docked layout) it opens closed: the head
-// and the next stop, Details opening the facts and clocks (the owner,
+// and the next stop (on a phone), Details opening the rest (the owner,
 // September 27). The docked panel has the room and is always open, so the
 // button exists only below the docked layout.
 .fleet-map-inspector[data-inspector-mode='truck'] {
   @include ui.below(fleet-docked) {
-    &.is-mobile-collapsed {
-      .fleet-map-info-content,
-      .fleet-truck-facts,
-      .fleet-truck-clocks {
-        display: none;
+    &.is-mobile-collapsed .fleet-map-info-content {
+      display: none;
+    }
+    // A narrow card (a phone) keeps only its head and next stop closed; a
+    // wide floating card keeps its facts and clocks in view.
+    @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
+      &.is-mobile-collapsed {
+        .fleet-truck-facts,
+        .fleet-truck-clocks {
+          display: none;
+        }
       }
     }
     @container map-truck-card (width >= #{ui.breakpoint(map-compact-columns)}) {

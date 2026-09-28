@@ -137,8 +137,11 @@
 }
 .driver-hours--cells {
   display: grid;
+  // One row of cells; a holder too narrow for it sets two columns through
+  // --hos-cell-columns and the cells fold into rows.
+  grid-template-columns: var(--hos-cell-columns, none);
   grid-auto-columns: minmax(0, 1fr);
-  grid-auto-flow: column;
+  grid-auto-flow: var(--hos-cell-flow, column);
   gap: ui.pg(xs);
   // A page dresses the cells through these properties, never by reaching
   // into the component: their rim, their fill and shadow, and the label.
