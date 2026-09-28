@@ -87,9 +87,12 @@
   display: none;
 }
 @include ui.below(map-mobile) {
+  // The unit at the left, the distance centred, the chevron at the right
+  // beside the X.
   .fleet-map-inspector__compact {
-    display: flex;
+    display: grid;
     flex: 1;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
     gap: ui.pg(sm);
     min-width: 0;
@@ -107,6 +110,7 @@
       white-space: nowrap;
     }
     > span {
+      justify-self: center;
       color: ui.theme(text-secondary);
       font-size: ui.fs(small);
     }
@@ -134,10 +138,21 @@
     max-height: 100%;
     overflow-y: auto;
   }
+  // Expanded, the truck's panel has the stage to itself: the map's tool
+  // bar steps aside and returns when it collapses.
+  .fleet-map-page:not(.is-truck-collapsed):has(.fleet-map-inspector__compact)
+    .fleet-map-controls {
+    display: none;
+  }
+  // Collapsed, only the head stands over the map: every part under it is
+  // parked and the card gives its height back.
   .fleet-map-page.is-truck-collapsed {
     .fleet-map-info-reserved {
       height: auto;
+      min-height: 0;
+      overflow: visible;
     }
+    .fleet-map-inspector > :not(.fleet-map-inspector__header),
     .fleet-truck-panel,
     .fleet-trip-chain {
       position: absolute;
