@@ -209,6 +209,7 @@
                     @(InspectorVisible ? "has-selection" : "")
                     @(MapOverlayOpen ? "is-overlaid" : "")"
              aria-label="Map information"
+             inert="@MapOverlayOpen"
              data-inspector-mode="@_inspectorMode.ToString().ToLowerInvariant()"
              @onkeydown="OnInspectorKeyDownAsync"
              @onkeydown:stopPropagation="true">
@@ -288,11 +289,14 @@
             @* The truck as the workspace concept draws it: the next stop,
                eight facts in bordered cells and the driver's clocks. Its
                actions are in the map's bar; its trips are the chain's cards.
-               Kept mounted while a truck is selected and hidden in the other
+               Kept mounted while a truck is selected and parked in the other
                views, so the truck's readings (the weather) are not fetched
-               again on the way back. *@
-            <div class="fleet-truck-panel"
-                 hidden="@(_inspectorMode != MapInspectorMode.Truck)">
+               again on the way back. Parked, not hidden: display: none
+               would replay its arrival on the way back; inert keeps it out
+               of focus and the accessibility tree. *@
+            <div class="fleet-truck-panel
+                        @(_inspectorMode != MapInspectorMode.Truck ? "is-parked" : "")"
+                 inert="@(_inspectorMode != MapInspectorMode.Truck)">
             @* Where the truck is going next, when it gets there and how
                far it still has to drive (the owner, September 27): the
                route's own forecast and distance, read here too. *@

@@ -2232,6 +2232,41 @@ public sealed class FleetMapComponentTests
     Assert.Single(fixture.Js.Calls, call => call.Name == "createFleetMap");
   }
 
+  // Another card parks the truck panel instead of hiding it: display: none
+  // replayed the same truck's arrival on the way back (Dispatch, September
+  // 28). Parked, it is inert, so neither focus nor a reader reaches it.
+  [Theory]
+  [InlineData("stop")]
+  [InlineData("fuel")]
+  [InlineData("next-stop")]
+  public async Task AnotherCardParksTheTruckPanelWithoutHidingIt(string kind)
+  {
+    using var fixture = new SelectionFixture();
+    var component = fixture.Render();
+    component.WaitForAssertion(
+      () => Assert.Contains(fixture.Js.Calls, c => c.Name == "setTrucks")
+    );
+    var truck = fixture.TruckA.ToString();
+    await component.InvokeAsync(
+      () => component.Instance.OnTruckSelected(truck)
+    );
+    var panel = component.Find(".fleet-truck-panel");
+    Assert.False(panel.ClassList.Contains("is-parked"));
+    Assert.False(panel.HasAttribute("inert"));
+    await component.InvokeAsync(
+      () => component.Instance.OnMapInspectorChanged(kind, truck, 10)
+    );
+    panel = component.Find(".fleet-truck-panel");
+    Assert.True(panel.ClassList.Contains("is-parked"));
+    Assert.True(panel.HasAttribute("inert"));
+    Assert.False(panel.HasAttribute("hidden"));
+    await component.Find(".fleet-map-inspector__back").ClickAsync(new());
+    panel = component.Find(".fleet-truck-panel");
+    Assert.False(panel.ClassList.Contains("is-parked"));
+    Assert.False(panel.HasAttribute("inert"));
+    Assert.False(panel.HasAttribute("hidden"));
+  }
+
   // Back to truck goes somewhere; closing leaves the map clear. A stop
   // opened from the map offered only the first, so the only way out of it
   // was through the truck card.

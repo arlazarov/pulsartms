@@ -391,10 +391,23 @@ $hud-glyphs: (
   fuel:
     url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22black%22 stroke-width=%221.8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 21h12M5 21V4h8v17M5 10h8M13 12h2a2 2 0 0 1 2 2v3a2 2 0 0 0 4 0V8l-4-4M18 5v4h3%22/%3E%3C/svg%3E'),
 );
-@mixin hud-emblem($glyph, $size: 2.75rem, $position: relative) {
+// $ring-gap, when given, is the room between the emblem's outer sight
+// ring (the dashed outline past the disc) and the text beside it.
+@mixin hud-emblem(
+  $glyph,
+  $size: 2.75rem,
+  $position: relative,
+  $ring-gap: null
+) {
+  // The sight ring's reach past the disc: outline-offset plus its width.
+  $ring: 5px;
   position: $position;
   min-height: $size;
-  padding-left: calc(#{$size} + #{fn.pg(md)});
+  @if $ring-gap {
+    padding-left: calc(#{$size} + #{$ring} + #{$ring-gap});
+  } @else {
+    padding-left: calc(#{$size} + #{fn.pg(md)});
+  }
   &::before,
   &::after {
     content: '';
@@ -411,7 +424,7 @@ $hud-glyphs: (
     border-radius: 50%;
     // A dashed sight ring turning slowly around the disc.
     outline: 1px dashed fn.theme(accent, 0.6);
-    outline-offset: 4px;
+    outline-offset: calc(#{$ring} - 1px);
     animation: hud-spin 14s linear infinite;
     background: radial-gradient(
       circle at 35% 30%,

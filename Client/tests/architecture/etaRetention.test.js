@@ -28,7 +28,10 @@ test('previous ETA retention is bounded, stop-scoped and limited to pending reca
     1,
     'the next stop line alone retains the arrival',
   );
-  assert.match(page, /class="fleet-truck-panel"\s+hidden=/);
+  assert.match(
+    page,
+    /class="fleet-truck-panel\s+@\(_inspectorMode != MapInspectorMode\.Truck \? "is-parked"/,
+  );
   const memories = new Set();
   for (const estimate of estimates) {
     const memory = estimate.match(/Memory="(_\w+)"/)?.[1];

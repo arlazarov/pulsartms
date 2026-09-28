@@ -53,3 +53,19 @@ test('a copied value says so over its row without moving it', () => {
     /\.fleet-route-popup__appointment\s*\{[^}]*position: relative;/,
   );
 });
+
+// Another card, an editor or the camera parks the truck panel rather than
+// hiding it: display: none restarts its arrival on the way back (Dispatch,
+// September 28).
+test('the truck panel parks without display: none', () => {
+  const parked = css.match(/\.fleet-truck-panel\.is-parked\s*\{([^}]*)\}/)[1];
+  assert.match(parked, /visibility: hidden;/);
+  assert.match(parked, /position: absolute;/);
+  assert.match(parked, /height: 0;/);
+  assert.doesNotMatch(parked, /display: none/);
+  const overlaid = css.match(
+    /\.fleet-map-info-reserved\.is-overlaid\s*\{([^}]*)\}/,
+  )[1];
+  assert.match(overlaid, /visibility: hidden;/);
+  assert.doesNotMatch(overlaid, /display: none/);
+});

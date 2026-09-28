@@ -453,8 +453,19 @@
 // The truck panel's body, as the concept drew it: the actions in one row,
 // the facts in bordered cells, the clocks with bars.
 // The truck panel's wrapper only keeps it mounted; it lays nothing out.
+// Parked while another card shows, it leaves the flow and is unseen (and
+// inert), but is never display: none: that restarts the arrival of the
+// same truck's next stop, facts and clocks on the way back.
 .fleet-truck-panel {
   display: contents;
+  &.is-parked {
+    display: block;
+    position: absolute;
+    inset: 0 0 auto;
+    height: 0;
+    overflow: hidden;
+    visibility: hidden;
+  }
 }
 
 // The panel's parts arrive as the HUD shows new information: the next
@@ -1209,9 +1220,10 @@
     }
   }
   // While an editor or the camera is open the panel is not drawn: it
-  // would say no truck is chosen while one is.
+  // would say no truck is chosen while one is. Unseen and inert rather
+  // than display: none, so closing the editor replays nothing.
   .fleet-map-info-reserved.is-overlaid {
-    display: none;
+    visibility: hidden;
   }
   .fleet-truck-list {
     grid-area: list;

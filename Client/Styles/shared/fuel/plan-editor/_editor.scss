@@ -119,8 +119,9 @@
   &__header {
     @include ui.hud-frame;
   }
+  // The fuel cards' head spacing: room past the pump's sight ring.
   &__header > div > strong {
-    @include ui.hud-emblem(fuel, 2.25rem);
+    @include ui.hud-emblem(fuel, 2.25rem, $ring-gap: ui.pg(lg));
   }
   &__totals > span {
     @include ui.hud-label;
