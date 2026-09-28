@@ -640,14 +640,17 @@
   }
 }
 // A narrow card at enlarged text keeps the two columns (the approved
-// grid) and makes room in each cell: no icon, closer padding, and a long
-// label hyphenated at a syllable rather than pushed past its cell.
+// grid) and makes room in each cell: the icon stands over its label,
+// the padding closes, and a long label is hyphenated at a syllable
+// rather than pushed past its cell.
 @container map-truck-card (width < #{ui.breakpoint(truck-facts-stacked)}) {
   .fleet-truck-facts {
     &__fact {
+      flex-direction: column;
+      gap: ui.pg(xs);
       padding-inline: ui.pg(sm);
       > svg {
-        display: none;
+        margin-top: 0;
       }
     }
     dt {
@@ -1200,9 +1203,9 @@
       display: none;
     }
   }
-  // The fuel plan editor takes the column while it is open; the reserved
-  // panel under it is not drawn.
-  .fleet-map-stage:has(.fuel-plan-editor) .fleet-map-info-reserved {
+  // While an editor or the camera is open the panel is not drawn: it
+  // would say no truck is chosen while one is.
+  .fleet-map-info-reserved.is-overlaid {
     display: none;
   }
   .fleet-truck-list {
