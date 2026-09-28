@@ -24,7 +24,7 @@
   // The head: the unit, and Details and the close beside it.
   .fleet-map-inspector__header {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) max-content;
+    grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
     grid-template-areas: 'identity controls';
     align-items: center;
     column-gap: ui.pg(md);
@@ -39,9 +39,13 @@
   }
   // The toggle and the close, with a hairline between them so the one
   // that opens the card is never taken for the one that shuts it.
+  // The controls may give way to the unit: at enlarged text the close
+  // wraps under Details instead of running past the card.
   .fleet-map-inspector__controls {
     grid-area: controls;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: center;
     gap: ui.pg(sm);
     > .fleet-map-mobile-summary__toggle {

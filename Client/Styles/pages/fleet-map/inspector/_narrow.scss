@@ -6,7 +6,7 @@
   @container map-truck-card (width < #{ui.breakpoint(map-compact-columns)}) {
     .fleet-map-inspector__header {
       position: static;
-      grid-template-columns: minmax(0, 1fr) max-content;
+      grid-template-columns: minmax(0, 1fr) minmax(0, max-content);
       grid-template-areas:
         'eyebrow controls'
         'title controls';

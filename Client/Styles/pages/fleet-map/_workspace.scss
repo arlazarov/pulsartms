@@ -534,9 +534,7 @@
 }
 
 // The truck's facts: two columns of bordered cells, a lit frame and HUD
-// labels. Light draws the grid in the cyan instrument lines. A panel too
-// narrow for two labels side by side (a phone at enlarged text) stacks the
-// cells in one column instead of pushing labels past them.
+// labels docked. Light draws the grid in the cyan instrument lines.
 .fleet-truck-facts {
   --facts-rim: #{ui.theme(border)};
   --facts-line: #{ui.theme(border-subtle)};
@@ -641,18 +639,20 @@
     --hos-cell-flow: row;
   }
 }
+// A narrow card at enlarged text keeps the two columns (the approved
+// grid) and makes room in each cell: no icon, closer padding, and a long
+// label hyphenated at a syllable rather than pushed past its cell.
 @container map-truck-card (width < #{ui.breakpoint(truck-facts-stacked)}) {
   .fleet-truck-facts {
-    grid-template-columns: minmax(0, 1fr);
     &__fact {
-      border-right: 0;
-      border-bottom: 1px solid var(--facts-line);
-      &:nth-child(odd) {
-        border-right: 0;
+      padding-inline: ui.pg(sm);
+      > svg {
+        display: none;
       }
-      &:last-child {
-        border-bottom: 0;
-      }
+    }
+    dt {
+      hyphens: auto;
+      overflow-wrap: break-word;
     }
   }
 }
@@ -1231,10 +1231,12 @@
   }
   // Editors stand where the card they edit stands; the route choices and
   // the key belong over the map.
+  // Auto width, so the panel's reach to the map's right edge applies to
+  // the editor too and it keeps the plan card's width.
   .fuel-plan-editor {
     grid-area: inspector;
     top: 0;
-    width: 100%;
+    width: auto;
     max-height: 100%;
   }
   .route-editor,
