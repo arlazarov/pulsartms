@@ -283,7 +283,11 @@ function reticleIcon(light: boolean) {
   const cached = reticleIcons.get(light);
   if (cached) return cached;
   const ink = (light ? lightSonarInk : darkSonarInk).join(',');
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="176" height="176" viewBox="0 0 44 44"><circle cx="22" cy="22" r="16.5" fill="none" stroke="rgb(${ink})" stroke-opacity="0.22" stroke-width="5"/><circle cx="22" cy="22" r="16.5" fill="none" stroke="rgb(${ink})" stroke-width="1.4"/><g stroke="rgb(${ink})" stroke-width="2" stroke-linecap="round"><path d="M22 2.5v5M22 36.5v5M2.5 22h5M36.5 22h5"/></g></svg>`;
+  // Daylight: the thin ring and ticks only, no soft halo.
+  const halo = light
+    ? ''
+    : `<circle cx="22" cy="22" r="16.5" fill="none" stroke="rgb(${ink})" stroke-opacity="0.22" stroke-width="5"/>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="176" height="176" viewBox="0 0 44 44">${halo}<circle cx="22" cy="22" r="16.5" fill="none" stroke="rgb(${ink})" stroke-width="1.4"/><g stroke="rgb(${ink})" stroke-width="2" stroke-linecap="round"><path d="M22 2.5v5M22 36.5v5M2.5 22h5M36.5 22h5"/></g></svg>`;
   const icon = {
     url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
     width: 176,

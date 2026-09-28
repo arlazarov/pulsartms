@@ -10,7 +10,8 @@ export function isDelivery(job: string | null | undefined): boolean {
 // where the rim and letter carry the colour instead. The map is made again
 // when the theme changes, so a mark reads the theme when it is drawn.
 export const markCore = [11, 22, 38, 235];
-export const lightMarkCore = [255, 255, 255, 240];
+// Daylight badges are flat opaque white (the owner, September 28).
+export const lightMarkCore = [255, 255, 255, 255];
 export const isLightMap = () =>
   globalThis.document?.documentElement?.dataset?.theme !== 'dark';
 
@@ -27,7 +28,7 @@ export function stopAppearance(
   const core = isLightMap() ? lightMarkCore : markCore;
   return done
     ? {
-        fill: [...core.slice(0, 3), 200],
+        fill: [...core.slice(0, 3), isLightMap() ? 255 : 200],
         border: [...color.slice(0, 3), 150],
         text: [...color.slice(0, 3), 170],
       }
@@ -74,23 +75,27 @@ export function stopMarkerIcon(
   // A fine rim; a quiet (translucent) rim is a stop behind the truck, drawn
   // dashed so it reads as done even at a glance.
   const quiet = alpha(border) < 1;
+  // Daylight: a flat white badge with one thin rim of its route's colour -
+  // no dark casing, halo or second outline (the owner, September 28).
+  const light = isLightMap();
+  const casing = light
+    ? 'rgb(255,255,255)'
+    : `rgb(${markCore.slice(0, 3).join(',')})`;
   const badge = pill(
     half - radius,
-    `fill="${paint(color)}" fill-opacity="${alpha(color).toFixed(2)}" stroke="${paint(border)}" stroke-opacity="${alpha(border).toFixed(2)}" stroke-width="${isLightMap() ? 2 : 1.75}"${quiet ? ' stroke-dasharray="2.2 1.6"' : ''}`,
+    `fill="${paint(color)}" fill-opacity="${alpha(color).toFixed(2)}" stroke="${paint(border)}" stroke-opacity="${alpha(border).toFixed(2)}" stroke-width="${light ? 1.5 : 1.75}"${quiet ? ' stroke-dasharray="2.2 1.6"' : ''}`,
   );
   const around = ring
     ? pill(
         1.25,
-        `fill="${paint(ring)}" stroke="rgb(${markCore.slice(0, 3).join(',')})" stroke-width="1.5"`,
+        `fill="${paint(ring)}"${light ? '' : ` stroke="${casing}" stroke-width="1.5"`}`,
       )
     : '';
   // A badge drawn over a truck it has not reached yet stands on a dark
   // rim, so the disc behind it reads as a truck and not a smudge. Neither
   // mark may be moved to make room: the gap between them is how far the
   // truck still has to go.
-  const halo = stacked
-    ? pill(half - radius - 2.5, `fill="rgb(${markCore.slice(0, 3).join(',')})"`)
-    : '';
+  const halo = stacked ? pill(half - radius - 2.5, `fill="${casing}"`) : '';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width * 4}" height="${span * 4}" viewBox="0 0 ${width} ${span}">${around}${halo}${badge}</svg>`;
   return {
     url: `data:image/svg+xml,${encodeURIComponent(svg)}`,

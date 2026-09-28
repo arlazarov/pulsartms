@@ -3,7 +3,11 @@ import type { DeckLayer, DeckLayerFactory } from './deckLayer.ts';
 import type { StopRow } from './stopMarkerLayout.ts';
 import type { LabelFonts } from './sceneMetrics.ts';
 import { memoizeLast } from './layerCache.ts';
-import { stopAppearance, stopMarkerIcon } from './stopAppearance.ts';
+import {
+  isLightMap,
+  stopAppearance,
+  stopMarkerIcon,
+} from './stopAppearance.ts';
 import { sceneMetrics as metrics, labelSubLayers } from './sceneMetrics.ts';
 
 // What a stop's three layers were built from. Rebuilt only when one of
@@ -87,7 +91,9 @@ export function createStopLayers({
         const { url: iconAtlas, ...circle } = stopMarkerIcon(
           appearance.fill,
           stop.highlighted && !stop.standing
-            ? metrics.stopBadgePickedEdge
+            ? isLightMap()
+              ? metrics.stopBadgePickedEdgeLight
+              : metrics.stopBadgePickedEdge
             : appearance.border,
           stop.done ? metrics.stopBadgeDoneRadius : undefined,
           stop.standing,

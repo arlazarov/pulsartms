@@ -293,6 +293,12 @@ export function createRouteLayer(
     openStop(stopId: string) {
       return disposed ? null : stops.open(stopId);
     },
+    selectedStop() {
+      return disposed ? null : stops.selected();
+    },
+    restoreStop(stopId: string | null) {
+      if (!disposed) stops.restore(stopId);
+    },
     dispose,
   };
 }

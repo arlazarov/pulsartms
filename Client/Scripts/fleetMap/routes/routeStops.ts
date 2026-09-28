@@ -161,6 +161,18 @@ export function createRouteStops(
     refreshContent(entry, true);
   }
 
+  // The stop whose card was open when the map was made again (a theme
+  // switch): the same stop, by its id, reopened once its route is here -
+  // its card only, the camera stays where the reader left it, and no other
+  // stop stands in for it.
+  let restoring: string | null = null;
+  function reopen(entry: Entry) {
+    restoring = null;
+    selectedId = entry.stop.id;
+    markSelected();
+    refreshContent(entry, true);
+  }
+
   return {
     refreshDistances() {
       for (const entry of entries.values()) updateDistance(entry);
@@ -297,6 +309,15 @@ export function createRouteStops(
         entries.delete(id);
         if (selectedId === id) this.close();
       }
+      if (restoring && entries.has(restoring)) reopen(entries.get(restoring)!);
+    },
+    selected() {
+      return selectedId;
+    },
+    restore(stopId: string | null) {
+      const entry = stopId ? entries.get(stopId) : undefined;
+      if (entry) reopen(entry);
+      else restoring = stopId;
     },
     // Opens one stop's card as a click on its badge would, and says where
     // it stands so the camera can go there.
