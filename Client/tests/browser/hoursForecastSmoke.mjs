@@ -1958,6 +1958,21 @@ async function setNextLoads(page, width) {
   await layers.click();
 }
 
+// Dark only for now (owner decision of 2026-09-28): whatever the saved
+// preference, the page is dark from its first paint, and neither the top
+// bar nor Settings offers a theme.
+async function checkDarkOnly(page, name, check) {
+  const seen = await page.evaluate(() => window.fixtureThemes ?? []);
+  const switches = await page
+    .getByRole('button', { name: /^Use the (light|dark) theme$/ })
+    .count();
+  check(
+    seen.length > 0 && seen.every(theme => theme === 'dark') && switches === 0,
+    `${name}: the page is dark from its first paint, with no theme switch ` +
+      JSON.stringify({ seen, switches }),
+  );
+}
+
 const shellReads = new Set([
   '/api/driver-groups',
   '/api/messaging/unread',
@@ -2035,8 +2050,21 @@ try {
               RefreshToken: 'fixture',
             }),
           );
+          // The theme is dark only for now (owner decision of 2026-09-28):
+          // the case keeps its saved preference, on this device and in the
+          // account (the appearance fixture), and every theme the page
+          // shows from its first paint on is recorded.
+          localStorage.setItem('pulsr.theme', theme);
+          window.fixtureThemes = [];
           document.addEventListener('DOMContentLoaded', () => {
-            document.documentElement.dataset.theme = theme;
+            const root = document.documentElement;
+            window.fixtureThemes.push(root.dataset.theme ?? null);
+            new MutationObserver(() =>
+              window.fixtureThemes.push(root.dataset.theme ?? null),
+            ).observe(root, {
+              attributes: true,
+              attributeFilter: ['data-theme'],
+            });
           });
           Object.defineProperty(navigator, 'clipboard', {
             configurable: true,
@@ -2364,6 +2392,7 @@ try {
           .locator('.dispatch-load__stop-times .stop-hours')
           .nth(2)
           .waitFor();
+        await checkDarkOnly(page, `${name}-dispatch`, check);
         const current = page.locator(
           '.dispatch-load--current .dispatch-load__stop',
         );
@@ -2771,6 +2800,7 @@ try {
       await page.clock.setSystemTime(new Date(now));
       await page.goto(`${origin}/fleet/map`);
       await page.locator('[data-hours-fixture]').waitFor();
+      await checkDarkOnly(page, `${name}-fleet`, check);
       const mapRect = await page.locator('#fleet-map').evaluate(element => {
         window.hoursFixtureMapElement = element;
         window.hoursFixtureInspectorHost = document.querySelector(

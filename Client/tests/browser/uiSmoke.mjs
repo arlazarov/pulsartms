@@ -1167,8 +1167,22 @@ try {
                 writeText: async value => window.uiFixtureCopies.push(value),
               },
             });
+            // Dark only for now (owner decision of 2026-09-28): the case
+            // keeps its saved theme, on this device and in the account,
+            // and every theme the page shows from its first paint on is
+            // recorded.
+            localStorage.setItem('pulsr.theme', theme);
+            window.uiFixtureThemes = [];
             document.addEventListener('DOMContentLoaded', () => {
-              document.documentElement.style.fontSize = scale + '%';
+              const root = document.documentElement;
+              root.style.fontSize = scale + '%';
+              window.uiFixtureThemes.push(root.dataset.theme ?? null);
+              new MutationObserver(() =>
+                window.uiFixtureThemes.push(root.dataset.theme ?? null),
+              ).observe(root, {
+                attributes: true,
+                attributeFilter: ['data-theme'],
+              });
             });
           },
           { id, theme, scale },
@@ -1179,6 +1193,7 @@ try {
           showCompletedScope = false,
           summaryReads = 0,
           telemetryReads = 0,
+          appearanceWrites = 0,
           messagingReads = 0,
           messagingChanges = 0;
         const holdBoard = () => {
@@ -1257,6 +1272,7 @@ try {
             url.origin !== origin ||
             !['GET', 'HEAD'].includes(route.request().method())
           ) {
+            if (url.pathname === '/api/settings/appearance') appearanceWrites++;
             report.unexpectedRequests.push(
               `${route.request().method()} ${url.origin}${url.pathname}`,
             );
@@ -1460,6 +1476,19 @@ try {
             await page.locator('main h1').isVisible(),
             !hiddenMapHeading,
             `${title}: responsive heading visibility`,
+          );
+          // Whatever the saved theme, the page is dark from its first
+          // paint, and neither the top bar nor Settings offers a theme.
+          const shownThemes = await page.evaluate(() => window.uiFixtureThemes);
+          check(
+            shownThemes.length > 0 &&
+              shownThemes.every(shown => shown === 'dark') &&
+              (await page
+                .getByRole('button', { name: /^Use the (light|dark) theme$/ })
+                .count()) === 0 &&
+              (await page.getByRole('group', { name: 'Theme' }).count()) === 0,
+            `${width}/${theme}/${scale} ${path}: dark from the first paint ` +
+              `with no theme switch (${shownThemes})`,
           );
           const initialDispatchTop = releaseInitial
             ? await checkDispatchLoading(
@@ -2869,6 +2898,11 @@ try {
             );
           }
         }
+        check(
+          appearanceWrites === 0,
+          `${width}/${theme}/${scale}: the saved ${theme} theme is never ` +
+            `rewritten (${appearanceWrites} appearance writes)`,
+        );
         report.cases.push({ width, theme, scale, pages: measurements });
         await writeFile(
           resolve(output, 'report.json'),
