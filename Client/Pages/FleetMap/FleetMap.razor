@@ -111,7 +111,7 @@
         <p class="fleet-map-page__message" role="alert">@StationError <button class="btn btn--small" @onclick="OnDateChanged">Retry</button></p>
     }
     </div>
-    <div class="fleet-map-stage @(SonarMotion ? "" : "is-still")">
+    <div class="fleet-map-stage">
     <FleetTruckList Trucks="ListedTrucks" Total="_trucks.Count"
                     SelectedId="_activeTruckId"
                     Selected="ChooseListTruckAsync"
@@ -190,9 +190,6 @@
                     <label><input type="checkbox" @bind="ShowNextLoads"
                         @bind:after="OnNextLoadsChanged" />
                         <span>Next loads</span></label>
-                    <label><input type="checkbox" @bind="SonarMotion"
-                        @bind:after="OnSonarMotionChanged" />
-                        <span>Map animation</span></label>
                 </fieldset>
             }
         </div>
@@ -533,18 +530,22 @@
                     <ActionIcon Kind="location" />
                     <div>
                         <dt>Location</dt>
-                        <dd title="@panelTruck.FormattedLocation"
-                            >@LocationSummary(panelTruck.FormattedLocation)</dd>
+                        @if (string.IsNullOrWhiteSpace(panelTruck.FormattedLocation))
+                        {
+                            <dd>@LocationSummary(panelTruck.FormattedLocation)</dd>
+                        }
+                        else
+                        {
+                            @* The text itself copies the full address. *@
+                            <dd><button type="button"
+                                class="fleet-truck-facts__copy"
+                                title="Copy location: @panelTruck.FormattedLocation"
+                                @onclick="() => CopyLocationAsync(panelTruck.FormattedLocation)"
+                                >@LocationSummary(panelTruck.FormattedLocation)</button></dd>
+                        }
                     </div>
                     @if (!string.IsNullOrWhiteSpace(panelTruck.FormattedLocation))
                     {
-                        <button type="button" class="fleet-truck-facts__copy"
-                                title="Copy location" aria-label="Copy location"
-                                @onclick="() => CopyLocationAsync(panelTruck.FormattedLocation)">
-                            <ActionIcon Kind="@(_locationCopy == "Copied"
-                                && _locationCopyTruck == panelTruck.TruckId
-                                ? "check" : "copy")" />
-                        </button>
                         @if (_locationCopy is { } copyStatus
                             && _locationCopyTruck == panelTruck.TruckId)
                         {

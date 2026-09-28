@@ -33,10 +33,12 @@ const mountMap = createMapHost(
   map => google.maps.event.clearInstanceListeners(map),
 );
 
-// Mainland USA and southern Canada, the fleet's working area.
 // Street zoom for a chosen stop; satellite imagery starts here too.
 const stopZoom = 15;
+// How soon a second press on the same stop counts as a double press.
+const stopPressWindow = 500;
 
+// Mainland USA and southern Canada, the fleet's working area.
 export const fleetBounds = { north: 62, south: 23, west: -130, east: -52 };
 
 const schemeOf = (element: HTMLElement) =>
@@ -112,15 +114,15 @@ export async function createFleetMap(
   });
   const map = mountedMap.map;
   const cleanup = [() => mountedMap.release()];
-  // Google sets a map's colour scheme only when the map is made, and the
-  // provider map outlives a mount: a theme switch reloads the page, which
-  // makes the map again in the new scheme. Where the reader was comes back
-  // from the address and the tab.
+  // Google sets a map's colour scheme only when the map is made: a theme
+  // switch asks the page to make this map again in the new scheme, in
+  // place, carrying the camera and the selection over; nothing reloads.
   const scheme = schemeOf(element);
   const root = element.ownerDocument?.documentElement;
   if (root && typeof MutationObserver !== 'undefined') {
     const themeWatch = new MutationObserver(() => {
-      if (!disposed && schemeOf(element) !== scheme) location.reload();
+      if (!disposed && schemeOf(element) !== scheme)
+        notify('OnMapSchemeChanged');
     });
     themeWatch.observe(root, {
       attributes: true,
@@ -170,13 +172,28 @@ export async function createFleetMap(
     const gpuScene = gpuModule?.createGpuScene(map);
     cleanup.push(() => gpuScene?.dispose());
     await yieldToBrowser();
-    // A P or D chosen on the map or in the chain: that exact stop in the
-    // middle at street zoom, where the satellite policy takes over. It is
-    // the reader's own camera, so Follow ends; editors keep theirs.
+    // A P or D chosen on the map or in the chain. One press opens it and
+    // keeps the zoom, only bringing an off-screen stop into view; a second
+    // press on the same stop soon after puts it in the middle at street
+    // zoom, where the satellite policy takes over (the owner, September
+    // 27). A camera move is the reader's own, so Follow ends; editors keep
+    // theirs.
+    let lastStopPress: { key: string; at: number } | null = null;
     function focusStop(position: google.maps.LatLngLiteral) {
       if (disposed || fuelEditing || routeEditor.active) return;
+      const key = `${position.lat},${position.lng}`;
+      const now = Date.now();
+      const repeated =
+        lastStopPress?.key === key && now - lastStopPress.at < stopPressWindow;
+      lastStopPress = repeated ? null : { key, at: now };
+      if (repeated) {
+        trucks.releaseCamera();
+        map.moveCamera({ center: position, zoom: stopZoom });
+        return;
+      }
+      if (map.getBounds?.()?.contains(position) !== false) return;
       trucks.releaseCamera();
-      map.moveCamera({ center: position, zoom: stopZoom });
+      map.panTo(position);
     }
     const route = createRouteLayer(
       map,
@@ -700,9 +717,6 @@ export async function createFleetMap(
           nextLoads.clearSelection();
         }
         return focused;
-      },
-      setSonarMotion(value: unknown) {
-        if (!disposed) gpuScene?.setSonarMotion(value === true);
       },
       setFollow(id: string, enabled?: boolean) {
         if (!disposed) cameraViewport.refresh();

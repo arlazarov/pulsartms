@@ -51,7 +51,6 @@ public partial class FleetMap
       ShowFuelStations = saved.ShowFuelStations;
       ShowTraffic = saved.ShowTraffic;
       ShowNextLoads = saved.ShowNextLoads;
-      SonarMotion = saved.SonarMotion;
     }
     catch (Exception ex) when (ex is JSException or JsonException) { }
     catch (OperationCanceledException) when (_disposed) { }
@@ -97,7 +96,6 @@ public partial class FleetMap
       ShowFuelStations = ShowFuelStations,
       ShowTraffic = ShowTraffic,
       ShowNextLoads = ShowNextLoads,
-      SonarMotion = SonarMotion,
     };
     try
     {
@@ -119,10 +117,5 @@ public partial class FleetMap
     public bool ShowFuelStations { get; init; }
     public bool ShowTraffic { get; init; } = true;
     public bool ShowNextLoads { get; init; }
-
-    // The map's decorative motion (the sonar, the empty panel's radar):
-    // on by the owner's wish even when the system asks for less motion;
-    // the reader turns it off in the Layers menu.
-    public bool SonarMotion { get; init; } = true;
   }
 }

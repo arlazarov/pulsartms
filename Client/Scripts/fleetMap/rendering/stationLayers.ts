@@ -17,9 +17,8 @@ export type StationMark = {
 };
 
 const selectedBlue = [49, 94, 234];
-// The instrument core the stop badges share, and the ink the pump and the
-// plan's numbers are drawn in: bright cyan on the dark map, the deep accent
-// on the light one.
+// Every station is a dot, never a pump icon (the owner, September 27). The plan's numbers are drawn in the ink: bright cyan on the dark
+// map, the deep accent on the light one.
 const darkInk = [34, 211, 238];
 const lightInk = [14, 116, 144];
 const theme = () =>
@@ -27,42 +26,9 @@ const theme = () =>
     ? { core: lightMarkCore, ink: lightInk }
     : { core: markCore, ink: darkInk };
 
-// Every fuel station is a pump on the core inside a fine rim of its price
-// colour; a stop of the fuel plan is the same pump, a size larger. One icon
-// per colour and theme, cached.
-const pumpIcons = new Map<
-  string,
-  {
-    url: string;
-    width: number;
-    height: number;
-    anchorX: number;
-    anchorY: number;
-  }
->();
-function pumpIcon(color: readonly number[]) {
-  const { core, ink } = theme();
-  const key = `${color.slice(0, 3).join(',')}|${core.join(',')}`;
-  const cached = pumpIcons.get(key);
-  if (cached) return cached;
-  const rim = `rgb(${color.slice(0, 3).join(',')})`;
-  const glyph = `rgb(${ink.join(',')})`;
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10.5" fill="rgb(${core.slice(0, 3).join(',')})" fill-opacity="${(core[3] / 255).toFixed(2)}" stroke="${rim}" stroke-width="1.8"/><g fill="none" stroke="${glyph}" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 17V8.5A1.5 1.5 0 0 1 9.5 7h3.5A1.5 1.5 0 0 1 14.5 8.5V17M7 17h8.5M9.5 10.2h3.5"/><path d="M14.5 11l1.6 1.2v3a.9.9 0 0 0 1.8 0V10l-1.4-1.4"/></g></svg>`;
-  const icon = {
-    url: `data:image/svg+xml,${encodeURIComponent(svg)}`,
-    width: 96,
-    height: 96,
-    anchorX: 48,
-    anchorY: 48,
-  };
-  pumpIcons.set(key, icon);
-  return icon;
-}
-
 export function createStationLayers({
   ScatterplotLayer,
   TextLayer,
-  IconLayer,
 }: {
   ScatterplotLayer: DeckLayerFactory;
   TextLayer: DeckLayerFactory;
@@ -81,45 +47,33 @@ export function createStationLayers({
     onClick: unknown,
     radius: number = metrics.stationRadius,
   ) =>
-    IconLayer
-      ? new IconLayer({
-          id,
-          data,
-          visible,
-          pickable: true,
-          getPosition: (d: StationMark) => d.position,
-          getIcon: (d: StationMark) => pumpIcon(d.color),
-          getSize: radius * 2.25,
-          sizeUnits: 'pixels',
-          billboard: true,
-          autoHighlight: true,
-          highlightColor: [49, 94, 234, 100],
-          onHover,
-          onClick,
-          parameters: { depthCompare: 'always' },
-        })
-      : new ScatterplotLayer({
-          id,
-          data,
-          visible,
-          pickable: true,
-          getPosition: (d: StationMark) => d.position,
-          radiusUnits: 'pixels',
-          getRadius: radius,
-          stroked: true,
-          lineWidthUnits: 'pixels',
-          // A fine ring of the price colour on the dark core, as every mark
-          // on the map is drawn; a chosen one takes the selection blue.
-          getLineWidth: (d: StationMark) => (d.selected ? 2.5 : 1.75),
-          getFillColor: theme().core,
-          getLineColor: (d: StationMark) =>
-            d.selected || d.recommended ? selectedBlue : d.color,
-          autoHighlight: true,
-          highlightColor: [49, 94, 234, 100],
-          onHover,
-          onClick,
-          parameters: { depthCompare: 'always' },
-        });
+    new ScatterplotLayer({
+      id,
+      data,
+      visible,
+      pickable: true,
+      getPosition: (d: StationMark) => d.position,
+      radiusUnits: 'pixels',
+      getRadius: radius,
+      stroked: true,
+      lineWidthUnits: 'pixels',
+      // On the dark map a fine rim of the price colour on the core; on the
+      // pale light map a rim alone did not tell cheap from dear, so the dot
+      // is filled with its price colour inside a white rim.
+      getLineWidth: (d: StationMark) => (d.selected ? 2.5 : 1.75),
+      getFillColor: isLightMap() ? (d: StationMark) => d.color : theme().core,
+      getLineColor: (d: StationMark) =>
+        d.selected || d.recommended
+          ? selectedBlue
+          : isLightMap()
+            ? [255, 255, 255]
+            : d.color,
+      autoHighlight: true,
+      highlightColor: [49, 94, 234, 100],
+      onHover,
+      onClick,
+      parameters: { depthCompare: 'always' },
+    });
 
   const badge = (
     id: string,

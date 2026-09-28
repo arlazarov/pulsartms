@@ -99,15 +99,9 @@ export function createScene(
   // and picks it up again when shown.
   const sonarPeriod = 4400;
   const routePulsePeriod = 5200;
-  const routeFlowPeriod = 9000;
+  const routeFlowPeriod = 3200;
   const sonarFrame = 40;
   const sonarBreathPeriod = 3000;
-  // The reader's own choice for this map's animation (the Layers menu):
-  // rings moving out even when the system asks for less motion elsewhere,
-  // or no motion at all. Until the page says, the system's setting stands.
-  let sonarMotion =
-    globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches !==
-    true;
   const sonarBreathFrame = 80;
   let sonarTimer: ReturnType<typeof setTimeout> | null = null;
   const onVisibility = () => {
@@ -181,30 +175,18 @@ export function createScene(
       });
       vehiclesDirty = false;
     }
-    // The selected truck's sonar sweeps while the page is shown, and stands
-    // still for a reader who asked for less motion.
+    // The selected truck's sonar sweeps, the chosen road's glow breathes and
+    // its direction marks slide, always - the owner wants the map alive
+    // even where the system asks for less motion; the timer runs only while
+    // a truck is chosen and the page is shown.
     const chosen = vehicleDisplay.vehicles.some(t => t.selected);
-    const still = !sonarMotion;
-    // With the animation off the sonar is one still ring: no growth, no
-    // travel, no timer.
-    const sonar = !chosen
-      ? null
-      : still
-        ? ('still' as const)
-        : (performance.now() % sonarPeriod) / sonarPeriod;
+    const now = performance.now();
+    const sonar = chosen ? (now % sonarPeriod) / sonarPeriod : null;
     const sonarBreath = 0;
-    // The chosen road's glow breathes on a slow cosine while the map is
-    // animated, and stands at full strength when it is not.
-    // The chosen road's direction marks slide forward slowly while the map
-    // is animated, and stand where they are when it is not.
-    const routeFlow = still
-      ? 0
-      : (performance.now() % routeFlowPeriod) / routeFlowPeriod;
-    const routePulse = still
-      ? 1
-      : 0.5 +
-        0.5 * Math.cos((2 * Math.PI * performance.now()) / routePulsePeriod);
-    if (chosen && !still && !globalThis.document?.hidden && sonarTimer === null)
+    const routeFlow = (now % routeFlowPeriod) / routeFlowPeriod;
+    const routePulse =
+      0.5 + 0.5 * Math.cos((2 * Math.PI * now) / routePulsePeriod);
+    if (chosen && !globalThis.document?.hidden && sonarTimer === null)
       sonarTimer = setTimeout(() => {
         sonarTimer = null;
         schedule();
@@ -293,11 +275,6 @@ export function createScene(
       for (const line of lines) line.cachedLayer = null;
       setHover({ object: null });
       invalidateStops();
-    },
-    setSonarMotion(value: boolean) {
-      if (sonarMotion === value) return;
-      sonarMotion = value;
-      schedule();
     },
     consumeTruckClick() {
       return pointer.tookRecently();

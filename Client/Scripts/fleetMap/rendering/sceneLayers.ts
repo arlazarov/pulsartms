@@ -324,14 +324,15 @@ function reticleLayers(
   ];
 }
 
-// The chosen road's direction: a few fine chevrons along its own geometry,
-// pointing the way it runs and sliding slowly forward while the map is
-// animated (standing still when it is not). A cue of direction, not of the
-// truck's progress. The road's lengths are measured once per geometry;
-// each frame only places a dozen marks. Never picked.
+// Which way the roads ahead run: fine chevrons along the current road and
+// every later load's road, sliding slowly forward with the map's animation
+// (the owner, September 27). The chosen road's marks are the brighter; an
+// unchosen later road's are faint. A cue of direction, not of the truck's
+// progress. The road's lengths are measured once per geometry; each frame
+// only places a dozen marks per road. Never picked.
 type FlowPath = { points: number[][]; lengths: number[]; total: number };
 const flowPaths = new WeakMap<object, FlowPath>();
-const flowCount = 14;
+const flowCount = 18;
 
 function flowPath(data: unknown): FlowPath | null {
   if (!data || typeof data !== 'object') return null;
@@ -381,7 +382,7 @@ function flowMarks(path: FlowPath, phase: number) {
 
 const chevron = {
   url: `data:image/svg+xml,${encodeURIComponent(
-    '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 12 12"><path d="M3 8.2 6 5l3 3.2" fill="none" stroke="rgb(255,255,255)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 12 12"><path d="M2.6 8.6 6 5l3.4 3.6" fill="none" stroke="rgba(2,6,23,0.55)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M2.6 8.6 6 5l3.4 3.6" fill="none" stroke="rgb(255,255,255)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
   )}`,
   width: 48,
   height: 48,
@@ -396,10 +397,11 @@ function flowLayers(
   laterPicked: boolean,
   phase: number,
 ): DeckLayer[] {
+  if (line.routeRole !== 'current' && line.routeRole !== 'future') return [];
   const chosen =
     (line.routeRole === 'current' && !laterPicked) ||
     (line.routeRole === 'future' && line.routeSelected === true);
-  if (line.visible === false || selectionMuted || !chosen) return [];
+  if (line.visible === false || selectionMuted) return [];
   const path = flowPath(line.data);
   if (!path) return [];
   return [
@@ -409,9 +411,9 @@ function flowLayers(
       getPosition: (mark: { position: number[] }) => mark.position,
       getAngle: (mark: { angle: number }) => mark.angle,
       getIcon: () => chevron,
-      getSize: 12,
+      getSize: chosen ? 16 : 13,
       sizeUnits: 'pixels',
-      opacity: 0.8,
+      opacity: chosen ? 1 : 0.7,
       billboard: true,
       pickable: false,
       parameters: { depthCompare: 'always' },

@@ -35,10 +35,10 @@ export function truckState(engine: unknown, speed = 0): string {
 }
 
 // The ring a stop badge wears while a truck stands on it says what the
-// truck's mark says: on the light map its engine, as the truck's edge does;
-// on the dark map, the approved marks' colour (green running, grey off).
+// truck's mark says: on the dark map its engine, as the truck's edge does;
+// on the light map, the classic marks' colour (green running, grey off).
 export function truckColor(engine: unknown, speed = 0): string {
-  if (!isLightMap())
+  if (isLightMap())
     return truckState(engine, speed) === 'off' ? ringQuiet : engineOn;
   return truckEngine(engine) === 'on' ? engineOn : ringQuiet;
 }
@@ -49,22 +49,27 @@ const engineOn = '#16a34a';
 const engineQuiet = '#94a3b8';
 const ringQuiet = '#64748b';
 const body = '#1e293b';
+// The dark map's instrument marks: the lit top of the glass body, the halo
+// and the spine.
+const bodyLit = '#24476a';
+const halo = '#22d3ee';
+const spine = '#67e8f9';
 
-// The dark map keeps the approved truck marks (the owner, September 27): a
+// The light map keeps the classic truck marks (the owner, September 27): a
 // green arrow moving, a green circle standing with the engine on, a grey one
-// with it off. The neutral body with an engine edge is the light map's.
-function darkTruckIcon(engine: unknown, speed: number) {
-  const key = `dark:${truckState(engine, speed)}`;
+// with it off. The engine-edge instrument marks are the dark map's.
+function lightTruckIcon(engine: unknown, speed: number) {
+  const key = `light:${truckState(engine, speed)}`;
   if (!icons.has(key)) {
     const silhouette = 'M13 1 L24 23 Q25 26 22 25 L13 22 L4 25 Q1 26 2 23 Z';
     const shape =
-      key === 'dark:moving'
+      key === 'light:moving'
         ? `
 <path d="${silhouette}" fill="none" stroke="white" stroke-width="4" stroke-linejoin="round"/>
 <path d="${silhouette}" fill="${engineOn}" stroke="${body}" stroke-width="2" stroke-linejoin="round"/>`
         : `
 <circle cx="13" cy="13" r="11" fill="none" stroke="white" stroke-width="4"/>
-<circle cx="13" cy="13" r="11" fill="${key === 'dark:idle' ? engineOn : ringQuiet}" stroke="${body}" stroke-width="2"/>`;
+<circle cx="13" cy="13" r="11" fill="${key === 'light:idle' ? engineOn : ringQuiet}" stroke="${body}" stroke-width="2"/>`;
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="120" viewBox="-1 -1 28 30">${shape}</svg>`;
     icons.set(key, {
       url: 'data:image/svg+xml,' + encodeURIComponent(svg),
@@ -78,8 +83,12 @@ function darkTruckIcon(engine: unknown, speed: number) {
   return icons.get(key);
 }
 
+// The dark map's marks: the engine-edge truck drawn as an instrument - a
+// deep glass body lit from the nose, a soft cyan halo in place of the white
+// casing and a fine cyan spine or core, so it reads as a HUD mark while the
+// edge still says the engine.
 export function truckIcon(engine: unknown, speed = 0) {
-  if (!isLightMap()) return darkTruckIcon(engine, speed);
+  if (isLightMap()) return lightTruckIcon(engine, speed);
   const motion = truckMotion(speed);
   const reading = truckEngine(engine);
   const key = `${motion}:${reading}`;
@@ -92,15 +101,19 @@ export function truckIcon(engine: unknown, speed = 0) {
         : reading === 'off'
           ? `stroke="${engineQuiet}" stroke-width="2"`
           : `stroke="${engineQuiet}" stroke-width="2" stroke-dasharray="3 2"`;
+    const glass = `<defs><linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${bodyLit}"/><stop offset="1" stop-color="${body}"/></linearGradient></defs>`;
     const shape =
       motion === 'moving'
         ? `
-<path d="${silhouette}" fill="none" stroke="white" stroke-width="4" stroke-linejoin="round"/>
-<path d="${silhouette}" fill="${body}" ${edge} stroke-linejoin="round"/>`
+<path d="${silhouette}" fill="none" stroke="${halo}" stroke-opacity="0.45" stroke-width="4.5" stroke-linejoin="round"/>
+<path d="${silhouette}" fill="url(#b)" ${edge} stroke-linejoin="round"/>
+<path d="M13 6.5 L13 17.5" stroke="${spine}" stroke-width="1.3" stroke-linecap="round" stroke-opacity="0.9"/>`
         : `
-<circle cx="13" cy="13" r="11" fill="none" stroke="white" stroke-width="4"/>
-<circle cx="13" cy="13" r="11" fill="${body}" ${edge}/>`;
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="120" viewBox="-1 -1 28 30">${shape}</svg>`;
+<circle cx="13" cy="13" r="11" fill="none" stroke="${halo}" stroke-opacity="0.45" stroke-width="4.5"/>
+<circle cx="13" cy="13" r="11" fill="url(#b)" ${edge}/>
+<circle cx="13" cy="13" r="4.2" fill="none" stroke="${spine}" stroke-width="1.3" stroke-opacity="0.9"/>
+<circle cx="13" cy="13" r="1.3" fill="${spine}"/>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="112" height="120" viewBox="-1 -1 28 30">${glass}${shape}</svg>`;
     icons.set(key, {
       url: 'data:image/svg+xml,' + encodeURIComponent(svg),
       width: 112,

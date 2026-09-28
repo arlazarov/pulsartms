@@ -202,7 +202,6 @@ public partial class FleetMap : IAsyncDisposable
   private bool UseIfta { get; set; } = true;
   private bool ShowFuelStations { get; set; }
   private bool ShowTraffic { get; set; } = true;
-  private bool SonarMotion { get; set; } = true;
 
   protected override async Task OnParametersSetAsync()
   {
@@ -316,7 +315,7 @@ public partial class FleetMap : IAsyncDisposable
           trafficVisible = ShowTraffic,
           useIfta = UseIfta,
           distanceUnit = Units.Distance,
-          initialTruckId = TruckId,
+          initialTruckId = _activeTruckId ?? TruckId,
           initialView = InitialView,
         }
       );
@@ -325,13 +324,12 @@ public partial class FleetMap : IAsyncDisposable
       _displayedDistanceUnit = Units.Distance;
       await _map.InvokeVoidAsync("setDistanceUnit", Units.Distance);
       await _map.InvokeVoidAsync("setNextLoadsVisible", ShowNextLoads);
-      await _map.InvokeVoidAsync("setSonarMotion", SonarMotion);
       if (_disposed)
         return;
       _stations = new(Http, _map);
       _initializing = false;
       await InvokeAsync(StateHasChanged);
-      _truckPollingTask = PollTrucksAsync(_lifetime.Token);
+      _truckPollingTask ??= PollTrucksAsync(_lifetime.Token);
       _ = OnDateChanged();
       _ = ReadFuelPricingBasisAsync();
     }
@@ -441,6 +439,42 @@ public partial class FleetMap : IAsyncDisposable
     _focusedTruckId = TruckId;
     FocusError = null;
     return SelectRouteAsync(truckId, null);
+  }
+
+  // Google fixes a map's colour scheme when it is made, so a theme switch
+  // makes the map again in place instead of reloading the page: the list,
+  // chain, panel and selection stay, the camera and the chosen truck come
+  // over, the map is drawn again at once, and Follow resumes if it was on.
+  [JSInvokable]
+  public Task OnMapSchemeChanged() => InvokeAsync(RestartMapForSchemeAsync);
+
+  private async Task RestartMapForSchemeAsync()
+  {
+    if (_disposed || _initializing || _session is null)
+      return;
+    var following = _followingTruck;
+    var truck = _activeTruckId;
+    var session = _session;
+    _session = null;
+    await session.DisposeAsync();
+    if (_disposed)
+      return;
+    await StartMapAsync();
+    if (_disposed || _map is null)
+      return;
+    try
+    {
+      await RefreshTrucksAsync(_lifetime.Token);
+    }
+    catch (Exception ex) when (IsLoadError(ex)) { }
+    await PushStopCompletionsAsync();
+    if (
+      following
+      && truck is { } id
+      && id == _activeTruckId
+      && _map is not null
+    )
+      await _map.InvokeVoidAsync("setFollow", id.ToString(), true);
   }
 
   [JSInvokable]
@@ -964,13 +998,6 @@ public partial class FleetMap : IAsyncDisposable
     }
     else if (_map is not null && _stations?.LoadedDate != SelectedDate)
       await OnDateChanged();
-  }
-
-  private async Task OnSonarMotionChanged()
-  {
-    await SaveMapPreferencesAsync();
-    if (_map is not null && !_disposed)
-      await _map.InvokeVoidAsync("setSonarMotion", SonarMotion);
   }
 
   private async Task OnTrafficToggleChanged()

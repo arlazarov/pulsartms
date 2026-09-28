@@ -14,7 +14,7 @@ visual inspection only, never acceptance.
 | Top bar: brand, section / page, theme, clock, account | Built, Seen dark/light |
 | Rail of destinations, glass panels with corner ticks, canvas glows | Built, Seen |
 | Dark is the default theme; no white flash at start | Built (client start); server "never chosen" is Dispatch's |
-| Theme switch applies without a page reload, keeping camera, Follow, selection | Open (still reloads the Fleet map page) |
+| Theme switch applies without a page reload: the map is made again in place (Google fixes its scheme at creation), keeping camera, chosen truck, Follow, list, chain and panel | Built, Seen dark→light |
 | Phone shell (pulse top bar, bottom nav) | Open (mobile pass later) |
 
 ## Fleet head, list, filters
@@ -32,20 +32,21 @@ visual inspection only, never acceptance.
 | Real Google map, mainland US / Canada bounds, no world zoom | Built, Seen |
 | Auto satellite at close zoom, no mode caption | Built |
 | One compact tool bar: Follow, Fit route, Camera, Route options, Fuel, Layers; no zoom or whole-fleet | Built, Seen |
-| Layers menu: Fuel stations, Traffic, Next loads, Map animation (visible on/off) | Built |
-| Map animation off stops all decorative motion, keeps static highlights | Built |
+| Layers menu: Fuel stations, Traffic, Next loads; no Map animation option | Built |
+| Map animation always on (sonar, route glow, direction marks, radar), also under the system's reduced motion | Built |
 | No map legend; weather attribution kept | Built, Seen |
-| Truck marks, dark map: the approved earlier marks (green arrow moving, green / grey circle standing), compact size; selected sonar | Built (correction: the engine-edge redesign was asked for the light map only) |
-| Truck marks, light map: neutral body, arrow moving, circle standing, engine edge | Built |
+| Truck marks, dark map: engine-edge marks as HUD instruments (glass body lit from the nose, cyan halo instead of white casing, cyan spine / core) | Built (correction: the engine-edge design belongs to dark, not light) |
+| Truck marks, light map: classic green arrow moving, green / grey circle standing | Built |
 | Truck number and "N trucks" cluster tags: HUD plates (clipped corners, fine accent outline, edge ticks, glass sheen), both themes; icons, counts, clustering and picking unchanged | Built |
 | Sonar: four thin compact rings, slow, brighter ink on light map | Built, Seen dark (light ink not yet seen) |
 | Stop badges: glass core, fine rim, crisp P / D, dashed when done; light variant | Built, Seen dark and light |
-| Fuel stations, both maps: pump on the glass core in a fine price-colour rim (dark: cyan ink, as the owner praised; light: its own deep-accent variant); plan stop same pump slightly larger, "Fuel N" | Built (correction: the dark pump is kept; only the truck marks went back to the approved dark look) |
-| Selected route glows (current or picked later load), slow breathing | Built, Seen (picked later load) |
-| Unselected later routes: fine dashes, no glow; travelled part thin and quiet | Built (not yet seen) |
+| Fuel stations: no pump icons. Dark map: glass-core dot in a fine price-colour rim. Light map: dot filled with its price colour in a white rim, so cheap and dear read apart; plan stop slightly larger with the accent ring, "Fuel N" | Built |
+| Every road ahead glows (current and each later load), the chosen one a little brighter, slow breathing | Built |
+| Unselected later routes: fine dashes with the softer glow | Built (not yet seen) |
+| Travelled road as a HUD trace: fine instrument-ink line over a faint halo, no white casing; empty miles dashed | Built |
 | Selected P / D / fuel: HUD reticle with four ticks and soft glow | Built |
-| Subtle forward direction motion along the selected route (chevrons, still when animation is off) | Built |
-| P / D pressed on the map or in the chain (current and later loads): that stop centred at zoom 15, satellite by the zoom rule; Follow ends | Built |
+| Direction motion on the current road and every later load's road: larger dark-cased white chevrons, 3.2 s cycle, bright on the chosen road, softer on the others | Built |
+| P / D on the map or in the chain (current and later loads): one press opens it, zoom kept (an off-screen stop is panned into view); a double press centres it at zoom 15, satellite by the zoom rule; Follow ends on a camera move | Built |
 | Passed (completed) stops openable from chain and map | Open |
 
 ## Right panel
@@ -55,7 +56,7 @@ visual inspection only, never acceptance.
 | Reserved column; empty state with calm radar when nothing is chosen | Built, Seen |
 | Truck head: eyebrow, large unit; no Route / Fuel tabs | Built, Seen |
 | Facts 2x3, clocks in cells with bars; no action row; no trip block | Built, Seen |
-| Location: locality only, full address in title and copy; copy button, honest status | Built, Seen |
+| Location: locality only, full address in title; clicking the text copies it (no copy button); honest status | Built |
 | Stop card (current and next): HUD glass, corner brackets, dimensional emblem, compact facts | Built, Seen dark current / light next |
 | Load number opens the load; no large Open load button | Built, Seen |
 | Stop card stacks in the narrow panel; no mid-word breaks | Built, Seen |

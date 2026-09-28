@@ -457,7 +457,8 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  // The location in full, selectable, with its own copy button.
+  // The location's words are its copy control: a click copies the full
+  // address (the owner, September 27).
   &__fact--location {
     position: relative;
     dd {
@@ -468,24 +469,15 @@
     }
   }
   &__copy {
-    display: grid;
-    place-items: center;
-    flex: none;
-    align-self: start;
-    width: ui.size(control-compact);
-    height: ui.size(control-compact);
-    margin-left: auto;
+    padding: 0;
     border: 0;
-    border-radius: ui.radius(sm);
     background: none;
-    color: ui.theme(text-muted);
-    cursor: pointer;
-    svg {
-      width: ui.pg(lg);
-      height: ui.pg(lg);
-    }
-    &:hover {
-      background: ui.theme(accent, 0.1);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: copy;
+    &:hover,
+    &:focus-visible {
       color: ui.theme(accent);
     }
   }
@@ -568,11 +560,6 @@
       animation: fleet-radar-sweep 6s linear infinite;
     }
   }
-}
-
-// The Layers menu's Map animation, off: nothing decorative moves.
-.fleet-map-stage.is-still .fleet-map-inspector__empty::before {
-  animation: none;
 }
 
 @keyframes fleet-radar-sweep {
