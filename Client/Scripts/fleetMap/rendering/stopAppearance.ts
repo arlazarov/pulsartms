@@ -90,12 +90,17 @@ export function stopMarkerIcon(
     half - radius,
     `fill="${paint(color)}" fill-opacity="${alpha(color).toFixed(2)}" stroke="${paint(border)}" stroke-opacity="${alpha(border).toFixed(2)}" stroke-width="${(light ? 2 : 1.75) + (emphasis ? 1 : 0)}"${quiet ? ' stroke-dasharray="2.2 1.6"' : ''}`,
   );
-  const around = ring
-    ? pill(
-        1.25,
-        `fill="${paint(ring)}"${light ? '' : ` stroke="${casing}" stroke-width="1.5"`}`,
-      )
-    : '';
+  // Daylight: a truck standing on its own stop does not wrap the badge in
+  // its colour (it read as a broad grey disc): the badge stays white with
+  // its one trip-colour rim, and the truck is known by its number tag and
+  // its sonar (the owner, September 28).
+  const around =
+    ring && !light
+      ? pill(
+          1.25,
+          `fill="${paint(ring)}" stroke="${casing}" stroke-width="1.5"`,
+        )
+      : '';
   // A badge drawn over a truck it has not reached yet stands on a dark
   // rim, so the disc behind it reads as a truck and not a smudge. Neither
   // mark may be moved to make room: the gap between them is how far the

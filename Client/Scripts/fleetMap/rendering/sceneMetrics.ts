@@ -77,9 +77,6 @@ export const sceneMetrics = Object.freeze({
   // Empty miles are dashed: nothing is on board. Dash units are half
   // widths, and rounded caps add a width to each dash.
   routeDashArray: Object.freeze([4, 4]),
-  // An unpicked later load's road: fine, closely spaced dashes of its
-  // colour, told from empty miles by their rhythm (the owner, September 27).
-  routeFutureDashArray: Object.freeze([1.6, 2.4]),
   // The part already driven: a thin quiet line under the road ahead.
   routeTraveledWidth: 3,
 });

@@ -43,7 +43,11 @@ export type SceneRouteLine = {
 
 // Empty miles are orange wherever they appear, dashed: nothing is on
 // board. Grey, they vanished into the basemap's own roads.
-const emptyColor = [234, 88, 12, 255];
+// Empty miles: a clear orange, not a red-orange (the owner, September 28).
+const emptyColor = [245, 140, 30, 255];
+// Their dashes have square ends: round caps filled the gaps and the line
+// read as solid.
+const emptyDash = { capRounded: false, getDashArray: [2.5, 2.5] };
 const colors: Record<string, readonly number[]> = {
   current: currentRouteLineColor,
   traveled: currentRouteLineColor,
@@ -69,14 +73,10 @@ export function routeLayers(
   selectionMuted = false,
 ) {
   const empty = emptyRoles.has(line.routeRole);
-  // A load's road is solid in its colour, an upcoming one as much as the
-  // one being driven: dashed and grey, upcoming roads read as the basemap's
-  // own, and several loads on one corridor were told apart by nothing.
-  // Unpicked later loads are fine dashes; the picked one is solid and
-  // glows (routeGlowLayers).
-  const futureDashed =
-    line.routeRole === 'future' && line.routeSelected !== true;
-  const dashed = empty || futureDashed;
+  // A load's road is solid in its trip's colour, every later load's as
+  // much as the one being driven; dashes are only for empty miles (the
+  // owner, September 28, over the fine dashes of unpicked later loads).
+  const dashed = empty;
   const upcoming = line.routeRole === 'future' || line.routeRole === 'deadhead';
   const muted =
     selectionMuted ||
@@ -172,9 +172,7 @@ export function routeLayers(
     : drawnWidth + metrics.routeOutlineWidth * 0.8;
   const casing = light ? [color[0], color[1], color[2], 28] : outline;
   const dash = dashed ? { extensions, dashJustified: false } : {};
-  const pattern = futureDashed
-    ? metrics.routeFutureDashArray
-    : metrics.routeDashArray;
+  const pattern = metrics.routeDashArray;
   // Dash units use half-width. Both strokes must share physical dash boundaries.
   const outlineDash = pattern.map(
     (value: number) => (value * drawnWidth) / outlineWidth,
@@ -191,11 +189,7 @@ export function routeLayers(
         id: line.id,
         getColor: core,
         getWidth: empty ? 3 : drawnWidth,
-        ...(empty
-          ? { getDashArray: [2.4, 1.8] }
-          : dashed
-            ? { getDashArray: pattern }
-            : {}),
+        ...(empty ? emptyDash : dashed ? { getDashArray: pattern } : {}),
       }),
     ]);
   }
@@ -204,7 +198,7 @@ export function routeLayers(
     // orange casing did not belong): a fine dashed amber line over a faint
     // amber halo, no white casing - still told from loaded road by colour
     // and dashes.
-    const amber = isLightMap() ? [234, 88, 12] : [251, 146, 60];
+    const amber = isLightMap() ? emptyColor.slice(0, 3) : [251, 146, 60];
     return (line.cachedLayer = [
       new PathLayer({
         ...shared,
@@ -220,7 +214,7 @@ export function routeLayers(
         id: line.id,
         getColor: [...amber, 235],
         getWidth: 2.5,
-        getDashArray: [2.2, 2.2],
+        ...emptyDash,
       }),
     ]);
   }
@@ -232,7 +226,7 @@ export function routeLayers(
     // Empty miles already driven stay orange; loaded ones take the ink.
     const ink = empty
       ? isLightMap()
-        ? [234, 88, 12]
+        ? emptyColor.slice(0, 3)
         : [251, 146, 60]
       : isLightMap()
         ? [14, 116, 144]
@@ -247,7 +241,11 @@ export function routeLayers(
           opacity: 1,
           getColor: [...ink, 170],
           getWidth: metrics.routeTraveledWidth * 0.6,
-          ...(dashed ? { getDashArray: metrics.routeDashArray } : {}),
+          ...(empty
+            ? emptyDash
+            : dashed
+              ? { getDashArray: metrics.routeDashArray }
+              : {}),
         }),
       ]);
     return (line.cachedLayer = [
@@ -266,7 +264,11 @@ export function routeLayers(
         opacity: 1,
         getColor: [...ink, isLightMap() ? 190 : 170],
         getWidth: metrics.routeTraveledWidth * 0.6,
-        ...(dashed ? { getDashArray: metrics.routeDashArray } : {}),
+        ...(empty
+          ? emptyDash
+          : dashed
+            ? { getDashArray: metrics.routeDashArray }
+            : {}),
       }),
     ]);
   }
