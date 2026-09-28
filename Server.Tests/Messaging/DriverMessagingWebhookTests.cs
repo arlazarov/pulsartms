@@ -5,6 +5,7 @@ using System.Text.Json;
 using Application.Diagnostics;
 using Application.Features.Integrations.Interfaces;
 using Application.Features.Integrations.Models;
+using Application.Features.Messaging.Audit;
 using Application.Features.Messaging.Commands;
 using Application.Features.Messaging.Interfaces;
 using Application.Features.Messaging.Services;
@@ -851,6 +852,53 @@ public sealed class DriverMessagingWebhookTests
       EarlyDeliveryStatuses.PerCompany,
       await f.Db.PendingDeliveryStatuses.CountAsync()
     );
+  }
+
+  // A release overlap: the previous binary saves a provider id without
+  // taking what the new one kept for it, for a fuel text and for a reply.
+  // The message keeps showing accepted after the provider's failure, and
+  // the audit reports each kept status; one whose id is still unknown is
+  // not a finding, and one a new writer took leaves nothing to report.
+  [Fact]
+  public async Task AKeptStatusBehindAnIdSavedWithoutItIsReported()
+  {
+    await using var f = await Fixture.CreateAsync();
+    await f.PostAsync(Status("wamid.1", "failed", 10, code: 131047));
+    await f.PostAsync(Status("wamid.2", "failed", 11, code: 131047));
+    await f.PostAsync(Status("wamid.3", "read", 12));
+    var text = await f.MessageAsync("wamid.1");
+    var (_, reply) = await f.ReplyInFlightAsync();
+    await f
+      .Db.ConversationMessages.Where(x => x.Id == reply)
+      .ExecuteUpdateAsync(x =>
+        x.SetProperty(m => m.ProviderMessageId, "wamid.2")
+          .SetProperty(m => m.Status, DriverMessageStatuses.Accepted)
+      );
+
+    var found = (
+      await new KeptStatusUnappliedRule(f.Db).ReadAsync(
+        new(
+          Domain.Entities.Company.Amf,
+          DateTime.UtcNow,
+          null,
+          10,
+          TimeSpan.FromMinutes(30)
+        ),
+        default
+      )
+    ).Observed;
+
+    Assert.Equal(DriverMessageStatuses.Accepted, await f.StatusAsync(text));
+    var lost = await f
+      .Db.PendingDeliveryStatuses.AsNoTracking()
+      .Where(x => x.ProviderMessageId != "wamid.3")
+      .Select(x => x.Id)
+      .ToListAsync();
+    Assert.Equal(
+      lost.Select(x => x.ToString()).Order(StringComparer.Ordinal),
+      found.Select(x => x.EntityKey)
+    );
+    Assert.All(found, x => Assert.Equal("131047", x.Evidence["errorCode"]));
   }
 
   private static byte[] Status(

@@ -158,6 +158,7 @@ public static class DependencyInjection
     services.AddScoped<IConsistencyRule, SourceRoadDemandRule>();
     services.AddScoped<IConsistencyRule, UnreadArrivalRule>();
     services.AddScoped<IConsistencyRule, OutboundOverdueRule>();
+    services.AddScoped<IConsistencyRule, KeptStatusUnappliedRule>();
     services.AddScoped<IConsistencyRule, FiledDocumentRule>();
     services.AddScoped<IConsistencyRule, BaseRoadBorderRule>();
     services.AddScoped<IConsistencyRule, BaseRoadBorderUnknownRule>();

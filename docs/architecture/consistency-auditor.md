@@ -282,6 +282,7 @@ does; everything else in this guide is target design.
 | `routing.source-road-overdue` | `BaseRouteOperation` | violation, warning | none; the wait line names the step | implemented, detection tested |
 | `messaging.unread-arrival-behind` | `InboxRecorder` | violation, warning | none; next driver message | implemented, detection tested |
 | `messaging.outbound-overdue` | `OutboundMessageOperation` | violation, warning | none; the outbox's next pass | implemented, detection tested |
+| `messaging.kept-status-unapplied` | `EarlyDeliveryStatuses` | violation, warning | none; the dispatcher is told the provider's status | implemented, detection tested; visible while the row is kept (an hour) |
 | `dispatch.filed-document-unavailable` | `FileMessageAttachment` | violation, warning | none; stored file's owner | implemented, detection tested |
 | `routing.base-road-leaves-country` | `BaseRouteService` | violation, warning | none; rebuild the load | implemented, detection tested |
 | `routing.base-road-border-unverified` | `BaseRouteService` | review, warning | none; dispatcher | implemented, detection tested |

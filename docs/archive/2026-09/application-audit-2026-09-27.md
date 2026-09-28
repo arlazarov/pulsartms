@@ -1540,10 +1540,21 @@ stays accepted for good; WhatsApp offers no status query, and no auditor
 rule reports an accepted message without a status. Bound: messages sent
 in the overlap whose status arrived within the provider call (at the
 last release: driver messages 0, 57 conversation messages in total).
-The first case is detectable after the drain with a read-only query -
-kept rows whose provider id now names a saved message; recovery would
-need a Messaging decision (apply them, or report them for a
-dispatcher). Owner: Messaging. The second case leaves no trace.
+The first case is now reported: `messaging.kept-status-unapplied`
+finds a kept status whose provider id a message of the same carrier,
+channel and business number already holds. Every Messaging writer that
+saves an outbound id takes kept statuses under the message's lock (the
+fuel-text sender, the outbox's finish and late answer; the inbox records
+inbound ids, for which the provider sends no status), so outside an
+overlap such a row cannot survive a commit. A finding lasts while the
+row is kept - up to an hour, until a webhook prunes it - and the auditor
+runs every 10 minutes. Detection test and SQL translation on PostgreSQL
+green; each branch (fuel text, reply) removed fails it
+(diagnostic-qEnFEa; the first run, diagnostic-e8TBeu, failed on the
+test's Guid case - invalid). Messaging and Dispatch groups green
+(diagnostic-mHnhKT). Recovery - applying such a status to the message,
+or telling the dispatcher - is a Messaging decision. Owner: Messaging.
+The second case leaves no trace.
 
 **Fuel publication and hand-overs (D6, F16, F17).** The truck's
 publication lock (`PlanningPublicationScope`, `FOR UPDATE SKIP LOCKED`)
@@ -1562,9 +1573,8 @@ indistinguishable from a choice; not corrected. Bound: accounts created
 in the overlap.
 
 After the drain, read only: the previous revision `Active` false and
-its last log line; kept delivery statuses whose id names a saved
-message (count only); the two fuel hand-over rules; users created in
-the overlap.
+its last log line; `messaging.kept-status-unapplied` within the hour;
+the two fuel hand-over rules; users created in the overlap.
 
 Rollback of the API: redeploy the previous image; no Down is needed for
 any of 75-79. After it, the behaviours above return for as long as the
@@ -1690,10 +1700,11 @@ figure names its source.
 - **PostgreSQL fixture.** Owner: tests. Done when an isolated fixture,
   not in Docker, runs the 42 skipped tests in the gate.
 - **Delivery statuses lost in a release overlap.** Owner: Messaging.
-  Done when kept statuses whose id names a saved message are applied or
-  reported after a drain, and an accepted message with no status past a
-  stated age is reported by an auditor rule - or the loss is accepted
-  by root as the bounded cost of a release.
+  Kept statuses whose id names a saved message are reported
+  (`messaging.kept-status-unapplied`). Done when they are applied or a
+  dispatcher is told, and an accepted message with no status past a
+  stated age is reported - or root accepts the loss as the bounded cost
+  of a release.
 - **Liveness of operations without a heartbeat.** Owner: the background
   owners. Done when each has a heartbeat or a documented reason.
 
