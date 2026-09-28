@@ -2,6 +2,8 @@ using Application.Features.Messaging.Options;
 using Application.Features.Messaging.Services;
 using Application.Interfaces;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 
 namespace Server.Tests.Support;
@@ -17,19 +19,22 @@ internal static class TestSendHold
         .GetRequiredService<IServiceScopeFactory>(),
       new Revision("test"),
       Options.Create(new SendHoldOptions()),
-      TimeProvider.System
+      TimeProvider.System,
+      NullLogger<SendHold>.Instance
     );
 
   public static SendHold Required(
     IServiceScopeFactory scopes,
     string? revision,
-    TimeProvider clock
+    TimeProvider clock,
+    ILogger<SendHold>? logger = null
   ) =>
     new(
       scopes,
       new Revision(revision),
       Options.Create(new SendHoldOptions { RequireRelease = true }),
-      clock
+      clock,
+      logger ?? NullLogger<SendHold>.Instance
     );
 
   public sealed record Revision(string? Name) : IDeploymentRevision;

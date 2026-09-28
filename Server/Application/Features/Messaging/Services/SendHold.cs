@@ -1,5 +1,6 @@
 using Application.Features.Messaging.Options;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
 namespace Application.Features.Messaging.Services;
@@ -18,17 +19,19 @@ namespace Application.Features.Messaging.Services;
 // Asked of the database at most every Recheck, one read shared by
 // concurrent callers; a recorded release is kept for the process's life,
 // as the record is. A process whose revision has no valid name is never
-// released.
+// released. A failed read holds too, and is not retried before Recheck.
 public sealed class SendHold(
   IServiceScopeFactory scopes,
   IDeploymentRevision revision,
   IOptions<SendHoldOptions> options,
-  TimeProvider clock
+  TimeProvider clock,
+  ILogger<SendHold> logger
 )
 {
   public static readonly TimeSpan Recheck = TimeSpan.FromSeconds(5);
   private readonly object gate = new();
   private bool released;
+  private bool failing;
   private DateTimeOffset checkedAt = DateTimeOffset.MinValue;
   private Task<bool>? reading;
 
@@ -56,28 +59,42 @@ public sealed class SendHold(
   }
 
   // Whether the revision is released; shared by the callers that asked
-  // while it ran, so it is not cancelled by one of them.
+  // while it ran, so it is not cancelled by one of them. A read that fails
+  // holds, like one that finds nothing, and counts as the check: the next
+  // is Recheck later, however many callers ask meanwhile. The failure is
+  // logged once, when reads start failing, not on every retry.
   private async Task<bool> ReadAsync()
   {
+    var found = false;
+    Exception? failure = null;
     try
     {
-      bool found;
-      await using (var scope = scopes.CreateAsyncScope())
-        found = await scope
-          .ServiceProvider.GetRequiredService<IAppDbContext>()
-          .SendReleases.AsNoTracking()
-          .AnyAsync(x => x.Revision == revision.Name!);
-      lock (gate)
-      {
-        released |= found;
-        checkedAt = clock.GetUtcNow();
-      }
-      return found;
+      await using var scope = scopes.CreateAsyncScope();
+      found = await scope
+        .ServiceProvider.GetRequiredService<IAppDbContext>()
+        .SendReleases.AsNoTracking()
+        .AnyAsync(x => x.Revision == revision.Name!);
     }
-    finally
+    catch (Exception ex)
     {
-      lock (gate)
-        reading = null;
+      failure = ex;
     }
+    bool first;
+    lock (gate)
+    {
+      released |= found;
+      checkedAt = clock.GetUtcNow();
+      first = failure is not null && !failing;
+      failing = failure is not null;
+      reading = null;
+    }
+    if (first)
+      logger.LogWarning(
+        failure,
+        "The send release could not be read; sends stay held and it is "
+          + "read again every {Recheck}",
+        Recheck
+      );
+    return found;
   }
 }

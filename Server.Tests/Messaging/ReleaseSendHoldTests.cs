@@ -11,6 +11,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Server.Tests.Support;
 
 namespace Server.Tests.Messaging;
@@ -90,6 +91,59 @@ public sealed class ReleaseSendHoldTests
     clock.Advance(SendHold.Recheck);
     Assert.False(await hold.HeldAsync(default));
     Assert.Equal(2, f.Reads.Count);
+  }
+
+  // Root: a read that fails holds and counts as the check - callers in the
+  // meantime do not reach the database - is logged once while it keeps
+  // failing, and the hold is released by the first read that succeeds
+  // and finds the record.
+  [Fact]
+  public async Task AFailingReadHoldsIsRetriedOnlyAfterRecheckAndRecovers()
+  {
+    await using var f = await Database.CreateAsync();
+    var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
+    var logger = new Warnings();
+    var hold = TestSendHold.Required(f.Scopes, "rev-6", clock, logger);
+    f.Reads.Fail = true;
+
+    for (var i = 0; i < 5; i++)
+      Assert.True(await hold.HeldAsync(default));
+    Assert.Equal(1, f.Reads.Count);
+    clock.Advance(SendHold.Recheck);
+    Assert.True(await hold.HeldAsync(default));
+    Assert.True(await hold.HeldAsync(default));
+    Assert.Equal(2, f.Reads.Count);
+    Assert.Equal(1, logger.Count);
+
+    f.Reads.Fail = false;
+    await f.ReleaseAsync("rev-6");
+    Assert.True(await hold.HeldAsync(default));
+    clock.Advance(SendHold.Recheck);
+    Assert.False(await hold.HeldAsync(default));
+    Assert.Equal(3, f.Reads.Count);
+    Assert.Equal(1, logger.Count);
+  }
+
+  private sealed class Warnings : ILogger<SendHold>
+  {
+    public int Count;
+
+    public IDisposable? BeginScope<TState>(TState state)
+      where TState : notnull => null;
+
+    public bool IsEnabled(LogLevel logLevel) => true;
+
+    public void Log<TState>(
+      LogLevel logLevel,
+      EventId eventId,
+      TState state,
+      Exception? exception,
+      Func<TState, Exception?, string> formatter
+    )
+    {
+      if (logLevel == LogLevel.Warning)
+        Interlocked.Increment(ref Count);
+    }
   }
 
   // A deployment operator's release: recorded once with who released it,
@@ -303,6 +357,7 @@ public sealed class ReleaseSendHoldTests
   private sealed class ReadCounter : DbCommandInterceptor
   {
     public int Count;
+    public bool Fail;
     public TaskCompletionSource? Blocked;
     public TaskCompletionSource Started { get; } =
       new(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -325,6 +380,8 @@ public sealed class ReleaseSendHoldTests
         Started.TrySetResult();
         if (Blocked is { } blocked)
           await blocked.Task;
+        if (Fail)
+          throw new InvalidOperationException("The database is unavailable.");
       }
       return result;
     }

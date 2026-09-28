@@ -1759,6 +1759,17 @@ messaging and database groups green (diagnostic-BFwmaB). The operator
 list must be set in the deployment before a release is possible: an
 owner decision on which identities, recorded with the release.
 
+Root's follow-up: a failed read cleared the shared read without
+stamping the check, so sequential callers went back to the database at
+once. A failed read now holds like a read that finds nothing and counts
+as the check - the next is five seconds later, whatever the load - and
+is logged once when reads start failing, not on every retry.
+`AFailingReadHoldsIsRetriedOnlyAfterRecheckAndRecovers`: five calls
+during a failure make one read, the next comes after Recheck, one
+warning, and the first successful read that finds the record releases;
+mutations stamping only successful reads or logging every failure fail
+(diagnostic-YmrSnl, focused only).
+
 What it guarantees: no message this revision sends can have a status
 dropped by the revision before it, provided the release is recorded
 only after the platform shows that revision drained. What it does not
