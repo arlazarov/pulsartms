@@ -42,7 +42,8 @@ export function createCameraViewport(
   // again, even after the reader has dragged the map away (the owner,
   // September 26).
   let current: google.maps.LatLngLiteral | null = null,
-    covering = '';
+    covering = '',
+    folded = false;
   // A reader who drags the map has taken it back: nothing more is moved for
   // them. Any other move - a route fitted, a zoom, our own pan - ends in an
   // idle, where the pick's place is measured again against the camera at
@@ -84,10 +85,17 @@ export function createCameraViewport(
     const cover = region
       ? [region.x, region.y, region.width, region.height].join(':')
       : '';
+    // A phone's truck card folded or unfolded by its reader is the same
+    // card: it never moves the camera (the owner, September 28).
+    const fold =
+      element
+        .closest?.('.fleet-map-page')
+        ?.classList?.contains('is-truck-collapsed') === true;
     if (cover !== covering) {
       covering = cover;
-      if (cover && !pending && current) begin(current);
+      if (cover && !pending && current && fold === folded) begin(current);
     }
+    folded = fold;
     attemptReveal();
   }
 
