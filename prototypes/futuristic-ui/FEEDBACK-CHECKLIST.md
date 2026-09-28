@@ -46,9 +46,15 @@ visual inspection only, never acceptance.
 | Unselected later routes: fine dashes with the softer glow | Built (not yet seen) |
 | Travelled road as a HUD trace: fine instrument-ink line over a faint halo, no white casing; empty miles dashed | Built |
 | Selected P / D / fuel: HUD reticle with four ticks and soft glow | Built |
-| Direction motion, constant and calm, like current: many fine grains (13 px apart, 2 px heads, short tails, about 38 px/s) over a fine steady glowing wire, on the current and later roads, brightest on the chosen one | Built |
+| Direction motion, constant and calm, like current: many fine grains (13 px apart, 2 px heads, short tails, about 20 px/s) over a fine steady glowing wire, on the current and later roads, brightest on the chosen one | Built |
 | P / D on the map or in the chain (current and later loads): one press opens it, zoom kept (an off-screen stop is panned into view); a double press centres it at zoom 15, satellite by the zoom rule; Follow ends on a camera move | Built |
 | Passed (completed) stops openable from chain and map | Open |
+
+## Workspace surface
+
+| Request | Status |
+| --- | --- |
+| Map lies under the whole workspace; list, panel and chain float over it as tempered glass (thinner, strongly blurred, lit top edge); the camera keeps fits and reveals clear of them | Built, Seen dark 1440 px |
 
 ## Right panel
 

@@ -908,6 +908,24 @@
       'list map inspector'
       'chain chain chain';
     gap: ui.pg(md);
+    position: relative;
+    padding: ui.pg(md);
+  }
+  // The map lies under the whole workspace; the list, the panel and the
+  // chain float over it as tempered glass (the owner, September 27). The
+  // camera keeps what it shows clear of them.
+  .fleet-map-stage > #fleet-map {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    z-index: 0;
+    border-radius: ui.radius(panel);
+  }
+  .fleet-truck-list,
+  .fleet-trip-chain,
+  .fleet-map-info-reserved {
+    @include ui.tempered-glass;
+    z-index: 1;
   }
   .fleet-map-stage:has(.fleet-truck-list.is-collapsed) {
     grid-template-columns:
@@ -923,9 +941,6 @@
       display: none;
     }
   }
-  #fleet-map {
-    grid-area: map;
-  }
   .fleet-truck-list {
     grid-area: list;
   }
@@ -933,7 +948,6 @@
     grid-area: chain;
   }
   .fleet-map-info-reserved {
-    @include ui.glass-panel;
     grid-area: inspector;
     position: relative;
     top: auto;

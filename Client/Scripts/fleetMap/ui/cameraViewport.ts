@@ -10,6 +10,9 @@ const selectors = [
   '.fleet-map-info-reserved',
   '.fuel-plan-editor',
   '.route-editor',
+  // On the wide workspace the map lies under the list and the chain too.
+  '.fleet-truck-list',
+  '.fleet-trip-chain',
 ];
 
 export function createCameraViewport(
