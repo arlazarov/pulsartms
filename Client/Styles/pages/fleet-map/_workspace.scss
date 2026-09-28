@@ -384,8 +384,8 @@
     align-items: center;
     gap: ui.pg(sm);
     min-width: 0;
-    font-size: ui.fs(lead);
-    font-weight: 700;
+    font-size: ui.fs(body);
+    font-weight: 600;
   }
   &__motion {
     flex: none;
