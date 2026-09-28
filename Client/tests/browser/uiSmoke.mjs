@@ -1636,6 +1636,21 @@ try {
                   number: stop
                     .querySelector('.dispatch-load__stop-number')
                     ?.textContent.trim(),
+                  numberLabel: stop
+                    .querySelector('.dispatch-load__stop-number')
+                    ?.getAttribute('aria-label'),
+                  numberVisible: (() => {
+                    const badge = stop.querySelector(
+                      '.dispatch-load__stop-number',
+                    );
+                    const box = badge?.getBoundingClientRect();
+                    return (
+                      !!box &&
+                      box.width > 0 &&
+                      box.height > 0 &&
+                      getComputedStyle(badge).visibility !== 'hidden'
+                    );
+                  })(),
                   location: stop
                     .querySelector('.dispatch-load__location')
                     ?.textContent.trim(),
@@ -2299,15 +2314,18 @@ try {
                   stop.cycle === null,
                   name + ' summary stops leave cycle details in the workspace',
                 );
+                // The owner keeps the compact tiles (owner decision of
+                // 2026-09-28): the place name at least 14px and the town,
+                // appointment and ETA at least 12px at a 16px root, scaling
+                // with the text size.
                 check(
-                  stop.locationText?.fontSize >=
-                    rootFont * (stop.completed ? 14 / 16 : 1) - 0.01 &&
+                  stop.locationText?.fontSize >= (rootFont * 14) / 16 - 0.01 &&
                     (stop.completed ||
                       stop.facilityText?.fontSize >=
-                        (rootFont * 14) / 16 - 0.01) &&
-                    stop.appointment?.fontSize >= (rootFont * 14) / 16 - 0.01 &&
+                        (rootFont * 12) / 16 - 0.01) &&
+                    stop.appointment?.fontSize >= (rootFont * 12) / 16 - 0.01 &&
                     (!stop.estimate ||
-                      stop.estimate.fontSize >= (rootFont * 14) / 16 - 0.01),
+                      stop.estimate.fontSize >= (rootFont * 12) / 16 - 0.01),
                   name +
                     ` readable location, facility, appointment and ETA for stop ${stop.id}`,
                 );
@@ -2357,10 +2375,23 @@ try {
                 JSON.stringify(stopIds),
               name + ' stop order and identity',
             );
+            // The tiles show each stop's load-relative badge, as the map's
+            // stop cards do (owner decision of 2026-09-28); the stop's
+            // number stays in the badge's accessible label.
             check(
               JSON.stringify(renderedStops.map(stop => stop.number)) ===
-                JSON.stringify(['1', '2', '3', '1', '2']),
-              name + ' pickup and delivery stop numbers remain visible',
+                JSON.stringify(['P', 'D1', 'D2', 'P', 'D']) &&
+                renderedStops.every(stop => stop.numberVisible) &&
+                renderedStops.every((stop, index) =>
+                  (stop.numberLabel ?? '').startsWith(
+                    `Stop ${[1, 2, 3, 1, 2][index]}, ${stop.number}`,
+                  ),
+                ),
+              name +
+                ' pickup and delivery badges remain visible with their ' +
+                `stop numbers (${JSON.stringify(
+                  renderedStops.map(stop => [stop.number, stop.numberLabel]),
+                )})`,
             );
             check(
               renderedStops.every(
