@@ -132,8 +132,11 @@
     }
     else if (Kind == "route")
     {
-        <circle cx="5" cy="19" r="2" /><circle cx="19" cy="5" r="2" />
-        <path d="M5 17v-3a4 4 0 0 1 4-4h6a4 4 0 0 0 4-3M12 19h4a3 3 0 0 0 0-6h-3M5 5h5m-2-2 2 2-2 2" />
+        @* A road: two edges meeting towards the horizon and its centre
+           line (the owner, September 28: the branching nodes did not read
+           as a road). *@
+        <path d="M9 3 4 21M15 3l5 18" />
+        <path d="M12 5v2M12 11v2M12 17v3" />
     }
     else if (Kind == "route-overview")
     {

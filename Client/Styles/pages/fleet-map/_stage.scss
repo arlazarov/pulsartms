@@ -159,8 +159,10 @@
   }
   // Expanded, the truck's panel has the stage to itself: the map's tool
   // bar steps aside and returns when it collapses.
-  .fleet-map-page:not(.is-truck-collapsed):has(.fleet-map-inspector__compact)
-    .fleet-map-controls {
+  // So does an open stop or station card of the chosen truck: the bar
+  // covered its Route and Left lines. Back to a collapsed truck brings the
+  // bar back.
+  .fleet-map-page.has-truck:not(.is-truck-collapsed) .fleet-map-controls {
     display: none;
   }
   // Collapsed, only the head stands over the map: every part under it is
