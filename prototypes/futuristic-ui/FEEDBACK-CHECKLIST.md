@@ -36,7 +36,7 @@ visual inspection only, never acceptance.
 | Layers menu: Fuel stations, Traffic, Next loads; no Map animation option | Built |
 | Map animation always on (sonar, route glow, direction marks, radar), also under the system's reduced motion | Built |
 | No map legend; weather attribution kept | Built, Seen |
-| Truck marks, dark map: bright glass HUD marks in a dark casing with a fine dark spine / core; the engine told by the whole mark - running green glass with a green glow, off grey glass, unknown grey with a dashed edge; standing as large as moving (24 px) | Built |
+| Truck marks, dark map: bright glass HUD marks in a dark casing with a fine dark spine / core, always glowing so they stand out - running green glass with a green glow, off pale glass with a cyan glow, unknown pale with a dashed edge; standing as large as moving (24 px) | Built |
 | Truck marks, light map: classic green arrow moving, green / grey circle standing | Built |
 | Truck number and "N trucks" cluster tags: HUD plates (clipped corners, fine accent outline, edge ticks, glass sheen), both themes; icons, counts, clustering and picking unchanged | Built |
 | Sonar: four thin compact rings, slow, brighter ink on light map | Built, Seen dark (light ink not yet seen) |
