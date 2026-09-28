@@ -1393,7 +1393,9 @@ try {
         page.on('pageerror', error => report.browserErrors.push(error.message));
         await page.goto(origin + '/login');
         await page.waitForURL(origin + '/fleet/map');
-        await page.locator('.fleet-map-page .page-header').waitFor({
+        // The workspace head's title is hidden below the map-mobile
+        // breakpoint (768px), so a phone only needs it rendered.
+        await page.locator('.fleet-map-page .fleet-map-title h1').waitFor({
           state: width < 768 ? 'attached' : 'visible',
         });
         check(
@@ -1404,7 +1406,11 @@ try {
           await page
             .getByRole('button', { name: 'Open menu', exact: true })
             .click();
-        const accountButton = page.locator('.sidebar__account');
+        // From the md breakpoint (800px) the account menu is in the top bar;
+        // a phone keeps it in the navigation menu.
+        const accountButton = page.locator(
+          width < 800 ? '.sidebar__account' : '.topbar__account',
+        );
         check(
           (await accountButton.getAttribute('aria-expanded')) === 'false',
           'Account actions start collapsed',
@@ -1630,6 +1636,21 @@ try {
                   number: stop
                     .querySelector('.dispatch-load__stop-number')
                     ?.textContent.trim(),
+                  numberLabel: stop
+                    .querySelector('.dispatch-load__stop-number')
+                    ?.getAttribute('aria-label'),
+                  numberVisible: (() => {
+                    const badge = stop.querySelector(
+                      '.dispatch-load__stop-number',
+                    );
+                    const box = badge?.getBoundingClientRect();
+                    return (
+                      !!box &&
+                      box.width > 0 &&
+                      box.height > 0 &&
+                      getComputedStyle(badge).visibility !== 'hidden'
+                    );
+                  })(),
                   location: stop
                     .querySelector('.dispatch-load__location')
                     ?.textContent.trim(),
@@ -1762,6 +1783,11 @@ try {
               heading: rect(document.querySelector('main h1')),
               fleetToolbar: document.querySelector('.fleet-map-toolbar')
                 ? rect(document.querySelector('.fleet-map-toolbar'))
+                : null,
+              // The Fleet Map's title is the h1 with its purpose line; the
+              // block, not the h1 alone, stands in the toolbar's row.
+              fleetTitle: document.querySelector('.fleet-map-title')
+                ? rect(document.querySelector('.fleet-map-title'))
                 : null,
               controls,
               dispatchCards,
@@ -2288,15 +2314,18 @@ try {
                   stop.cycle === null,
                   name + ' summary stops leave cycle details in the workspace',
                 );
+                // The owner keeps the compact tiles (owner decision of
+                // 2026-09-28): the place name at least 14px and the town,
+                // appointment and ETA at least 12px at a 16px root, scaling
+                // with the text size.
                 check(
-                  stop.locationText?.fontSize >=
-                    rootFont * (stop.completed ? 14 / 16 : 1) - 0.01 &&
+                  stop.locationText?.fontSize >= (rootFont * 14) / 16 - 0.01 &&
                     (stop.completed ||
                       stop.facilityText?.fontSize >=
-                        (rootFont * 14) / 16 - 0.01) &&
-                    stop.appointment?.fontSize >= (rootFont * 14) / 16 - 0.01 &&
+                        (rootFont * 12) / 16 - 0.01) &&
+                    stop.appointment?.fontSize >= (rootFont * 12) / 16 - 0.01 &&
                     (!stop.estimate ||
-                      stop.estimate.fontSize >= (rootFont * 14) / 16 - 0.01),
+                      stop.estimate.fontSize >= (rootFont * 12) / 16 - 0.01),
                   name +
                     ` readable location, facility, appointment and ETA for stop ${stop.id}`,
                 );
@@ -2346,10 +2375,23 @@ try {
                 JSON.stringify(stopIds),
               name + ' stop order and identity',
             );
+            // The tiles show each stop's load-relative badge, as the map's
+            // stop cards do (owner decision of 2026-09-28); the stop's
+            // number stays in the badge's accessible label.
             check(
               JSON.stringify(renderedStops.map(stop => stop.number)) ===
-                JSON.stringify(['1', '2', '3', '1', '2']),
-              name + ' pickup and delivery stop numbers remain visible',
+                JSON.stringify(['P', 'D1', 'D2', 'P', 'D']) &&
+                renderedStops.every(stop => stop.numberVisible) &&
+                renderedStops.every((stop, index) =>
+                  (stop.numberLabel ?? '').startsWith(
+                    `Stop ${[1, 2, 3, 1, 2][index]}, ${stop.number}`,
+                  ),
+                ),
+              name +
+                ' pickup and delivery badges remain visible with their ' +
+                `stop numbers (${JSON.stringify(
+                  renderedStops.map(stop => [stop.number, stop.numberLabel]),
+                )})`,
             );
             check(
               renderedStops.every(
@@ -2795,7 +2837,20 @@ try {
           }
           if (path === '/fleet/map') {
             // IFTA left the map with the date; Traffic is the layer chip
-            // that is on by default.
+            // that is on by default. From 768px the layers are the map tool
+            // bar's Layers menu; a phone keeps them in its Filters drawer.
+            if (width >= 768) {
+              const layers = page.getByRole('button', {
+                name: 'Map layers',
+                exact: true,
+              });
+              await layers.click();
+              assert.equal(
+                await layers.getAttribute('aria-expanded'),
+                'true',
+                name + ' map layers menu opens',
+              );
+            }
             const traffic = page.getByRole('checkbox', {
               name: 'Traffic',
               exact: true,
@@ -2855,8 +2910,8 @@ try {
           check(
             inlineToolbar
               ? Math.abs(
-                  page.heading.y +
-                    page.heading.height / 2 -
+                  (page.fleetTitle ?? page.heading).y +
+                    (page.fleetTitle ?? page.heading).height / 2 -
                     page.fleetToolbar.y -
                     page.fleetToolbar.height / 2,
                 ) <= 1
