@@ -1083,6 +1083,68 @@ async function settleArrivals(page) {
   );
 }
 
+// Every animation that starts inside the inspector, counted from before
+// the first selection: an entrance replayed on retained content shows as
+// a start, even one that finishes before anyone looks.
+async function countAnimationStarts(page) {
+  await page.evaluate(() => {
+    window.hoursFixtureStarts = [];
+    document.addEventListener(
+      'animationstart',
+      event => {
+        const target = event.target;
+        if (target.closest?.('.fleet-map-inspector'))
+          window.hoursFixtureStarts.push({
+            at: performance.now(),
+            name: event.animationName,
+            target: String(target.className?.baseVal ?? target.className),
+            label: target.localName === 'dt',
+            panel: !!target.closest('.fleet-truck-panel'),
+          });
+      },
+      true,
+    );
+  });
+}
+
+// The first arrival is the positive control: the facts, the clocks and
+// the labels did arrive. After the mark (before Follow, background clicks
+// and the panel's own controls), nothing in the retained panel may start
+// again (owner decision of 2026-09-28 on the HUD arrival; release session).
+async function checkNoReplayedArrival(page, name, mark) {
+  const starts = await page.evaluate(() => window.hoursFixtureStarts);
+  const panel = starts.filter(start => start.panel);
+  const first = panel.filter(start => start.at < mark);
+  const control = {
+    facts: first.filter(
+      start =>
+        start.name === 'hud-arrive' &&
+        start.target.includes('fleet-truck-facts__fact'),
+    ).length,
+    clocks: first.filter(
+      start =>
+        start.name === 'hud-arrive' &&
+        start.target.includes('fleet-truck-clocks'),
+    ).length,
+    labels: first.filter(start => start.name === 'hud-type' && start.label)
+      .length,
+  };
+  check(
+    control.facts >= 8 && control.clocks >= 1 && control.labels >= 8,
+    `${name}: the panel's first arrival is seen (facts, clocks, labels) ` +
+      JSON.stringify(control),
+  );
+  const replayed = panel.filter(start => start.at >= mark);
+  check(
+    replayed.length === 0,
+    `${name}: the retained panel starts no animation after the ` +
+      `interactions (${replayed.length}: ${JSON.stringify(
+        replayed.slice(0, 6).map(start => [start.name, start.target]),
+      )})`,
+  );
+  (report.animationStarts ??= []).push({ name, control, replayed });
+}
+
 // Where each part of the panel stands, against the panel's own scrolled
 // content, and what the next stop has received so far.
 async function truckLoadingGeometry(page) {
@@ -1599,20 +1661,6 @@ async function panelGeometry(page) {
         Math.max(...visible.map(node => node.getBoundingClientRect().bottom)) -
         element.scrollTop,
       horizontalOverflow: element.scrollWidth > element.clientWidth + 1,
-      // The glass's own light may sweep for ever (the HUD's motion); what
-      // must not happen is an entrance replayed on retained content.
-      animations: [
-        element,
-        ...element.querySelectorAll(
-          '.fleet-truck-next, .fleet-truck-facts, .fleet-truck-clocks',
-        ),
-      ].map(node => {
-        const style = getComputedStyle(node);
-        return {
-          name: style.animationName,
-          count: style.animationIterationCount,
-        };
-      }),
     };
   });
 }
@@ -1632,15 +1680,6 @@ function checkPanelGeometry(geometry, name, docked, phoneOpen) {
     !geometry.horizontalOverflow &&
       ['auto', 'scroll'].includes(geometry.overflowY),
     `${name}: the panel scrolls up and down inside itself, never sideways`,
-  );
-  check(
-    geometry.animations.every(
-      (animation, index) =>
-        animation.name === 'none' ||
-        (index === 0 && animation.count === 'infinite'),
-    ),
-    `${name}: the retained panel replays no animation ` +
-      `(${JSON.stringify(geometry.animations)})`,
   );
   if (docked)
     // As tall as what it says, the map showing beneath it.
@@ -2771,6 +2810,7 @@ try {
       await page.screenshot({
         path: resolve(output, `${name}-unselected-map.png`),
       });
+      await countAnimationStarts(page);
       const previewHeld = (holdPreview = heldResponse());
       const detailsHeld = (holdDetails = heldResponse());
       const planningHeld = (holdPlanning = heldResponse());
@@ -3045,6 +3085,7 @@ try {
       const initialControls = await measureTruckControls(page, `${name}-ready`);
       const initialPrimary = await primaryGeometry();
       const initialScroll = await cardScroll();
+      const interactionMark = await page.evaluate(() => performance.now());
       const interactionReads = apiReads;
       const follow = page.getByRole('button', { name: 'Follow', exact: true });
       await page.keyboard.press('Tab');
@@ -3130,6 +3171,7 @@ try {
       );
       const overlayGeometry = await panelGeometry(page);
       checkPanelGeometry(overlayGeometry, name, docked, phone);
+      await checkNoReplayedArrival(page, name, interactionMark);
       await page.screenshot({
         path: resolve(output, `${name}-selected-info-retained.png`),
       });
