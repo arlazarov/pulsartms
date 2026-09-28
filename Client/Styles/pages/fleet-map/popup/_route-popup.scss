@@ -28,8 +28,14 @@
     display: flex;
     flex-direction: column;
   }
+  // A stop's card is built anew only when what it says changes, so it
+  // arrives as new information; its labels write themselves.
   &--stop {
     font-size: ui.fs(body);
+    @include ui.hud-arrive;
+    .fleet-route-popup__label {
+      @include ui.hud-type;
+    }
   }
   &__kind,
   &__label {

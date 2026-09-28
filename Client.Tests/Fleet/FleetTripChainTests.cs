@@ -46,6 +46,23 @@ public sealed class FleetTripChainTests
     Assert.Contains("is-unplaced", links[3].ClassName);
   }
 
+  // New information arrives as the HUD shows it (the owner, September 28):
+  // each trip carries its place for the stagger. Its element is kept by
+  // its @key across polls, so the arrival does not replay; the key is
+  // checked in Client/tests/styles/hudArrival.test.js.
+  [Fact]
+  public void EachTripCarriesItsPlaceForTheArrival()
+  {
+    using var context = Context();
+    var component = context.Render<FleetTripChain>(p =>
+      p.Add(x => x.Truck, Truck)
+        .Add(x => x.Loads, [Load(1409, "current"), Load(1410, "next")])
+    );
+    var links = component.FindAll(".fleet-trip-chain__link");
+    Assert.Equal("--hud-index: 0", links[0].GetAttribute("style"));
+    Assert.Equal("--hud-index: 1", links[1].GetAttribute("style"));
+  }
+
   // A trip card is chosen whole; its stops are small markers, and the
   // chain has no controls of its own (the owner, September 27).
   [Fact]

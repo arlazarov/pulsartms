@@ -18,9 +18,10 @@ const razor = readFileSync(
 );
 
 test('the next stop line leads the panel with its distance and forecast', () => {
+  // Keyed by its stop: a new stop arrives as new information.
   assert.match(
     razor,
-    /<section class="fleet-truck-next" aria-label="Next stop">/,
+    /<section class="fleet-truck-next" aria-label="Next stop"\s+@key="\(0, upcoming\.Id\)">/,
   );
   assert.match(razor, /fleet-truck-next__left[\s\S]*?LeftMiles/);
   assert.match(razor, /fleet-truck-next__eta[\s\S]*?Memory="_arrivalMemory"/);
