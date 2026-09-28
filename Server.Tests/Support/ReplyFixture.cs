@@ -1,6 +1,7 @@
 using Application.Features.Messaging.Background;
 using Application.Features.Messaging.Commands;
 using Application.Features.Messaging.Interfaces;
+using Application.Features.Messaging.Options;
 using Application.Features.Messaging.Queries;
 using Application.Features.Messaging.Services;
 using Application.Interfaces;
@@ -35,7 +36,7 @@ internal sealed class ReplyFixture : IAsyncDisposable
   public OutboxSignal Signal { get; } = new();
   public ManualTimeProvider Clock { get; } = new(DateTimeOffset.UtcNow);
   public TestCompany Company { get; } = new();
-  public TestSendHold.Previous Previous { get; } = new(false);
+  public SendHoldOptions HoldOptions { get; } = new();
   public AppDbContext Db => sync.Db;
   public OutboundMessageOperation Worker =>
     new(
@@ -77,8 +78,10 @@ internal sealed class ReplyFixture : IAsyncDisposable
     collection.AddLogging();
     collection.AddScoped<KeptStatusReconciliation>();
     collection.AddSingleton<KeptStatusRetries>();
-    collection.AddSingleton(f.Previous);
-    collection.AddSingleton<IPreviousBinary>(f.Previous);
+    collection.AddSingleton<IDeploymentRevision>(
+      new TestSendHold.Revision("test")
+    );
+    collection.AddSingleton(Options.Create(f.HoldOptions));
     collection.AddSingleton<SendHold>();
     f.services = collection.BuildServiceProvider();
     foreach (var name in new[] { "me", "colleague" })

@@ -52,16 +52,19 @@ public sealed class FuelIssueSenderTests
     Assert.Empty(f.Transport.Sent);
   }
 
-  // A binary from before audit F27 still runs during a release: the send
-  // is refused with a retry, before anything is recorded or sent - not
-  // reported as done - and goes once that binary has stopped.
+  // Until this revision is released a send is refused with a retry,
+  // before anything is recorded or sent - not reported as done - and goes
+  // once an administrator has released it.
   [Fact]
-  public async Task ASendWhileThePreviousBinaryRunsIsHeldNotLost()
+  public async Task ASendBeforeTheReleaseIsHeldNotLost()
   {
     await using var f = await Fixture.CreateAsync();
     var clock = new ManualTimeProvider(DateTimeOffset.UtcNow);
-    var (hold, previous) = TestSendHold.With(new(true), clock);
-    f.Hold = hold;
+    f.Hold = TestSendHold.Required(
+      f.Refresh.Services.GetRequiredService<IServiceScopeFactory>(),
+      "rev-1",
+      clock
+    );
     var shown = await f.CurrentAsync(First, fill: true);
 
     var held = await f.SendAsync(Request(shown), shown);
@@ -69,7 +72,16 @@ public sealed class FuelIssueSenderTests
     Assert.Equal(503, held.Status);
     Assert.Empty(f.Transport.Sent);
     Assert.Empty(await f.Db.DriverMessages.AsNoTracking().ToListAsync());
-    previous.Runs = false;
+    f.Db.SendReleases.Add(
+      new SendRelease
+      {
+        Id = Guid.NewGuid(),
+        Revision = "rev-1",
+        ReleasedAt = DateTime.UtcNow,
+        ReleasedBy = "admin",
+      }
+    );
+    await f.Db.SaveChangesAsync();
     clock.Advance(SendHold.Recheck);
     Assert.Equal(200, (await f.SendAsync(Request(shown), shown)).Status);
     Assert.Single(f.Transport.Sent);

@@ -30,7 +30,9 @@ Diagnostics.ConsistencyIncidents GET api/diagnostics/consistency/incidents -> Ad
 Diagnostics.Get GET api/diagnostics/requests -> Admin
 Diagnostics.Memory GET api/diagnostics/memory -> Admin
 Diagnostics.MemoryMap GET api/diagnostics/memory/map -> Admin
+Diagnostics.ReleaseSends POST api/diagnostics/sends/release -> Admin
 Diagnostics.RunConsistency POST api/diagnostics/consistency/run -> Admin
+Diagnostics.Sends GET api/diagnostics/sends -> Admin
 Diagnostics.Stages GET api/diagnostics/stages -> Admin
 Dispatch.CorrectStop PUT api/dispatch/{id:guid}/stops/{stopId:guid}/correction -> Dispatch
 Dispatch.Create POST api/dispatch -> Dispatch

@@ -4,6 +4,13 @@
 - `GET /api/health/ready`: database connectivity, Admin policy, health status only (no connection details).
   Stale background progress makes it `Degraded` (HTTP 200), never
   `Unhealthy`: it reports, and never restarts the only instance.
+- `GET /api/diagnostics/sends`, `POST /api/diagnostics/sends/release`:
+  Admin. Where `Messaging:SendHold:RequireRelease` is set (production),
+  a deployed revision sends nothing to the messaging provider until an
+  administrator releases it, after the platform shows the revision before
+  it drained (the release overlap, audit F27). Replies queue meanwhile;
+  a direct fuel send answers 503. The release is recorded once per
+  revision with who released it.
 - `GET /api/diagnostics/background`: Admin. Each background operation of
   this instance - periodic or on demand, its limit, last round started and
   finished, rounds running, and whether it is stale. Periodic work is stale

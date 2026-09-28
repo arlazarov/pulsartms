@@ -101,13 +101,14 @@ public sealed class OutboxReconciliationTests
     Assert.Equal(1, worker.Reconciling);
   }
 
-  // Root: while a binary from before audit F27 runs, a queued reply waits
-  // in the outbox - not sent, not lost - and goes once that binary stops.
+  // Root: until this revision is released, a queued reply waits in the
+  // outbox - not sent, not lost - and goes once an administrator releases
+  // the revision.
   [Fact]
-  public async Task AQueuedReplyWaitsWhileThePreviousBinaryRuns()
+  public async Task AQueuedReplyWaitsUntilTheRevisionIsReleased()
   {
     await using var f = await ReplyFixture.CreateAsync();
-    f.Previous.Runs = true;
+    f.HoldOptions.RequireRelease = true;
     var worker = f.Worker;
     var (conversation, last) = await f.ConversationAsync();
     var id = (
@@ -122,7 +123,16 @@ public sealed class OutboxReconciliationTests
     Assert.Equal(OutboundStates.Queued, await StatusAsync(f, id));
     Assert.Empty(f.Messaging.Sent);
 
-    f.Previous.Runs = false;
+    f.Db.SendReleases.Add(
+      new SendRelease
+      {
+        Id = Guid.NewGuid(),
+        Revision = "test",
+        ReleasedAt = f.Clock.GetUtcNow().UtcDateTime,
+        ReleasedBy = "admin",
+      }
+    );
+    await f.Db.SaveChangesAsync();
     f.Clock.Advance(SendHold.Recheck);
     Assert.Equal(1, await worker.RunOnceAsync(default));
   }

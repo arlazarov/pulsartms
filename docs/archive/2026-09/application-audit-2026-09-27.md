@@ -1521,12 +1521,13 @@ the API can be released in either order.
 | 77 `CountDispatchImportWrites` | `LastWrite` on the new table | not mapped (vdc2U5) | drops the column |
 | 78 `KeepEarlyDeliveryStatuses` | table `PendingDeliveryStatuses` | not mapped; by construction, not exercised | drops kept statuses (at most an hour's, 1,000 a carrier) |
 | 79 `LetThemeBeUnchosen` | `Users.Theme` default `''` | run: reads, saves, loads (diagnostic-CHECIp) | restores the `light` default; run with an unchosen user (diagnostic-TmQKay) |
+| 80 `RecordSendReleases` | table `SendReleases` | not mapped; by construction, not exercised | drops the records; every revision then holds until released again |
 
 Release order:
 
 1. Back up (`local-backups/`) and record the protected counts, as for
    `0e6add5d`.
-2. Apply 75-79 as the EF idempotent script, in one transaction with a
+2. Apply 75-80 as the EF idempotent script, in one transaction with a
    5 s lock timeout, while the previous revision serves: the new API
    reads the new columns and tables and fails without them, and a
    no-traffic revision does not run start-up migrations. 76 rebuilds two
@@ -1693,56 +1694,73 @@ because WhatsApp offers no status query.
 Correction (root's review of b541431e): the first version closed that
 window with a send freeze and a read-only check that nothing was in
 flight before moving traffic. A snapshot cannot close it: the previous
-binary's outbox, or a dispatcher, can send a moment after it. The window
-is now closed by the new binary itself (`SendHold`): it sends nothing to
-the provider while a binary from before F27 runs. It recognises one by
-the synchronization loop's lease - held now by an owner without the
-marker every binary from this one on writes (`IPreviousBinary`), read
-from that one checkpoint row. The previous binary releases the lease when
-it stops (a dead one's runs out within three minutes); the hold is asked
-again every five seconds and, once released, never holds again in that
-process. Meanwhile queued replies wait in the outbox, and a direct fuel
-send is refused with 503 before anything is recorded ("send again in a
-minute"), so nothing is lost and nothing is reported as sent. Tests:
-`ReleaseSendHoldTests`, `AQueuedReplyWaitsWhileThePreviousBinaryRuns`,
-`ASendWhileThePreviousBinaryRunsIsHeldNotLost`, the marked owner in the
-synchronization worker test; removing the fuel-sender case, the
-delivery's or the outbox's hold, the row filter or the marker fails them
-(diagnostic-dqlNf7; a sticky-release mutation is equivalent - a released
-hold never asks again). Messaging, fuel and synchronization groups
-green.
+binary's outbox, or a dispatcher, can send a moment after it.
 
-What the hold guarantees: no message this binary sends can have a
-status dropped by the previous binary, because while the previous
-binary can still receive webhooks this binary sends nothing. What it
-does not change: statuses of messages the previous binary sends itself
-that reach it before it saves the id - the F27 race of that binary,
-present every minute it runs and ended by the release, not caused by it.
-Its assumptions: the previous revision runs the synchronization loop
-(production runs every role on its one instance), and its lease is not
-lost while it runs (it renews every 45 seconds for three minutes).
+Second correction (root's review of b5672e93): the next version held
+this binary's sends while the synchronization lease was held by an
+unmarked owner. The lease is not HTTP liveness: a binary answers
+webhooks with no lease (the loop supports a live watcher without one)
+and after losing or releasing it, so its absence proved nothing and
+must not release sends. Withdrawn; diagnostic-dqlNf7 is superseded.
 
-Cutover steps, with the hold in place:
+Now: in production (`Messaging:SendHold:RequireRelease`) each deployed
+revision sends nothing to the provider until an administrator records
+its release (`POST api/diagnostics/sends/release`, table `SendReleases`,
+migration 80), after seeing the platform drain the revision before it.
+Nothing inferred releases it. The revision is the platform's name for
+it (`K_REVISION`); a restart of the same revision keeps its release, a
+new revision - a release or a roll-forward after a rollback - holds
+again. While held, queued replies wait in the outbox and a direct fuel
+send is refused with 503 before anything is recorded
+(`DriverTextResult.Held`, an explicit case where the sender's default
+would have reported it done), so nothing is lost or reported as sent.
+The hold reads the record at most every five seconds, one read shared
+by concurrent callers, and keeps a release for the process's life, as
+the record is kept. `GET api/diagnostics/sends` shows revision, whether
+held, and who released it when.
+
+Tests (diagnostic-3Q1Jxo): with no lease, an expired one, one held by
+another owner, or the previous revision's release, the hold stays; only
+this revision's record releases it; eight concurrent callers make one
+read; the command records once with who released it; a queued reply
+waits and a fuel send answers 503 until the release. Mutations - no
+coalescing, any revision's record, ignoring the requirement, the
+sender's missing case, the delivery's or outbox's hold removed - each
+fail. Messaging, fuel, database (PostgreSQL migrations) and
+synchronization groups green.
+
+What it guarantees: no message this revision sends can have a status
+dropped by the revision before it, provided the release is recorded
+only after the platform shows that revision drained. What it does not
+change: statuses of messages the previous binary sends itself that reach
+it before it saves the id - the F27 race of that binary, ended by the
+release. The operator's evidence of drain is the guarantee's premise;
+the server cannot observe Cloud Run.
+
+Cutover steps:
 
 0. Owner, before the release: confirm where the business number's
    webhooks go (on 2026-09-25 a WABA-level override sent them to the demo
    company). No change to the Meta configuration is part of this plan.
-1. Before moving traffic, read only: the synchronization lease is held,
-   unexpired, by an unmarked owner - the previous binary - so the hold
-   will engage. If it is not, stop: the hold would not see that binary.
-2. Move traffic. The new binary holds its sends: replies queue, a fuel
-   send answers 503. Dispatchers are told the wait lasts until the
-   previous revision has stopped - normally seconds, three minutes at
-   most after a crash.
-3. Wait for the previous revision's shutdown (`TrafficShutDown` true and
-   its last log line); read only: the lease is now free or marked, and
-   `api/diagnostics/background` shows the outbox progressing and the
-   queued replies sent.
-4. Two minutes after: `messaging.kept-status-unapplied` has no finding,
+1. Apply migration 80 with 75-79 before the API; deploy without traffic.
+2. Move traffic. The new revision holds its sends: replies queue, a fuel
+   send answers 503; dispatchers are told sending resumes after the
+   switch.
+3. Prove the drain on the platform, read only: the previous revision
+   `Active` false and `TrafficShutDown` true, its last request log line
+   older than the traffic move, and no instance of it in the revision's
+   instance count.
+4. Only then an administrator calls `POST api/diagnostics/sends/release`;
+   `GET api/diagnostics/sends` shows it released; the queued replies go
+   (`api/diagnostics/background`, outbox progressing).
+5. Two minutes after: `messaging.kept-status-unapplied` has no finding,
    nor `messaging.outbound-overdue` or the two fuel hand-over rules.
-5. Thirty minutes after: `messaging.accepted-without-status` lists no
-   message sent around the switch; any it lists is told to the
-   dispatcher as delivery unknown.
+6. Thirty minutes after: `messaging.accepted-without-status` lists no
+   message sent around the switch.
+
+Every later release holds the same way until released, though its
+previous binary keeps early statuses too: the hold does not try to tell
+binaries apart.
 
 Rollback undoes this: the previous binary has neither the kept statuses
 nor the rules, so every early status is dropped again as before F27,
@@ -1750,7 +1768,7 @@ and silently. Rolling back is a decision to accept that until the next
 release.
 
 Rollback of the API: redeploy the previous image; no Down is needed for
-any of 75-79. After it, the behaviours above return for as long as the
+any of 75-80. After it, the behaviours above return for as long as the
 previous binary runs; kept statuses stay unapplied until a new binary
 prunes or takes them; empty themes read as the released Client's
 default. Hard boundary: no second carrier while a
@@ -1758,7 +1776,7 @@ binary older than 76 serves or is kept as the rollback target.
 
 Integration: `main` (`66f8801e`) does not yet contain the release
 `0e6add5d`; this branch and `claude/current-work-design` do. The latter
-adds no migration after 74, so 75-79 need no reordering. A trial merge
+adds no migration after 74, so 75-80 need no reordering. A trial merge
 of it into `3e15aeba` (not committed; a disposable worktree) conflicts
 in three places, each two lists of auditor rules added side by side -
 the DI registrations, `ConsistencyAuditSqlTests` and the auditor's

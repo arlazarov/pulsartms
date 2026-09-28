@@ -32,6 +32,7 @@ public interface IAppDbContext
   DbSet<Conversation> Conversations { get; }
   DbSet<ConversationMessage> ConversationMessages { get; }
   DbSet<PendingDeliveryStatus> PendingDeliveryStatuses { get; }
+  DbSet<SendRelease> SendReleases { get; }
   DbSet<MessageAttachment> MessageAttachments { get; }
   DbSet<ConversationRead> ConversationReads { get; }
   DbSet<ConversationArrivalHead> ConversationArrivalHeads { get; }

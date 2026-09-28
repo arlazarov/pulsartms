@@ -48,6 +48,7 @@ public partial class AppDbContext(DbContextOptions<AppDbContext> options)
   public DbSet<Conversation> Conversations => Set<Conversation>();
   public DbSet<PendingDeliveryStatus> PendingDeliveryStatuses =>
     Set<PendingDeliveryStatus>();
+  public DbSet<SendRelease> SendReleases => Set<SendRelease>();
   public DbSet<ConversationMessage> ConversationMessages =>
     Set<ConversationMessage>();
   public DbSet<MessageAttachment> MessageAttachments =>
