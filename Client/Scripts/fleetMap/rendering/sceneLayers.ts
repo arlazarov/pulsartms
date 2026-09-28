@@ -328,13 +328,14 @@ function reticleLayers(
   ];
 }
 
-// Which way the chosen road runs: now and then one pulse of light - a
-// bright head with a fading tail and a soft glow - runs along the part of
-// the road in view, from the truck's side towards where it is going, then
-// the road rests (the owner, September 27: the arrows were too literal,
-// the river too busy). Only the chosen road carries it; the others glow.
-// The road's lengths are measured once per geometry; a frame cuts a few
-// short pieces of it. Never picked.
+// Which way the roads ahead run: a steady stream of light tracers - a
+// bright head with a softly fading tail and a faint glow, evenly spaced -
+// flowing along the current road and each later load's road without
+// pause, like current in a light guide (the owner, September 27: arrows
+// too literal, streaks too faint, a lone pulse too rare). Brightest on the
+// chosen road. Tracers stand a fixed screen distance apart at any zoom and
+// only those in view are cut from the road, whose lengths are measured
+// once per geometry. Never picked.
 export type FlowView = { zoom: number; bounds: number[] | null };
 type FlowPath = {
   points: number[][];
@@ -343,11 +344,11 @@ type FlowPath = {
   scale: number;
 };
 const flowPaths = new WeakMap<object, FlowPath>();
-// Screen pixels: the pulse's head and tail; the share of each cycle it
-// runs, the rest being rest.
-const pulseHead = 34;
-const pulseTail = 190;
-const pulseRun = 0.62;
+// Screen pixels: between tracers, a tracer's head and its tail.
+const tracerSpacing = 150;
+const tracerHead = 10;
+const tracerTail = 110;
+const tracerLimit = 400;
 
 function flowPath(data: unknown): FlowPath | null {
   if (!data || typeof data !== 'object') return null;
@@ -427,44 +428,52 @@ function flowLayers(
   view: FlowView | null,
 ): DeckLayer[] {
   if (!view || line.visible === false || selectionMuted) return [];
+  if (line.routeRole !== 'current' && line.routeRole !== 'future') return [];
   const chosen =
     (line.routeRole === 'current' && !laterPicked) ||
     (line.routeRole === 'future' && line.routeSelected === true);
-  if (!chosen || phase >= pulseRun) return [];
   const path = flowPath(line.data);
   if (!path) return [];
   const range = visibleRange(path, view);
   if (!range) return [];
   const unit = (360 / (256 * 2 ** view.zoom)) * path.scale;
-  const tail = pulseTail * unit;
-  // A piece of road shorter than the pulse (the stub at the truck) runs
-  // none of its own.
-  if (range[1] - range[0] < tail) return [];
-  // Eased across the view, fading in as it leaves and out as it arrives.
-  const t = phase / pulseRun;
-  const eased = 0.5 - 0.5 * Math.cos(Math.PI * t);
-  const fade = Math.min(1, t / 0.12, (1 - t) / 0.18);
-  const head = range[0] + (range[1] - range[0] + tail) * eased;
+  const spacing = tracerSpacing * unit,
+    tail = tracerTail * unit,
+    headLength = tracerHead * unit;
+  if (!(spacing > 0)) return [];
+  // Pieces are cut in order along the road, so each search starts where
+  // the last one began instead of at the road's start.
+  let hint = 1;
   const cut = (from: number, to: number) => {
-    const a = Math.max(range[0], Math.min(from, path.total));
-    const b = Math.max(range[0], Math.min(to, path.total, range[1]));
-    return b > a ? flowPiece(path, a, b, 1).piece : null;
+    const a = Math.max(0, from),
+      b = Math.min(to, path.total);
+    if (b <= a) return null;
+    const { piece, start } = flowPiece(path, a, b, hint);
+    hint = start;
+    return piece;
   };
-  // The tail in five steps of falling light, then the head and its glow.
-  const steps = [0.08, 0.16, 0.3, 0.5, 0.75];
-  const pieces = steps
-    .map((alpha, index) => ({
-      piece: cut(
+  // The tail in steps of rising light towards the head.
+  const steps = [0.06, 0.12, 0.2, 0.32, 0.48, 0.68];
+  const tails: { piece: number[][]; alpha: number }[] = [];
+  const heads: { piece: number[][] }[] = [];
+  const first = Math.max(0, Math.floor(range[0] / spacing) - 1);
+  for (let k = first; k < first + tracerLimit; k++) {
+    const head = (k + phase) * spacing;
+    if (head - tail > Math.min(range[1], path.total)) break;
+    steps.forEach((alpha, index) => {
+      const piece = cut(
         head - tail + (index * tail) / steps.length,
         head - tail + ((index + 1) * tail) / steps.length,
-      ),
-      alpha,
-    }))
-    .filter(row => row.piece);
-  const headPiece = cut(head - pulseHead * unit, head);
+      );
+      if (piece) tails.push({ piece, alpha });
+    });
+    const tip = cut(head - headLength, head);
+    if (tip) heads.push({ piece: tip });
+  }
   const light = isLightMap();
-  const core = light ? [255, 255, 255] : [207, 250, 254];
+  const core = light ? [255, 255, 255] : [224, 252, 255];
   const glow = light ? [14, 116, 144] : [34, 211, 238];
+  const strength = chosen ? 1 : 0.5;
   const shared = {
     getPath: (row: { piece: number[][] }) => row.piece,
     widthUnits: 'pixels',
@@ -473,34 +482,30 @@ function flowLayers(
     pickable: false,
     parameters: { depthCompare: 'always' },
   };
-  const layers: DeckLayer[] = [
+  return [
     new PathLayer({
       ...shared,
-      id: `${line.id}-pulse-tail`,
-      data: pieces,
+      id: `${line.id}-tracer-tail`,
+      data: tails,
       getColor: (row: { alpha: number }) => [
         ...core,
-        Math.round(255 * row.alpha * fade),
+        Math.round(255 * row.alpha * strength),
       ],
-      getWidth: 3,
+      getWidth: 2.5,
+    }),
+    new PathLayer({
+      ...shared,
+      id: `${line.id}-tracer-glow`,
+      data: heads,
+      getColor: [...glow, Math.round(120 * strength)],
+      getWidth: 10,
+    }),
+    new PathLayer({
+      ...shared,
+      id: `${line.id}-tracer-head`,
+      data: heads,
+      getColor: [...core, Math.round(255 * strength)],
+      getWidth: 3.5,
     }),
   ];
-  if (headPiece)
-    layers.push(
-      new PathLayer({
-        ...shared,
-        id: `${line.id}-pulse-glow`,
-        data: [{ piece: headPiece }],
-        getColor: [...glow, Math.round(110 * fade)],
-        getWidth: 12,
-      }),
-      new PathLayer({
-        ...shared,
-        id: `${line.id}-pulse-head`,
-        data: [{ piece: headPiece }],
-        getColor: [...core, Math.round(255 * fade)],
-        getWidth: 4,
-      }),
-    );
-  return layers;
 }

@@ -46,7 +46,7 @@ visual inspection only, never acceptance.
 | Unselected later routes: fine dashes with the softer glow | Built (not yet seen) |
 | Travelled road as a HUD trace: fine instrument-ink line over a faint halo, no white casing; empty miles dashed | Built |
 | Selected P / D / fuel: HUD reticle with four ticks and soft glow | Built |
-| Direction motion: now and then one light pulse (bright head, fading tail, soft glow) runs along the chosen road's part in view from the truck's side towards its goal, then rests (4.2 s cycle); other roads only glow. Arrows and river streaks were rejected | Built |
+| Direction motion, constant: a steady stream of light tracers (bright head, fading tail, faint glow) flows without pause along the current and later roads, 150 px apart at any zoom, about 60 px/s; brightest on the chosen road. Arrows, river streaks and a lone periodic pulse were rejected | Built |
 | P / D on the map or in the chain (current and later loads): one press opens it, zoom kept (an off-screen stop is panned into view); a double press centres it at zoom 15, satellite by the zoom rule; Follow ends on a camera move | Built |
 | Passed (completed) stops openable from chain and map | Open |
 
