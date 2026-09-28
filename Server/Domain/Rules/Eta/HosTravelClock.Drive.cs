@@ -163,7 +163,7 @@ public sealed partial class HosTravelClock
     var continuous = (Now - plannedRestStarted.Value).TotalHours;
     if (country == initialCountry)
       continuous = Math.Max(continuous, timeline?.OngoingRest(Now) ?? 0);
-    if (continuous < 10)
+    if (continuous < DriverDutyStatus.DailyRestHours)
       return;
     var restart =
       timeline?.Source.Rule(country)?.RestartHours

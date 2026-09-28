@@ -144,6 +144,7 @@ public sealed class DriverDutySummaryComponentTests
       CycleResetHours = hours,
       CycleResetCountry = country,
       CycleResetRemainingMinutes = remaining,
+      DailyRestRemainingMinutes = 232,
     };
     var component = context.Render<DriverDutySummary>(p =>
       p.Add(x => x.Status, status)
@@ -202,6 +203,7 @@ public sealed class DriverDutySummaryComponentTests
       CycleResetHours = 34,
       CycleResetCountry = "US",
       CycleResetRemainingMinutes = 1672,
+      DailyRestRemainingMinutes = 232,
     };
     var component = context.Render<DriverDutySummary>(p =>
       p.Add(x => x.Status, status)
@@ -234,6 +236,7 @@ public sealed class DriverDutySummaryComponentTests
       CycleResetHours = 34,
       CycleResetCountry = "US",
       CycleResetRemainingMinutes = 0,
+      DailyRestRemainingMinutes = 0,
     };
     var component = context.Render<DriverDutySummary>(p =>
       p.Add(x => x.Status, status)

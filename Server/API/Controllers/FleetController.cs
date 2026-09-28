@@ -1,3 +1,4 @@
+using Application.Features.Eta.Queries;
 using Application.Features.Fleet.Commands.RequestTruckCamera;
 using Application.Features.Fleet.Commands.SyncFleet;
 using Application.Features.Fleet.Queries;
@@ -33,6 +34,12 @@ public class FleetController : BaseController
       ),
       ct
     );
+
+  [Authorize]
+  [HttpGet("trucks/{truckId:guid}/duty-status")]
+  [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+  public Task<IActionResult> DutyStatus(Guid truckId, CancellationToken ct) =>
+    HandleRequest(new GetTruckDutyStatusQuery(truckId), ct);
 
   [Authorize]
   [HttpGet("trucks/{truckId:guid}/camera")]

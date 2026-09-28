@@ -78,6 +78,7 @@ Execution.Release POST api/execution/switches/{id:guid}/participants/{participan
 Execution.ReviewSource GET api/dispatch/{id:guid}/execution/source-review -> Dispatch
 Execution.Workspace GET api/dispatch/{id:guid}/execution/switch-workspace -> Dispatch
 Fleet.Camera GET api/fleet/trucks/{truckId:guid}/camera/{requestId:guid} -> signed-in
+Fleet.DutyStatus GET api/fleet/trucks/{truckId:guid}/duty-status -> signed-in
 Fleet.GetDrivers GET api/fleet/drivers -> signed-in
 Fleet.GetLocations GET api/fleet/locations -> signed-in
 Fleet.GetTrailers GET api/fleet/trailers -> signed-in

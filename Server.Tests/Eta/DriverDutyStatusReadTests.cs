@@ -1,5 +1,6 @@
 using Application.Features.Eta.Interfaces;
 using Application.Features.Eta.Queries;
+using Application.Features.Eta.Services;
 using Application.Features.Fleet.Services;
 using Domain.Entities.Fleet;
 using Domain.Models.Eta;
@@ -44,10 +45,12 @@ public sealed class DriverDutyStatusReadTests
     async Task<DriverDutyView> Read(Guid id) =>
       (
         await new GetDriverDutyStatusHandler(
-          new DriverClockReader(db, snapshot, new DriverHosStore(db)),
-          history,
-          null!,
-          time
+          new DriverDutyReader(
+            new DriverClockReader(db, snapshot, new DriverHosStore(db)),
+            history,
+            null!,
+            time
+          )
         ).Handle(new(id), default)
       ).Response!;
 

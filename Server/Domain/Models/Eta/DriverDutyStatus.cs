@@ -25,6 +25,20 @@ public sealed record DriverDutyStatus(
     RestStartedAt is { } start
       ? (int)Math.Max(0, (ObservedAt - start).TotalMinutes)
       : null;
-  public int? TenHourRestRemainingMinutes =>
-    RestMinutes is { } minutes ? Math.Max(0, 600 - minutes) : null;
+
+  // The daily rest the forecasts credit, in either ruleset they read
+  // (HosTravelClock): the ongoing rest completes it this long after it
+  // began. Whether the ELD has granted the hours is the clocks' answer.
+  public const int DailyRestHours = 10;
+
+  public DateTimeOffset? DailyRestCompleteAt =>
+    RestStartedAt?.AddHours(DailyRestHours);
+  public int? DailyRestRemainingMinutes =>
+    RestMinutes is { } minutes
+      ? Math.Max(0, DailyRestHours * 60 - minutes)
+      : null;
+  public DateTimeOffset? CycleResetCompleteAt =>
+    RestStartedAt is { } start && CycleResetHours is { } hours
+      ? start.AddHours(hours)
+      : null;
 }

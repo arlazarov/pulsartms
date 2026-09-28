@@ -75,7 +75,7 @@ device, and production browsers.
 ## Second publication: dark only (12:31 UTC)
 
 The owner asked to publish the follow-up and then to disable light-theme
-selection before publication ("Ok публикуй"). Firebase Hosting,
+selection before publication ("Ok, publish"). Firebase Hosting,
 12:31:08-12:31:14 UTC, 288 files; no API deploy, no data written.
 
 ### Package

@@ -367,7 +367,7 @@ public class EtaTests
     Assert.InRange(stop.RestMinutes, 930, 931);
     Assert.InRange(stop.DrivingMinutes, 720, 721);
     Assert.Equal(30, stop.PreTripMinutes);
-    Assert.Equal(300, result.DutyStatus!.TenHourRestRemainingMinutes);
+    Assert.Equal(300, result.DutyStatus!.DailyRestRemainingMinutes);
     Assert.InRange((stop.Arrival - Start).TotalHours, 28.16, 28.17);
   }
 
