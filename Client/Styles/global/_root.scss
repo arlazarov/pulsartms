@@ -179,3 +179,18 @@ body {
     --hud-spin: none;
   }
 }
+
+// A theme switch moves every colour together for one short window
+// (Scripts/shared/appearance.ts sets the class and --theme-fade). Colours
+// only: no size, place or blur changes.
+:root.is-theme-switching,
+:root.is-theme-switching *,
+:root.is-theme-switching *::before,
+:root.is-theme-switching *::after {
+  transition:
+    background-color var(--theme-fade) ease,
+    color var(--theme-fade) ease,
+    border-color var(--theme-fade) ease,
+    fill var(--theme-fade) ease,
+    stroke var(--theme-fade) ease !important;
+}

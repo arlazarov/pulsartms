@@ -31,8 +31,10 @@
                     ? "Use the light theme" : "Use the dark theme")"
                 title="Theme" disabled="@appearance.Busy"
                 @onclick="ToggleThemeAsync">
-            <ActionIcon Kind="@(appearance.AppliedTheme == "dark"
-                ? "sun" : "moon")" />
+            @* Keyed by the theme, so the new icon turns in once. *@
+            <span class="topbar__theme-icon" @key="appearance.AppliedTheme"
+                ><ActionIcon Kind="@(appearance.AppliedTheme == "dark"
+                    ? "sun" : "moon")" /></span>
         </button>
     }
     <div class="topbar__clock" aria-hidden="true">
