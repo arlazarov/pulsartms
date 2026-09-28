@@ -199,7 +199,7 @@
   @include glass-panel;
   background:
     linear-gradient(180deg, fn.theme(text, 0.05), transparent 38%),
-    fn.theme(surface, 0.58);
+    fn.theme(surface, 0.44);
   backdrop-filter: blur(22px) saturate(1.5);
   box-shadow:
     inset 0 1px 0 fn.theme(text, 0.12),
