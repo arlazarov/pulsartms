@@ -262,6 +262,7 @@ public partial class FleetMap : IAsyncDisposable
     await PublishInspectorSuspensionAsync();
     await ReflectSelectionAsync();
     await RefreshChainIfDueAsync();
+    await RefreshTruckDutyIfChosenAsync();
     if (!firstRender)
       return;
     await _visibility.StartAsync(JS);
@@ -442,6 +443,16 @@ public partial class FleetMap : IAsyncDisposable
       return;
     var following = _followingTruck;
     var truck = _activeTruckId;
+    // The stop whose card is open is handed to the new map by its id, so
+    // the same card comes back filled (the owner, September 28: it came
+    // back empty); nothing is read again for it.
+    string? openStop = null;
+    if (_inspectorMode == MapInspectorMode.Stop && _map is not null)
+      try
+      {
+        openStop = await _map.InvokeAsync<string?>("selectedRouteStop");
+      }
+      catch (JSException) { }
     var session = _session;
     _session = null;
     await session.DisposeAsync();
@@ -456,6 +467,12 @@ public partial class FleetMap : IAsyncDisposable
     }
     catch (Exception ex) when (IsLoadError(ex)) { }
     await PushStopCompletionsAsync();
+    // The open stop's card comes back once its route is on the new map;
+    // the route already read is drawn there at once, without a fit and
+    // without asking the server again.
+    if (openStop is not null && _map is not null)
+      await _map.InvokeVoidAsync("restoreRouteStop", openStop);
+    await SendMapRouteAsync(false);
     if (
       following
       && truck is { } id

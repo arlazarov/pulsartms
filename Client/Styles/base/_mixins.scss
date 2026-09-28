@@ -160,20 +160,15 @@
 // take ::before and ::after, so a panel does not use those for anything
 // else.
 
-// Daylight glass over the map (the owner, September 28, last word: the
-// glass must visibly be glass). White frosted glass: the map's colours
-// and shapes show through softly under a blur strong enough that the
-// words over them stay crisp; a faint cyan hairline rim and a quiet
-// two-step shadow. Panels, the tool bar and the fleet list share it, and
-// the blocks inside are a lighter frost of the same glass, never opaque
-// white. The cyan light along the top edge is the panel's own.
+// Daylight panels (the owner's approved light concept, September 28):
+// matte, near-opaque clean white over the map - it only softens behind
+// them - and a thin neutral border; no shadow (only floating menus and
+// dialogs cast one). No neon: no sweeping light or corner ticks.
 @mixin light-glass {
-  border-color: fn.theme(hud-glow, 0.4);
-  background-color: fn.theme(surface, 0.62);
-  backdrop-filter: blur(14px) saturate(1.3);
-  box-shadow:
-    0 1px 2px fn.theme(shadow, 0.06),
-    0 6px 18px fn.theme(shadow, 0.07);
+  border-color: fn.theme(border-subtle);
+  background-color: fn.theme(surface, 0.97);
+  backdrop-filter: var(--panel-blur, blur(8px));
+  box-shadow: none;
 }
 
 @mixin glass-panel {
@@ -181,7 +176,7 @@
   border: 1px solid fn.theme(accent, 0.2);
   border-radius: fn.radius(panel);
   background: fn.theme(surface, 0.86);
-  backdrop-filter: blur(16px) saturate(1.2);
+  backdrop-filter: var(--panel-blur, blur(16px) saturate(1.2));
   box-shadow: fn.shadow(panel);
 
   &::before,
@@ -213,23 +208,12 @@
   // cool tint, a cyan hairline rim, bold corner ticks, a lit top edge, a
   // cool shadow and a faint cyan halo - the dark panel's parts in daylight.
   :root[data-theme='light'] & {
-    // A thin cyan light sweeping slowly along its top edge, as a HUD
-    // scans, over the milky daylight glass.
-    background-image: linear-gradient(
-      90deg,
-      transparent,
-      fn.theme(hud-glow, 0.9),
-      transparent
-    );
-    background-position: -40% 0;
-    background-size: 28% 1px;
-    background-repeat: no-repeat;
-    animation: hud-sweep 7s linear infinite;
+    background-image: none;
+    animation: none;
     @include light-glass;
-    // Fine corner ticks in the bright HUD cyan.
     &::before,
     &::after {
-      border-color: fn.theme(hud-line, 0.75);
+      content: none;
     }
   }
 }
@@ -242,21 +226,13 @@
   background:
     linear-gradient(180deg, fn.theme(text, 0.05), transparent 38%),
     fn.theme(surface, 0.44);
-  backdrop-filter: blur(22px) saturate(1.5);
+  backdrop-filter: var(--panel-blur, blur(22px) saturate(1.5));
   box-shadow:
     inset 0 1px 0 fn.theme(text, 0.12),
     fn.shadow(panel);
 
   :root[data-theme='light'] & {
-    background-image: linear-gradient(
-      90deg,
-      transparent,
-      fn.theme(hud-glow, 0.9),
-      transparent
-    );
-    background-position: -40% 0;
-    background-size: 28% 1px;
-    background-repeat: no-repeat;
+    background-image: none;
     @include light-glass;
   }
 }
@@ -376,6 +352,9 @@
       fn.theme(accent, 0.35)
     );
     box-shadow: 0 0 6px fn.theme(hud-glow, 0.5);
+    :root[data-theme='light'] & {
+      box-shadow: none;
+    }
   }
 }
 
@@ -435,7 +414,8 @@ $hud-glyphs: (
     // A dashed sight ring turning slowly around the disc.
     outline: 1px dashed fn.theme(accent, 0.6);
     outline-offset: calc(#{$ring} - 1px);
-    animation: hud-spin 14s linear infinite;
+    // Still on phones and touch screens (global/_root: --hud-spin).
+    animation: var(--hud-spin, hud-spin 14s linear infinite);
     background: radial-gradient(
       circle at 35% 30%,
       fn.theme(accent, 0.34),
@@ -454,13 +434,11 @@ $hud-glyphs: (
   // pale core read washed out (the owner, September 27).
   // No halo in daylight (the owner, September 28): a clean rim.
   :root[data-theme='light'] &::before {
-    border-color: fn.theme(hud-glow);
-    background: radial-gradient(
-      circle at 35% 30%,
-      fn.theme(hud-glow),
-      fn.theme(accent) 80%
-    );
+    border-color: fn.theme(accent);
+    background: fn.theme(accent);
     box-shadow: none;
+    outline: none;
+    animation: none;
   }
   :root[data-theme='light'] &::after {
     background: fn.theme(on-accent);

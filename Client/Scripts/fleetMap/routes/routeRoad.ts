@@ -13,6 +13,8 @@ import { routeShape } from './routeShape.ts';
 export type RouteLine = {
   setOptions(options: { strokeWeight: number }): void;
   setPath(path: MapPoint[]): void;
+  // Several separate pieces as one line (the scene's own lines).
+  setPaths?(paths: MapPoint[][]): void;
   getPath(): {
     removeAt(index: number): void;
     setAt(index: number, value: google.maps.LatLng): void;
@@ -86,6 +88,40 @@ export function createRouteRoad(
   const detailLevel = () =>
     Math.min(fullRouteDetailZoom, Math.floor(map.getZoom() ?? 5));
 
+  // The loaded road never runs under an empty stretch: the empty miles are
+  // their own orange dashes, and a solid line of the trip's colour beneath
+  // them showed through every gap, so they read as solid red (the owner,
+  // September 28). The pieces meet the empty stretches at their ends.
+  function loadedPieces(indices: number[]) {
+    const pieces: MapPoint[][] = [];
+    let piece: MapPoint[] = [];
+    for (const index of indices) {
+      const inside = emptySegments.some(
+        entry => index > entry.start && index < entry.end,
+      );
+      if (inside) {
+        if (piece.length > 1) pieces.push(piece);
+        piece = [];
+        continue;
+      }
+      piece.push(path[index]);
+      if (emptySegments.some(entry => index === entry.start)) {
+        if (piece.length > 1) pieces.push(piece);
+        piece = [];
+      }
+    }
+    if (piece.length > 1) pieces.push(piece);
+    return pieces;
+  }
+
+  function drawPieces(line: RouteLine, points: MapPoint[][]) {
+    if (line.setPaths) line.setPaths(points);
+    else line.setPath(points.flat());
+  }
+
+  const insideEmpty = (index: number) =>
+    emptySegments.some(entry => index > entry.start && index <= entry.end);
+
   function updateLineWidth() {
     const zoom = map.getZoom() ?? 5;
     const width = zoom < 7 ? 2 : zoom < 10 ? 3 : zoom < 14 ? 4 : 5;
@@ -111,10 +147,18 @@ export function createRouteRoad(
     const referenceIndices = routeDetailIndices(referencePath, detailZoom!, []);
     const referencePoints = referenceIndices.map(index => referencePath[index]);
     separateReference?.setPath(referencePoints);
-    future.setPath([
-      ...(separateReference ? [] : referencePoints),
-      ...detailIndices.map(index => path[index]),
-    ]);
+    if (emptySegments.length)
+      drawPieces(future, [
+        ...(separateReference || referencePoints.length < 2
+          ? []
+          : [referencePoints]),
+        ...loadedPieces(detailIndices),
+      ]);
+    else
+      future.setPath([
+        ...(separateReference ? [] : referencePoints),
+        ...detailIndices.map(index => path[index]),
+      ]);
   }
 
   // The width every line is built with is the one the current zoom asks
@@ -219,7 +263,19 @@ export function createRouteRoad(
       };
       renderedStart = split;
       const detailStart = lowerBound(detailIndices, i);
-      if (renderedDetailStart !== null && detailStart >= renderedDetailStart) {
+      if (emptySegments.length) {
+        // With empty stretches the loaded road is drawn in pieces, and the
+        // leading edge only while the truck is on loaded road.
+        if (forceDraw || detailStart !== renderedDetailStart)
+          drawPieces(tail, loadedPieces(detailIndices.slice(detailStart)));
+        remaining.setPath(
+          insideEmpty(i) ? [] : [split, path[detailIndices[detailStart]]],
+        );
+        renderedDetailStart = detailStart;
+      } else if (
+        renderedDetailStart !== null &&
+        detailStart >= renderedDetailStart
+      ) {
         // Only the two-point leading edge changes every frame. Keep the long
         // rasterized route untouched until an actual route vertex is passed.
         if (detailStart !== renderedDetailStart) {

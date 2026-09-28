@@ -1,4 +1,4 @@
-import { tripStopLabels } from './stopLabels.ts';
+import { onStopBadgesChanged, stopBadge } from './stopBadges.ts';
 import type { LoadReference, PlanStop, RoutePoint } from '../contracts.d.ts';
 import type { StopEtaLabel } from './stopEtaLabels.ts';
 import type { StopFacts } from './stopCardContent.ts';
@@ -48,6 +48,18 @@ export function createRouteStops(
   let fuelArrivals: any[] = [];
   // The stops the server says are completed, and when; not GPS passage.
   let completions = new Map<string, string | null>();
+  // The chain's numbers can arrive after the route: relabel in place.
+  const stopBadgesWatch = onStopBadgesChanged(() => {
+    for (const entry of entries.values()) {
+      const label = stopBadge(entry.stop.id, entry.stop.job);
+      entry.marker.setNumber?.(label);
+      if (entry.details) {
+        entry.details = { ...entry.details, number: label };
+        entry.metadata = JSON.stringify(entry.details);
+      }
+      refreshContent(entry);
+    }
+  });
 
   function updateDistance(entry: Entry) {
     const valid = Number.isFinite(progress) && Number.isFinite(entry.miles);
@@ -149,6 +161,18 @@ export function createRouteStops(
     refreshContent(entry, true);
   }
 
+  // The stop whose card was open when the map was made again (a theme
+  // switch): the same stop, by its id, reopened once its route is here -
+  // its card only, the camera stays where the reader left it, and no other
+  // stop stands in for it.
+  let restoring: string | null = null;
+  function reopen(entry: Entry) {
+    restoring = null;
+    selectedId = entry.stop.id;
+    markSelected();
+    refreshContent(entry, true);
+  }
+
   return {
     refreshDistances() {
       for (const entry of entries.values()) updateDistance(entry);
@@ -210,7 +234,7 @@ export function createRouteStops(
       // a truck is standing on one, where the mark it makes with the truck
       // says it already.
       const ordered = orderedStops(plan);
-      const labels = tripStopLabels(ordered.map(stop => stop.job));
+      const labels = ordered.map(stop => stopBadge(stop.id, stop.job));
       const nextId = plan?.tracking?.nextStopId ?? null;
       const nextIndex = ordered.findIndex(stop => stop.id === nextId);
       const previousId =
@@ -285,6 +309,15 @@ export function createRouteStops(
         entries.delete(id);
         if (selectedId === id) this.close();
       }
+      if (restoring && entries.has(restoring)) reopen(entries.get(restoring)!);
+    },
+    selected() {
+      return selectedId;
+    },
+    restore(stopId: string | null) {
+      const entry = stopId ? entries.get(stopId) : undefined;
+      if (entry) reopen(entry);
+      else restoring = stopId;
     },
     // Opens one stop's card as a click on its badge would, and says where
     // it stands so the camera can go there.
@@ -312,6 +345,9 @@ export function createRouteStops(
       selectedId = null;
       popup.hide();
       markSelected();
+    },
+    dispose() {
+      stopBadgesWatch();
     },
     clear() {
       for (const entry of entries.values()) entry.marker.map = null;

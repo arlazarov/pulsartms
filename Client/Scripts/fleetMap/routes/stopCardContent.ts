@@ -106,14 +106,14 @@ export function stopContent(
   // the run and what happens there, then whose load it is. Whether it is
   // on time is said once, beside its ETA; a stop behind the truck says Done.
   const head = element('div', 'fleet-route-popup__head');
-  if (stop.number)
-    head.append(
-      element(
-        'span',
-        `fleet-route-popup__number${stop.done ? ' is-done' : ''}`,
-        String(stop.number),
-      ),
+  if (stop.number) {
+    const badge = element(
+      'span',
+      `fleet-route-popup__number${stop.done ? ' is-done' : ''}`,
+      String(stop.number),
     );
+    head.append(badge);
+  }
   const identity = element('div', 'fleet-route-popup__identity');
   const job = element('strong', 'fleet-route-popup__job', stop.job);
   if (stop.done)

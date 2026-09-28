@@ -22,11 +22,11 @@ public partial class AppearanceProvider : IAsyncDisposable
   [Parameter]
   public RenderFragment? ChildContent { get; set; }
 
-  // Light is withdrawn for now (the owner, September 28): the page is
-  // always painted dark. Theme stays the account's saved choice, which is
-  // kept and sent back unchanged with a units change, so turning light on
-  // again restores every account's own theme.
-  private const bool LightThemeAvailable = false;
+  // Light returned with its new look (the owner, September 28); set this
+  // false to paint every account dark again without touching saved
+  // choices. Theme is the account's saved choice, sent back unchanged with
+  // a units change.
+  private const bool LightThemeAvailable = true;
 
   public string Theme { get; private set; } = "light";
 
@@ -73,8 +73,10 @@ public partial class AppearanceProvider : IAsyncDisposable
     Busy = false;
     Saved = false;
     Error = null;
-    // Dark is the default (the owner, September 27) and, for now, the
-    // only theme painted (index.html paints dark first).
+    // Dark is the default (the owner, September 27). Signed in, the page
+    // keeps the theme it was painted in (index.html: the last one used
+    // here, else dark) until the account's choice is read; signed out, it
+    // is the default again.
     Theme = "dark";
     Units = DisplayUnits.Default;
     if (account is null)

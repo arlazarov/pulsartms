@@ -66,13 +66,13 @@
     font-weight: 600;
     white-space: nowrap;
     cursor: pointer;
+    // Chosen: a flat tint inside its one thin border - no ring, halo or
+    // inset (the owner, September 28). Keyboard focus keeps the page's
+    // own :focus-visible outline, apart from this state.
     &[aria-pressed='true'] {
-      border-color: ui.theme(accent, 0.42);
-      background: ui.theme(accent, 0.1);
+      border-color: ui.theme(accent, 0.55);
+      background: ui.theme(accent, 0.08);
       color: ui.theme(accent);
-      box-shadow:
-        0 0 0 1px ui.theme(accent, 0.18),
-        0 0 18px ui.theme(accent, 0.16);
     }
   }
   &__dot {
@@ -84,10 +84,12 @@
   &__chip--moving &__dot {
     background: ui.theme(success-text);
   }
+  // The count is a quiet tint, not a second outline inside the chip; its
+  // rim is transparent so its size stays.
   &__count {
     min-width: ui.pg(xxl);
     padding: 0 ui.pg(xs);
-    border: 1px solid ui.theme(border-subtle);
+    border: 1px solid transparent;
     border-radius: ui.radius(sm);
     background: ui.theme(surface-soft);
     font-size: ui.fs(small);
@@ -397,9 +399,7 @@
       box-shadow: inset 3px 0 0 ui.theme(accent);
       :root[data-theme='light'] & {
         background: ui.theme(selected);
-        box-shadow:
-          inset 3px 0 0 ui.theme(hud-line),
-          inset 12px 0 16px -12px ui.theme(hud-glow, 0.5);
+        box-shadow: inset 3px 0 0 ui.theme(accent);
       }
     }
   }
@@ -578,11 +578,18 @@
   border-radius: ui.radius(md);
   background-color: ui.theme(surface);
   :root[data-theme='light'] & {
-    background-color: ui.theme(surface, 0.5);
     --facts-rim: #{ui.theme(selection-border, 0.9)};
     --facts-line: #{ui.theme(selection-border, 0.7)};
     --facts-icon: #{ui.theme(hud-line)};
     --facts-label: #{ui.theme(accent)};
+  }
+  // Under the duty status: how long, readable.
+  &__detail {
+    display: block;
+    margin-top: ui.pg(micro);
+    color: ui.theme(text-secondary);
+    font-size: ui.fs(small);
+    line-height: 1.3;
   }
   &__fact {
     display: flex;
@@ -656,6 +663,33 @@
   &__copied {
     right: ui.pg(sm);
     bottom: ui.pg(micro);
+  }
+}
+
+// While the driver rests: its own labelled rows under the clocks, each
+// fact on a line of its own (the owner, September 28).
+.fleet-truck-rest {
+  display: grid;
+  gap: ui.pg(xs);
+  margin: 0 ui.pg(lg) ui.pg(md);
+  padding: ui.pg(sm) ui.pg(md);
+  border: 1px solid ui.theme(border-subtle);
+  border-radius: ui.radius(md);
+  > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: ui.pg(md);
+  }
+  dt {
+    @include ui.hud-label;
+  }
+  dd {
+    margin: 0;
+    color: ui.theme(text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
   }
 }
 
@@ -758,6 +792,12 @@
         );
       box-shadow: 0 0 24px ui.theme(accent, 0.12);
       animation: fleet-radar-sweep 6s linear infinite;
+      :root[data-theme='light'] & {
+        box-shadow: none;
+      }
+      @media (max-width: 767px), (pointer: coarse) {
+        animation: none;
+      }
     }
   }
 }
@@ -811,8 +851,9 @@
     // The emblem is the head's: in the stop card below, the stop's letter
     // is a small badge beside what happens there, as on the map.
     .fleet-route-popup__number {
-      inline-size: ui.size(popup-stop-badge);
+      min-inline-size: ui.size(popup-stop-badge);
       block-size: ui.size(popup-stop-badge);
+      padding-inline: ui.pg(xs);
       align-self: center;
       border-width: 1px;
       box-shadow: none;
@@ -912,17 +953,6 @@
     min-width: 0;
     color: ui.theme(text-muted);
   }
-  &__number {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: ui.size(control-compact);
-    height: ui.size(control-compact);
-    border: 1.5px solid currentColor;
-    border-radius: 50%;
-    font-size: ui.fs(caption);
-    font-weight: 700;
-  }
   // A trip new to the chain arrives as the HUD shows new information; a
   // poll that changes nothing keeps the card and plays nothing.
   &__card {
@@ -934,6 +964,8 @@
     border: 1.5px dashed currentColor;
     border-radius: ui.radius(md);
     background: ui.theme(surface);
+    // The whole card shows the trip's road.
+    cursor: pointer;
     @include ui.hud-arrive;
   }
   .is-current &__card {
@@ -994,13 +1026,11 @@
   &__route {
     grid-column: 1 / -1;
     padding: 0 ui.pg(xs) ui.pg(micro);
-    cursor: pointer;
     display: flex;
     align-items: center;
     gap: ui.pg(xs);
     min-width: 0;
     overflow: hidden;
-    color: ui.theme(text-secondary);
     font-size: ui.fs(caption);
     white-space: nowrap;
   }
@@ -1012,13 +1042,16 @@
   }
   &__city {
     overflow: hidden;
+    color: ui.theme(text-secondary);
     text-overflow: ellipsis;
   }
   &__arrow {
     flex: none;
     color: ui.theme(text-muted);
   }
-  // Each stop as a small marker; a check once the server says it is done.
+  // Each stop as its chain badge ("1 · P") in its trip's own colour, as
+  // the map draws it (the owner, September 28: no separate P / D
+  // colours); a check once the server says it is done.
   &__stop {
     display: inline-flex;
     align-items: center;
@@ -1027,33 +1060,27 @@
     min-width: ui.pg(xl);
     height: ui.pg(xl);
     padding: 0 ui.pg(xs);
-    border: 1.5px solid ui.theme(text-muted);
+    border: 1.5px solid currentColor;
     border-radius: ui.radius(pill);
     background: none;
-    color: ui.theme(text);
+    color: inherit;
     font-family: inherit;
     font-size: ui.fs(micro);
     cursor: pointer;
     font-weight: 700;
     line-height: 1;
+    white-space: nowrap;
     justify-content: center;
-    &.is-pickup {
-      border-color: ui.theme(pickup);
-      color: ui.theme(pickup);
-    }
-    &.is-delivery {
-      border-color: ui.theme(delivery);
-      color: ui.theme(delivery);
-    }
     &[aria-pressed='true'] {
       box-shadow:
         0 0 0 2px ui.theme(surface),
         0 0 0 3px currentColor;
     }
+    // Done: the same colour, dashed and quiet, with its check - as the
+    // map draws a stop behind the truck.
     &.is-done {
-      background: ui.theme(success-text, 0.14);
-      border-color: ui.theme(success-text);
-      color: ui.theme(success-text);
+      border-style: dashed;
+      background: color-mix(in srgb, currentColor 12%, transparent);
     }
     svg {
       width: ui.pg(sm);
@@ -1130,34 +1157,13 @@
 // approved.
 @include ui.above(fleet-docked) {
   :root[data-theme='light'] {
-    // The line the trips hang on carries a slow current of cyan dashes.
-    .fleet-trip-chain__links {
-      background: repeating-linear-gradient(
-          90deg,
-          ui.theme(hud-glow, 0.85) 0 6px,
-          transparent 6px 14px
-        )
-        0 50% / 100% 1px no-repeat;
-      background-attachment: local;
-      animation: hud-flow 1.2s linear infinite;
-    }
-    .fleet-trip-chain__number {
-      width: 1.5rem;
-      height: 1.5rem;
-      border: 0;
-      background:
-        linear-gradient(
-          color-mix(in srgb, currentColor 16%, transparent),
-          color-mix(in srgb, currentColor 16%, transparent)
-        ),
-        ui.theme(surface);
-    }
     .fleet-trip-chain__card {
-      border: 1px solid ui.theme(border);
+      border-style: solid;
+      border-color: ui.theme(border);
       background:
         linear-gradient(currentColor, currentColor) top center /
           calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
-        ui.theme(surface, 0.55);
+        ui.theme(surface);
       box-shadow: none;
     }
     .fleet-trip-chain .is-selected .fleet-trip-chain__card {
@@ -1165,13 +1171,15 @@
       background:
         linear-gradient(currentColor, currentColor) top center /
           calc(100% - 2 * #{ui.radius(md)}) 2px no-repeat,
-        ui.theme(surface, 0.55);
+        ui.theme(surface);
       // Chosen by its rim, not a glow (the owner, September 28).
-      box-shadow: 0 1px 3px ui.theme(shadow, 0.08);
+      box-shadow: none;
     }
+    // The phase is a quiet near-neutral chip with its colour in the word
+    // only (the owner, September 28: the Current fill was too strong).
     .fleet-trip-chain__phase {
-      border: 0;
-      background: color-mix(in srgb, currentColor 12%, transparent);
+      border-color: transparent;
+      background: ui.theme(surface-muted);
     }
   }
 }
@@ -1256,15 +1264,13 @@
   .fleet-trip-chain {
     grid-area: chain;
   }
-  // The right panel stands against the map's top and right edges (the
-  // owner, September 27: the strips of map above and beside it were
-  // wasted); its outer corner follows the map's.
+  // The right panel keeps the same outer gutter as the fleet list - the
+  // stage's padding - with its top level with the list's (the owner,
+  // September 28, over September 27's panel flush to the map's edges).
+  // No auto margins: the floating card centres itself with them.
   .fleet-map-info-reserved,
   .fuel-plan-editor {
-    margin: calc(-1 * #{ui.pg(md)}) calc(-1 * #{ui.pg(md)}) 0 0;
-    border-top-width: 0;
-    border-right-width: 0;
-    border-radius: 0 ui.radius(panel) 0 ui.radius(panel);
+    margin: 0;
   }
   .fleet-map-info-reserved {
     grid-area: inspector;
@@ -1336,25 +1342,22 @@
   }
 }
 
-// Daylight frost inside the map's glass (the owner, September 28): the
-// floating card, every card's sticky head and the list's column head are
-// the same translucent glass, not opaque white panels over it; the head
-// blurs what scrolls under it so its words stay crisp.
+// Daylight panels over the map (the owner's approved light concept,
+// September 28): the floating card, every card's sticky head and the
+// list's column head are the same matte near-opaque white.
 :root[data-theme='light'] {
   .fleet-map-info-reserved {
     @include ui.light-glass;
   }
   .fleet-map-inspector__header,
   .fleet-truck-list__columns {
-    background: ui.theme(surface, 0.5);
-    backdrop-filter: blur(12px);
+    background: ui.theme(surface, 0.97);
   }
-  // No decorative glow in daylight (the owner, September 28): a pressed
-  // chip, a running Follow, a focused search and today's price read by
-  // their rim and tint; a focus keeps its fine ring.
+  // No decorative glow in daylight (the owner, September 28): a running
+  // Follow, a focused search and today's price read by their rim and
+  // tint; a focus keeps its fine ring.
   .fleet-map-toolbar .search-input input:focus,
-  .fleet-map-motion__chip[aria-pressed='true'],
-  .fleet-map-controls__button[aria-pressed='true'] {
+  .fleet-map-controls .map-action-icon[aria-pressed='true'] {
     box-shadow: 0 0 0 1px ui.theme(accent, 0.3);
   }
   .fleet-station-popup__day.is-current {

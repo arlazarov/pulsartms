@@ -39,6 +39,9 @@ export function createDockedDetails(
   // Where what the card shows stands, said once per activation: the same
   // stop opened again is a new pick, its content refreshed is not.
   let shownAt = '';
+  // An activation that restores what the card already showed (a theme
+  // switch) takes its place without bringing the thing into view again.
+  let quiet = false;
 
   function clear() {
     if (content !== null) host?.replaceChildren();
@@ -89,9 +92,11 @@ export function createDockedDetails(
       suspended = value;
       if (suspended) switchMode('closed');
     },
-    activate(kind: string) {
+    activate(kind: string, restoring = false) {
       const port = ports.get(kind);
-      if (port && !port.disposed) switchMode(kind, port);
+      if (!port || port.disposed) return;
+      switchMode(kind, port);
+      quiet = restoring;
     },
     setMode(kind: string, restoreFocus = false) {
       switchMode(kind, null, restoreFocus);
@@ -114,8 +119,9 @@ export function createDockedDetails(
             const key = place ? `${place.lat}:${place.lng}` : '';
             if (place && key !== shownAt) {
               shownAt = key;
-              onShow(place);
+              if (!quiet) onShow(place);
             }
+            quiet = false;
           },
           hide() {
             if (!disposed && owner === port) switchMode('closed');

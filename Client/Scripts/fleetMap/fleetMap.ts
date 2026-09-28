@@ -12,6 +12,7 @@ import { createMapHost } from './provider/mapHost.ts';
 import { mergeRoutePayload } from './routes/routePayload.ts';
 import { createStopEtaWindow } from './routes/stopEtaWindow.ts';
 import { watchInspectorScroll } from './ui/inspectorScroll.ts';
+import { setStopBadges } from './routes/stopBadges.ts';
 import { createCameraViewport } from './ui/cameraViewport.ts';
 import { createFuelEditorFocus } from './ui/fuelEditorFocus.ts';
 import { createDockedDetails } from './ui/dockedDetails.ts';
@@ -419,6 +420,15 @@ export async function createFleetMap(
       element.classList.toggle('is-satellite', mapType === 'hybrid');
     });
     cleanup.push(() => mapTypeListener.remove());
+    // The stop whose card was open before a theme switch made this map.
+    let restoringStop: string | null = null;
+    function reopenRestoredStop() {
+      const stopId = restoringStop;
+      restoringStop = null;
+      if (!stopId) return;
+      inspector.activate('stop', true);
+      route.restoreStop(stopId);
+    }
     let routeVersion = 0;
     let fuelRecommendationKey = '';
     let currentPlan: MapPlan | null = null;
@@ -580,6 +590,18 @@ export async function createFleetMap(
       },
       // A stop chosen in the trip chain: its card opens as from its badge,
       // and the camera goes to it exactly as a badge press takes it.
+      // A theme switch makes the map again: the stop whose card is open is
+      // handed from the old map to the new one, which reopens that same
+      // stop's card without moving the camera.
+      selectedRouteStop() {
+        return disposed ? null : route.selectedStop();
+      },
+      restoreRouteStop(stopId: string | null) {
+        if (disposed || !stopId) return;
+        // The card belongs to the plan's truck: it waits for the route.
+        restoringStop = stopId;
+        if (currentPlan) reopenRestoredStop();
+      },
       openRouteStop(stopId: string) {
         if (disposed) return;
         chainFit = () => route.fitRemaining();
@@ -606,6 +628,10 @@ export async function createFleetMap(
       },
       setStopCompletions(list: { id: string; at: string | null }[]) {
         if (!disposed) route.setCompletions(list);
+      },
+      // The chain's stop badges, one label per stop id, from the page.
+      setStopBadges(record: unknown) {
+        if (!disposed) setStopBadges(record);
       },
       setLoadReference(payload: any) {
         if (!disposed) route.setLoadReference(payload);
@@ -699,6 +725,7 @@ export async function createFleetMap(
           );
           currentProgress = progress;
           route.setPlan(plan, fit, progress);
+          if (restoringStop && plan) reopenRestoredStop();
           if (etas.held()) etas.refresh();
           nextLoads.setStopOffset(orderedStops(plan).length);
           if (plan?.truckId)

@@ -20,14 +20,11 @@ export const sceneMetrics = Object.freeze({
   stopBadgeStackedDiameter: 32,
   // The edge a badge wears while its load is the one being looked at: the
   // dark of the map's labels, which reads against every route colour.
-  stopBadgePickedEdge: [255, 255, 255, 255],
+
   // How much of a truck must show from behind a badge for the crescent to
   // read as a truck. Less than this and the badge wears the truck as a ring
   // instead: a white rim with nothing behind it says the stop is alone.
   truckCrescent: 6,
-  // Where the filled badge's edge falls, so an outlined one does not read as
-  // the larger of the two.
-  stopBadgeDoneRadius: 11,
   stopBadgeGap: 2,
   stationRadius: 8,
   stationHitRadius: 10,
@@ -73,14 +70,13 @@ export const sceneMetrics = Object.freeze({
   // so 0.75 here was drawn at 0.88 and read as no step at all, and 0.45
   // (drawn at 0.7) still as none; 0.3 is drawn at about 0.58.
   routeFutureOpacity: 0.3,
+  // Daylight later roads are too faint at the dark map's strength.
+  routeFutureOpacityLight: 0.7,
   routeTraveledOpacity: 0.22,
   routeOutlineWidth: 2,
   // Empty miles are dashed: nothing is on board. Dash units are half
   // widths, and rounded caps add a width to each dash.
   routeDashArray: Object.freeze([4, 4]),
-  // An unpicked later load's road: fine, closely spaced dashes of its
-  // colour, told from empty miles by their rhythm (the owner, September 27).
-  routeFutureDashArray: Object.freeze([1.6, 2.4]),
   // The part already driven: a thin quiet line under the road ahead.
   routeTraveledWidth: 3,
 });

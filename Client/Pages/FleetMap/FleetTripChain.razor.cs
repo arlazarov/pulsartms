@@ -54,6 +54,15 @@ public partial class FleetTripChain : IAsyncDisposable
   [Parameter]
   public Guid? FocusedStopId { get; set; }
 
+  // Each stop's chain badge ("1 · P"), from its one owner
+  // (StopMarkers.ChainBadges), as the map shows it too.
+  [Parameter]
+  public IReadOnlyDictionary<Guid, string> Badges { get; set; } =
+    new Dictionary<Guid, string>();
+
+  private string Badge(DispatchStopResponse stop) =>
+    Badges.TryGetValue(stop.Id, out var badge) ? badge : "";
+
   // Where a card's load opens, returning to this map.
   [Parameter]
   public Func<DispatchResponse, string>? LoadHref { get; set; }

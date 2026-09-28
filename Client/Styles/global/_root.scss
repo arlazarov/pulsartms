@@ -25,6 +25,15 @@
   @each $name, $value in vars.$shadows {
     --shadow-#{$name}: #{$value};
   }
+  // Daylight casts almost nothing (the owner, September 28): panels and
+  // cards sit on thin neutral borders; only what floats over the page -
+  // menus, popovers, dialogs - keeps a tiny soft shadow.
+  &[data-theme='light'] {
+    --shadow-card: none;
+    --shadow-panel: none;
+    --shadow-popup: 0 2px 8px rgb(0 0 0 / 0.08);
+    --shadow-modal: 0 8px 24px rgb(0 0 0 / 0.12);
+  }
   color-scheme: light;
   font-size: 100%;
   -webkit-tap-highlight-color: transparent;
@@ -159,4 +168,29 @@ body {
   from {
     opacity: 0.6;
   }
+}
+
+// Phones and touch screens skip the panels' background blur and the
+// emblems' turning sight rings, which cost frames (the owner, September
+// 28); the panels are dense enough to read without the blur.
+@media (max-width: 767px), (pointer: coarse) {
+  :root {
+    --panel-blur: none;
+    --hud-spin: none;
+  }
+}
+
+// A theme switch moves every colour together for one short window
+// (Scripts/shared/appearance.ts sets the class and --theme-fade). Colours
+// only: no size, place or blur changes.
+:root.is-theme-switching,
+:root.is-theme-switching *,
+:root.is-theme-switching *::before,
+:root.is-theme-switching *::after {
+  transition:
+    background-color var(--theme-fade) ease,
+    color var(--theme-fade) ease,
+    border-color var(--theme-fade) ease,
+    fill var(--theme-fade) ease,
+    stroke var(--theme-fade) ease !important;
 }

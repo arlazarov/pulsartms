@@ -80,10 +80,15 @@
     justify-content: center;
     flex-shrink: 0;
     align-self: start;
-    inline-size: 2.75rem;
+    // Round for a letter, a pill as wide as "12 · D" (the owner,
+    // September 28).
+    min-inline-size: 2.75rem;
     block-size: 2.75rem;
+    padding-inline: ui.pg(sm);
+    gap: ui.pg(hair);
+    white-space: nowrap;
     border: 1.5px solid ui.theme(accent);
-    border-radius: 50%;
+    border-radius: ui.radius(pill);
     background: radial-gradient(
       circle at 35% 30%,
       ui.theme(accent, 0.34),
@@ -105,9 +110,9 @@
       position: absolute;
       inset: -6px;
       border: 1px dashed ui.theme(accent, 0.6);
-      border-radius: 50%;
+      border-radius: ui.radius(pill);
+      // Still: a pill does not turn like a ring.
       pointer-events: none;
-      animation: hud-spin-free 14s linear infinite;
     }
     &.is-done::after {
       content: none;
@@ -116,15 +121,15 @@
     // for anything.
     // In daylight a lit accent disc with a white letter, as the truck's
     // emblem: a pale core read washed out (the owner, September 27).
+    // Daylight: a matte accent disc with a white letter, no ring.
     :root[data-theme='light'] &:not(.is-done) {
-      border-color: ui.theme(hud-glow);
-      background: radial-gradient(
-        circle at 35% 30%,
-        ui.theme(hud-glow),
-        ui.theme(accent) 80%
-      );
+      border-color: ui.theme(accent);
+      background: ui.theme(accent);
       box-shadow: none;
       color: ui.theme(on-accent);
+      &::after {
+        content: none;
+      }
     }
     &.is-done {
       border-style: dashed;
@@ -307,6 +312,9 @@
         ui.theme(accent)
       );
       box-shadow: 0 0 6px ui.theme(hud-glow, 0.55);
+      :root[data-theme='light'] & {
+        box-shadow: none;
+      }
     }
     &::-moz-progress-bar {
       border-radius: ui.radius(pill);
@@ -422,4 +430,43 @@
 }
 @container next-stop-inspection (width < #{ui.breakpoint(stop-card-stacked)}) {
   @include stacked-stop-card;
+}
+
+// One type scale for every fact on a stop's card (the owner, September
+// 28: ETA, appointment, leg, left, fuel and the cycle read at different
+// sizes and weights). Labels are the card's small quiet caps; values are
+// body size, semibold, tabular, on one line height - the stop's own facts
+// and the hours forecast drawn inside the card alike. A warning or status
+// is a compact word of its own, never a stretched pill.
+.fleet-route-popup--stop {
+  --stop-fact-label-size: #{ui.fs(micro)};
+  --stop-fact-value-size: #{ui.fs(body)};
+  .stop-hours__heading,
+  .stop-hours__label,
+  .fleet-map-next-load-card__metrics dt {
+    color: ui.theme(text-muted);
+    font-size: var(--stop-fact-label-size);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    line-height: 1.5;
+    text-transform: uppercase;
+  }
+  .fleet-route-popup__value,
+  .stop-hours__value,
+  .stop-hours__road time,
+  .fleet-map-next-load-card__metrics dd {
+    font-size: var(--stop-fact-value-size);
+    font-weight: 600;
+    line-height: 1.5;
+    font-variant-numeric: tabular-nums;
+  }
+  .fleet-route-popup__status,
+  .stop-hours__status,
+  .stop-hours__cycle-status {
+    justify-self: start;
+    inline-size: fit-content;
+    max-inline-size: 100%;
+    font-size: ui.fs(small);
+    line-height: 1.4;
+  }
 }

@@ -107,6 +107,28 @@ export function createScene(
   const onVisibility = () => {
     if (!globalThis.document?.hidden) schedule();
   };
+  // Phones and touch screens run a lighter show (the owner, September 28:
+  // the map lagged): ten frames a second, two sonar rings, no current
+  // along the roads and a steady road glow. Everywhere the decorative
+  // motion stands still while the map is being moved - a drag, a zoom, a
+  // Follow pan - and resumes when it is idle; nothing is drawn while the
+  // page is hidden. Live positions, picking and Follow are untouched.
+  const liteQuery = globalThis.matchMedia?.(
+    '(max-width: 767px), (pointer: coarse)',
+  );
+  const liteFrame = 100;
+  let moving = false;
+  let still = { sonar: 0, routePulse: 1, routeFlow: 0 };
+  const motionListeners = [
+    map.addListener?.('bounds_changed', () => {
+      moving = true;
+    }),
+    map.addListener?.('idle', () => {
+      if (!moving) return;
+      moving = false;
+      schedule();
+    }),
+  ];
   globalThis.document?.addEventListener?.('visibilitychange', onVisibility);
   // Standing trucks by position, moving ones by the next stop they cover.
   function trucksKey() {
@@ -180,32 +202,49 @@ export function createScene(
     // even where the system asks for less motion; the timer runs only while
     // a truck is chosen and the page is shown.
     const chosen = vehicleDisplay.vehicles.some(t => t.selected);
+    const lite = liteQuery?.matches === true;
     const now = performance.now();
-    const sonar = chosen ? (now % sonarPeriod) / sonarPeriod : null;
+    if (!moving)
+      still = {
+        sonar: (now % sonarPeriod) / sonarPeriod,
+        routePulse: lite
+          ? 1
+          : 0.5 + 0.5 * Math.cos((2 * Math.PI * now) / routePulsePeriod),
+        routeFlow: (now % routeFlowPeriod) / routeFlowPeriod,
+      };
+    const sonar = chosen ? still.sonar : null;
     const sonarBreath = 0;
-    const routeFlow = (now % routeFlowPeriod) / routeFlowPeriod;
+    const routeFlow = still.routeFlow;
     const zoom = map.getZoom?.();
     const box = map.getBounds?.();
-    const routeFlowView = Number.isFinite(zoom)
-      ? {
-          zoom: zoom!,
-          bounds: box
-            ? [
-                box.getSouthWest().lng(),
-                box.getSouthWest().lat(),
-                box.getNorthEast().lng(),
-                box.getNorthEast().lat(),
-              ]
-            : null,
-        }
-      : null;
-    const routePulse =
-      0.5 + 0.5 * Math.cos((2 * Math.PI * now) / routePulsePeriod);
-    if (chosen && !globalThis.document?.hidden && sonarTimer === null)
-      sonarTimer = setTimeout(() => {
-        sonarTimer = null;
-        schedule();
-      }, sonarFrame);
+    const routeFlowView =
+      !lite && Number.isFinite(zoom)
+        ? {
+            zoom: zoom!,
+            bounds: box
+              ? [
+                  box.getSouthWest().lng(),
+                  box.getSouthWest().lat(),
+                  box.getNorthEast().lng(),
+                  box.getNorthEast().lat(),
+                ]
+              : null,
+          }
+        : null;
+    const routePulse = still.routePulse;
+    if (
+      chosen &&
+      !moving &&
+      !globalThis.document?.hidden &&
+      sonarTimer === null
+    )
+      sonarTimer = setTimeout(
+        () => {
+          sonarTimer = null;
+          schedule();
+        },
+        lite ? liteFrame : sonarFrame,
+      );
     overlay.draw(
       buildLayers({
         sonar,
@@ -213,6 +252,7 @@ export function createScene(
         routePulse,
         routeFlow,
         routeFlowView,
+        lite,
         lines: routeEditing
           ? [...lines].filter(line => line.routeRole === 'preview')
           : lines,
@@ -323,6 +363,7 @@ export function createScene(
           vehicles = [];
         },
         () => clusterZoomListener.remove(),
+        ...motionListeners.map(listener => () => listener?.remove()),
         () => stops.clear(),
         ...overlay.release,
         () => stations.clear(),

@@ -99,7 +99,7 @@ public partial class DriverDutySummary
       _ => "Duty —",
     };
 
-  private static string Duration(int minutes) =>
+  public static string Duration(int minutes) =>
     $"{minutes / 60}h {minutes % 60:00}m";
 
   private static string StatusDuration(int minutes) =>

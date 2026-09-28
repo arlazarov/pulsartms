@@ -80,18 +80,20 @@ export function createStopLayers({
         // The load being looked at is named on its own circles: the road
         // was emphasised and the badges were not, so picking a load lit
         // everything except the stops it was picked for. It is the badge's
-        // own edge that darkens - nothing is added beside it and nothing
+        // own rim that grows heavier, in its trip's colour - nothing is
+        // added beside it and nothing
         // grows, because a badge that grows pushes its neighbours aside,
         // and badges that shuffle when a load is picked are what made one
         // hard to follow in the first place.
         const { url: iconAtlas, ...circle } = stopMarkerIcon(
           appearance.fill,
-          stop.highlighted && !stop.standing
-            ? metrics.stopBadgePickedEdge
-            : appearance.border,
-          stop.done ? metrics.stopBadgeDoneRadius : undefined,
+          appearance.border,
+          undefined,
           stop.standing,
           stop.stacked,
+          stop.markerLabel ?? '',
+          (stop.highlighted === true || stop.selected === true) &&
+            !stop.standing,
         );
         const layers = [
           ...(stop.markerOffsetX || stop.markerOffsetY

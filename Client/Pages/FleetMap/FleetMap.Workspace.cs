@@ -4,6 +4,7 @@ using Client.Models.DTO.Dispatch;
 using Client.Models.DTO.Fleet;
 using Client.Models.DTO.Planning;
 using Client.Services;
+using Client.Shared.Dispatch;
 using Client.Shared.DriverStatus.DriverDutySummary;
 using Client.Shared.Trucks;
 using Microsoft.AspNetCore.Components;
@@ -133,10 +134,32 @@ public partial class FleetMap
     return null;
   }
 
+  // The chain's stop badges ("1 · P"), made once per chain read by their
+  // one owner and shared by the trip cards and the map.
+  private IReadOnlyList<DispatchResponse>? _badgesFor;
+  private IReadOnlyDictionary<Guid, string> _stopBadges =
+    new Dictionary<Guid, string>();
+  private IReadOnlyDictionary<Guid, string> StopBadges
+  {
+    get
+    {
+      if (!ReferenceEquals(_badgesFor, _chainLoads))
+      {
+        _badgesFor = _chainLoads;
+        _stopBadges = StopMarkers.ChainBadges(_chainLoads);
+      }
+      return _stopBadges;
+    }
+  }
+
   private async Task PushStopCompletionsAsync()
   {
     if (_map is null || _disposed)
       return;
+    await _map.InvokeVoidAsync(
+      "setStopBadges",
+      StopBadges.ToDictionary(x => x.Key.ToString(), x => x.Value)
+    );
     var completed = _chainLoads
       .SelectMany(load => load.Stops)
       .Where(stop => stop.IsCompleted)
@@ -378,6 +401,73 @@ public partial class FleetMap
     _hos?.CurrentDutyStatus is { } status
       ? DriverDutySummary.StatusName(status)
       : "—";
+
+  // The server's reading of the driver's logs, never the truck's motion:
+  // parked or engine off is not rest (the owner, September 28). The
+  // truck's own reading (GetTruckDutyStatus) comes first; a server without
+  // it leaves the planning ETA's. Either is used only when fresh and in
+  // agreement with the live status.
+  private DriverDutyStatus? DutyReading
+  {
+    get
+    {
+      var duty =
+        _truckDuty is { Duty: { } own } && _truckDuty.TruckId == _activeTruckId
+          ? own
+          : HeadDutyStatus;
+      return
+        _hos?.CurrentDutyStatus is { } live
+        && duty is not null
+        && duty.Status == live
+        && duty.ObservedAt >= DateTimeOffset.UtcNow.AddMinutes(-3)
+        ? duty
+        : null;
+    }
+  }
+
+  // How long the driver has been in that status, under its name.
+  private string? DutySince =>
+    _hos?.CurrentDutyStatus is null ? null
+    : DutyReading?.StatusMinutes is { } minutes
+      ? $"for {DriverDutySummary.Duration(minutes)}"
+    : "Time in status unavailable";
+
+  // While resting, the rest in its own labelled rows under the clocks: how
+  // long so far, when the daily rest is complete and when the cycle reset
+  // is - the server's times, never worked out here. A time the server did
+  // not give reads Unavailable. A daily rest whose time has passed says it
+  // is complete; whether the hours are back is the clocks' answer above.
+  private IReadOnlyList<(string Label, string Value)> RestRows =>
+    DutyReading is { RestMinutes: { } rest } duty
+      ?
+      [
+        ("Rest so far", DriverDutySummary.Duration(rest)),
+        (
+          "10h rest complete",
+          RestTime(duty.DailyRestCompleteAt, duty.DailyRestRemainingMinutes)
+        ),
+        (
+          duty.CycleResetHours is > 0 and var hours
+            ? $"{hours}h reset"
+            : "Cycle reset",
+          RestTime(duty.CycleResetCompleteAt, duty.CycleResetRemainingMinutes)
+        ),
+      ]
+      : [];
+
+  private string RestTime(DateTimeOffset? at, int? remaining) =>
+    (at, remaining) switch
+    {
+      ({ } time, > 0) =>
+        $"{RestClock(time)} (in {DriverDutySummary.Duration(remaining.Value)})",
+      ({ } time, _) => $"Done at {RestClock(time)}",
+      (null, > 0) => $"in {DriverDutySummary.Duration(remaining.Value)}",
+      (null, 0) => "Done",
+      _ => "Unavailable",
+    };
+
+  private static string RestClock(DateTimeOffset time) =>
+    time.ToLocalTime().ToString("MMM d, h:mm tt", CultureInfo.InvariantCulture);
 
   // The panel shows where the truck is as its locality - town, region and
   // postal code - by the shared address formatter; the street stays in the

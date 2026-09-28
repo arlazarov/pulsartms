@@ -25,8 +25,41 @@ public partial class FleetMap
     _hosSnapshot = response.Response;
     if (_activeTruckId is { } id)
       _hos = _hosSnapshot.GetValueOrDefault(id)?.Hos;
+    await RefreshTruckDutyAsync(ct);
     await InvokeAsync(StateHasChanged);
     return _hosSnapshot.Values.Any(x => x.Hos is not null);
+  }
+
+  // The chosen truck's duty reading from its owner (GetTruckDutyStatus),
+  // with or without a route: read for that one truck only, at the clocks'
+  // cadence and when another truck is chosen; the server reads a driver's
+  // history at most once a minute. A server without it leaves the panel
+  // on the planning ETA's reading.
+  private TruckDutyStatus? _truckDuty;
+  private Guid? _truckDutyAsked;
+
+  private async Task RefreshTruckDutyAsync(CancellationToken ct)
+  {
+    if (_activeTruckId is not { } truck)
+      return;
+    _truckDutyAsked = truck;
+    var response = await Api.GetAsync<TruckDutyStatus>(
+      $"api/fleet/trucks/{truck}/duty-status",
+      ct
+    );
+    if (_disposed || ct.IsCancellationRequested || truck != _activeTruckId)
+      return;
+    _truckDuty = response.Success ? response.Response : null;
+  }
+
+  // A newly chosen truck is read at once rather than at the next tick.
+  private async Task RefreshTruckDutyIfChosenAsync()
+  {
+    if (_activeTruckId is not { } truck || truck == _truckDutyAsked)
+      return;
+    await RefreshTruckDutyAsync(_lifetime.Token);
+    if (!_disposed)
+      await InvokeAsync(StateHasChanged);
   }
 
   private DriverHosClocks? SelectedHos(DriverHosClocks? fallback) =>

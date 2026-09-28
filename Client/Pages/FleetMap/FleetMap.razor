@@ -385,7 +385,8 @@
                 </div>
                 <div class="fleet-truck-facts__fact">
                     <ActionIcon Kind="clock" />
-                    <div><dt>Duty</dt><dd>@DutyFact</dd></div>
+                    <div><dt>Duty</dt><dd>@DutyFact</dd>@if (DutySince is { } dutySince)
+                        {<span class="fleet-truck-facts__detail">@dutySince</span>}</div>
                 </div>
                 <div class="fleet-truck-facts__fact">
                     <ActionIcon Kind="fuel" />
@@ -431,6 +432,17 @@
                     Jurisdiction="@HeadDutyStatus?.Jurisdiction"
                     Dials="false" Bars="true" ShowDutyStatus="false" />
             </div>
+            @if (RestRows.Count > 0)
+            {
+                @* The rest, in its own labelled rows (the owner, September
+                   28): never a paragraph under the duty status. *@
+                <dl class="fleet-truck-rest" aria-label="Rest">
+                    @foreach (var (label, value) in RestRows)
+                    {
+                        <div><dt>@label</dt><dd>@value</dd></div>
+                    }
+                </dl>
+            }
             </div>
         }
         <div class="fleet-map-inspector__native" hidden="@(_inspectorMode is not (MapInspectorMode.Stop or MapInspectorMode.Fuel))"></div>
@@ -567,6 +579,7 @@
                     Selected="ChooseChainLoadAsync"
                     StopSelected="ChooseChainStopAsync"
                     FocusedStopId="_tripStop"
+                    Badges="StopBadges"
                     LoadHref="@(load => ReturnNavigation.Load(load.Id, ReturnOrigin))" />
     </div>
 

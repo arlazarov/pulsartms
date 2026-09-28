@@ -43,6 +43,15 @@
     &.is-undated {
       --day-fill: #{ui.theme(text-muted)};
     }
+    // Daylight date headers are quiet and neutral (the owner, September
+    // 28): no coloured bars, washes or tinted tiles; today alone keeps the
+    // accent, in its date's ink.
+    :root[data-theme='light'] & {
+      --day-fill: #{ui.theme(text-muted)};
+      &.is-today {
+        --day-fill: #{ui.theme(accent)};
+      }
+    }
   }
   // The strip is painted, not a border: a collapsed border straddles the
   // row above, and its column rules showed through the gap.
@@ -61,6 +70,15 @@
       linear-gradient(ui.theme(surface), ui.theme(surface)) left bottom / 100%
         calc(100% - #{ui.pg(md)}) no-repeat;
     color: ui.theme(text);
+    // Daylight: a plain soft band on a hairline, no bar or wash.
+    :root[data-theme='light'] & {
+      background:
+        linear-gradient(ui.theme(canvas) 0 ui.pg(md), transparent ui.pg(md)),
+        linear-gradient(ui.theme(border-subtle), ui.theme(border-subtle)) left
+          bottom / 100% 1px no-repeat,
+        linear-gradient(ui.theme(surface-soft), ui.theme(surface-soft)) left
+          bottom / 100% calc(100% - #{ui.pg(md)}) no-repeat;
+    }
     font-size: ui.fs(heading);
     font-weight: 700;
     text-align: start;
@@ -80,6 +98,12 @@
         transparent 55%
       ),
       ui.theme(surface);
+    :root[data-theme='light'] & {
+      background:
+        linear-gradient(ui.theme(border-subtle), ui.theme(border-subtle)) left
+          bottom / 100% 1px no-repeat,
+        ui.theme(surface-soft);
+    }
   }
   .dispatch-table__day-chip {
     display: inline-grid;
@@ -92,6 +116,11 @@
     background: color-mix(in srgb, var(--day-fill) 14%, transparent);
     color: var(--day-fill);
     line-height: 1;
+    // Daylight: a plain white date tile on a neutral hairline.
+    :root[data-theme='light'] & {
+      border-color: ui.theme(border);
+      background: ui.theme(surface);
+    }
     > small {
       margin: 0;
       font-size: ui.fs(caption);
@@ -108,6 +137,9 @@
     border-radius: ui.radius(pill);
     background: transparent;
     color: var(--day-fill);
+    :root[data-theme='light'] & {
+      border-color: ui.theme(border);
+    }
     font-size: ui.fs(small);
     font-weight: 600;
   }

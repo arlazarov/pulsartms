@@ -68,8 +68,23 @@
       color: ui.theme(text-secondary);
     }
   }
+  // The theme icon turns in when the theme changes; still with reduced
+  // motion.
+  .topbar__theme-icon {
+    display: inline-grid;
+    animation: topbar-theme-in 240ms ease-out;
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
   .topbar__spacer {
     flex: 1;
+  }
+  // The global search field (the owner, September 28): the shared search
+  // input, sized to the bar; it gives way before the clock and account.
+  .topbar__search {
+    flex: 0 1 22rem;
+    width: auto;
   }
   .topbar__icon-button {
     display: inline-grid;
@@ -190,5 +205,12 @@
         stroke-width: 1.7;
       }
     }
+  }
+}
+
+@keyframes topbar-theme-in {
+  from {
+    opacity: 0.3;
+    transform: rotate(-45deg) scale(0.8);
   }
 }

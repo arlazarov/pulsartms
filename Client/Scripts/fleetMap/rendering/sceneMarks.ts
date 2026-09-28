@@ -89,6 +89,13 @@ export function createSceneMarks(scene: MarkedScene) {
       this.data = [this.path];
       scene.redraw();
     }
+    // Separate pieces of one road, drawn as one line.
+    setPaths(paths: ProviderPoint[][]) {
+      const pieces = paths.map(piece => piece.map(xy));
+      this.path = pieces.flat();
+      this.data = pieces;
+      scene.redraw();
+    }
     getPath() {
       return {
         removeAt: (i: number) => {

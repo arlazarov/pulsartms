@@ -232,6 +232,7 @@ export function createRouteLayer(
       () => idleListener.remove(),
       () => dragListener.remove(),
       () => setPlan(null, false),
+      () => stops.dispose(),
       () => (disposed = true),
       () => (serverProgress = null),
       () => popup.dispose(),
@@ -291,6 +292,12 @@ export function createRouteLayer(
     },
     openStop(stopId: string) {
       return disposed ? null : stops.open(stopId);
+    },
+    selectedStop() {
+      return disposed ? null : stops.selected();
+    },
+    restoreStop(stopId: string | null) {
+      if (!disposed) stops.restore(stopId);
     },
     dispose,
   };

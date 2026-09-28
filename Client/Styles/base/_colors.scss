@@ -114,13 +114,27 @@ $colors: (
     700: #7c3aed,
     950: #2e1654,
   ),
+  // Graphite: the light theme's matte text, rules and off-white grounds
+  // (the owner's approved light concept, September 28).
+  graphite: (
+      50: #f6f7f9,
+      100: #eef1f4,
+      200: #e3e7ec,
+      300: #d3d9e0,
+      500: #66717e,
+      700: #3f4a57,
+      900: #1d2530,
+    ),
   // Fine cyan detail on ice and night surfaces.
   'cyan': (
       50: #e3f6fc,
+      100: #cdeaf3,
       200: #8fdcf0,
       300: #67e8f9,
       400: #3fd3f7,
       500: #06b6d4,
+      // The light theme's restrained teal-blue accent.
+      600: #16779a,
       700: #0e7490,
       800: #155e75,
       900: #0b3a4f,

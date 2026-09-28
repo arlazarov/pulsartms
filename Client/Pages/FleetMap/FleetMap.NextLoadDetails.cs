@@ -27,13 +27,13 @@ public partial class FleetMap
 
   // The badge of the inspected stop, as the map draws it: its place among
   // its own load's stops (StopMarkers), never the load's place in a chain.
+  // The stop's chain number, as the map and the trip cards show it; none
+  // for a stop the chain does not hold.
   private string? InspectedStopMarker =>
     InspectedRoute is { } inspected
     && _inspectedStopIndex >= 0
     && _inspectedStopIndex < inspected.Stops.Count
-      ? StopMarkers.Labels(inspected.Stops.Select(stop => stop.Job).ToArray())[
-        _inspectedStopIndex
-      ]
+      ? StopBadges.GetValueOrDefault(inspected.Stops[_inspectedStopIndex].Id)
       : null;
   private FuelStopArrival? InspectedFuelArrival =>
     _routeState is { } state
