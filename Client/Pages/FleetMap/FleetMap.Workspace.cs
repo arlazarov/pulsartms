@@ -225,8 +225,6 @@ public partial class FleetMap
       && truck == _activeTruckId;
     _trip = (load.Id, load.ExecutionLegId);
     _tripStop = stop;
-    if (stop is not null)
-      _mobileTruckDetailsOpen = true;
     if (IsCurrentTrip(load))
     {
       await _map.InvokeVoidAsync("clearNextLoadSelection");
@@ -331,8 +329,6 @@ public partial class FleetMap
       route is not null && stopIndex >= 0 && stopIndex < route.Stops.Count
         ? route.Stops[stopIndex].Id
         : null;
-    if (_tripStop is not null)
-      _mobileTruckDetailsOpen = true;
     return InvokeAsync(StateHasChanged);
   }
 

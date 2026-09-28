@@ -9,11 +9,10 @@ const css = compileString(
   "@use 'shared/driver-status'; @use 'shared/trucks'; @use 'pages/fleet-map/route-info'; @use 'pages/fleet-map/stage'; @use 'pages/fleet-map/inspector'; @use 'pages/fleet-map/layout'; @use 'pages/fleet-map/popup';@use 'pages/fleet-map/station';@use 'shared/fuel/visit';",
   { loadPaths },
 ).css;
-// The truck card is these four files; the rest of the inspector folder is
+// The truck card is these two files; the rest of the inspector folder is
 // the shell every card shares and the other modes' own rules.
 const compact = compileString(
   "@use 'pages/fleet-map/inspector/card';" +
-    " @use 'pages/fleet-map/inspector/hours-line';" +
     " @use 'pages/fleet-map/inspector/narrow';",
   { loadPaths },
 ).css;

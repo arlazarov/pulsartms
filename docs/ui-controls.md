@@ -261,7 +261,9 @@ a rule that runs the width of the card:
   duty and rest line with the rest. Superseded on September 27: the
   floating card (below the docked layout, phones included) opens closed
   behind Details, which opens the facts and clocks; the docked panel is
-  always open and has no Details button;
+  always open and has no Details button. Superseded on September 28:
+  the floating card (phones) is always open too, with no Details
+  button; it stays within half the map and scrolls inside;
 - the load number as a link to its page, the order to copy, and the
   tracked stop's visit and name; at the right, ETA, and under it the
   Appointment for the same stop in that stop's zone (the forecast's zone

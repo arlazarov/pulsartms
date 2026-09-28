@@ -207,9 +207,7 @@
     </div>
     <section class="fleet-map-info-reserved fleet-map-inspector
                     @(InspectorVisible ? "has-selection" : "")
-                    @(MapOverlayOpen ? "is-overlaid" : "")
-                    @(_mobileTruckDetailsOpen
-                        ? "is-mobile-expanded" : "is-mobile-collapsed")"
+                    @(MapOverlayOpen ? "is-overlaid" : "")"
              aria-label="Map information"
              data-inspector-mode="@_inspectorMode.ToString().ToLowerInvariant()"
              @onkeydown="OnInspectorKeyDownAsync"
@@ -267,28 +265,6 @@
            map used to offer only "Back to truck", which is a different
            thing: it goes somewhere, and closing leaves the map clear. *@
         <div class="fleet-map-inspector__controls">
-            @if (_inspectorMode == MapInspectorMode.Truck)
-            {
-                @* Says what it does. A bare chevron was too faint to be found;
-                   both words sit in one cell, so opening does not change the
-                   button's width and move the row beside it. A phone's card
-                   has no room for a closed state: there the card is open
-                   whole and this button is not shown (September 26). *@
-                <button type="button"
-                        class="btn btn--small fleet-map-mobile-summary__toggle"
-                        aria-expanded="@(_mobileTruckDetailsOpen
-                            ? "true" : "false")"
-                        aria-controls="fleet-map-details"
-                        @onclick="ToggleMobileTruckDetails">
-                    <span class="fleet-map-mobile-summary__toggle-words">
-                        <span aria-hidden="@(_mobileTruckDetailsOpen
-                            ? "true" : "false")">Details</span>
-                        <span aria-hidden="@(_mobileTruckDetailsOpen
-                            ? "false" : "true")">Hide details</span>
-                    </span>
-                    <ActionIcon Kind="chevron-down" />
-                </button>
-            }
             @if (_inspectorMode is MapInspectorMode.FuelPlan
                 or MapInspectorMode.FuelStations)
             {
