@@ -257,7 +257,10 @@ export function createStationLayers({
             undefined,
             () => 'Editing',
             'Editing',
-            selectedBlue,
+            // The label's ink is the theme's; in daylight that dark ink
+            // sat unread on the saturated blue, so the plate there is the
+            // theme's own, as on the plan's fuel badges.
+            isLightMap() ? theme().core : selectedBlue,
             metrics.fuelEditingLabelOffset,
             fonts,
             setHover,
