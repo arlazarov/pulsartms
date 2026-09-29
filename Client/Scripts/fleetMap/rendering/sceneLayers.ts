@@ -308,9 +308,10 @@ function reticleLayers(
   stationData: StationMark[],
 ): DeckLayer[] {
   const icon = reticleIcon(isLightMap());
-  // Daylight marks a chosen stop by its own heavier rim in its trip's
-  // colour, no ring around it (the owner, September 28).
-  const stops = isLightMap() ? [] : stopData.filter(stop => stop.selected);
+  // A chosen stop wears the reticle on both maps, as a chosen station
+  // does: in daylight its heavier rim alone did not say which stop the
+  // open card is about (the owner, September 28, evening).
+  const stops = stopData.filter(stop => stop.selected);
   const stations = stationData.filter(station => station.selected);
   return [
     ...(stops.length
