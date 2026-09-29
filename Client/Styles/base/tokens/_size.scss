@@ -37,6 +37,9 @@ $sizes: (
   map-details-card: 37.5rem,
   map-fuel-card: 32rem,
   map-driver-duty-width: 11rem,
+  // Google's own logo holds the map's bottom-left corner (66 x 26 px);
+  // our credit line starts just past it.
+  map-google-logo: 4.5rem,
 
   // One reading on a truck's vehicle line (speed, fuel, engine), on the
   // Fleet Map truck card and the Dispatch truck row alike.

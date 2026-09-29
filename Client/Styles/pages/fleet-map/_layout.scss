@@ -17,12 +17,22 @@
 }
 
 .fleet-map-weather-source {
+  // The map's bottom-left corner, beside Google's logo and level with
+  // its baseline, never centred or above the trip strip.
   position: absolute;
-  left: ui.pg(md);
-  bottom: ui.pg(xxl);
+  left: ui.size(map-google-logo);
+  right: auto;
+  bottom: ui.pg(xs);
+  margin: 0;
+  transform: none;
   z-index: ui.layer(map-legend);
   align-self: end;
   justify-self: start;
+  max-width: calc(100% - #{ui.size(map-google-logo)} - #{ui.pg(sm)});
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
   // A quiet credit line, not a plate floating on the map.
   padding: 0;
   background: none;
