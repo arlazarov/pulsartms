@@ -321,6 +321,33 @@ public static class FuelRouteSearch
       // each omission.
       for (var i = 0; i < seed.Count; i++)
         Evaluate(seed.Where((_, index) => index != i));
+      var ranked = results
+        .Values.Where(x => x.Chain.Count > 0)
+        .OrderBy(x => (x.Score, x.Chain.Count), FuelStopEconomy.Comparer)
+        .ToList();
+      var scaffolds = ranked
+        .Take(1)
+        .Concat(ranked.OrderBy(x => x.Chain.Sum(EstimatedAccessMiles)).Take(1))
+        .Select(x => x.Chain)
+        .DistinctBy(x => string.Join(",", x.Select(c => c.VisitKey)))
+        .ToList();
+      // Compare replacements before geographic scheduling. A zone shortlist
+      // need not contain a return visit already present in the candidate set.
+      // Two fixed scaffolds bound this to twice the candidate count; the memo
+      // coalesces repeated inputs and the final comparison budget is unchanged.
+      foreach (var scaffold in scaffolds)
+      foreach (var station in stations)
+      {
+        if (scaffold.Any(x => x.VisitKey == station.VisitKey))
+          continue;
+        var replaced = scaffold
+          .Where(x => x.LegIndex == station.LegIndex)
+          .MinBy(x => Math.Abs(x.AlongMiles - station.AlongMiles));
+        if (replaced is not null)
+          Evaluate(
+            scaffold.Where(x => x.VisitKey != replaced.VisitKey).Append(station)
+          );
+      }
       return results
         .Values.OrderBy(x => (x.Score, x.Chain.Count), FuelStopEconomy.Comparer)
         .Select(x => x.Chain)

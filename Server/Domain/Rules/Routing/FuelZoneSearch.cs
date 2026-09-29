@@ -98,27 +98,6 @@ public static class FuelZoneSearch
         result.Add(corridor);
     }
     result.AddRange(scenarios.Take(2));
-    // A zone can replace a purchase on the same visit leg. Appending it alone
-    // only compares an extra stop, and can discard a cheaper return visit as
-    // redundant without ever comparing the same-size replacement chain.
-    foreach (var zone in zones)
-    {
-      if (scenarios.Any(chain => chain.Any(x => x.VisitKey == zone.VisitKey)))
-        continue;
-      var scaffold = scenarios.FirstOrDefault();
-      var replaced = scaffold
-        ?.Where(x => x.LegIndex == zone.LegIndex)
-        .MinBy(x => Math.Abs(x.AlongMiles - zone.AlongMiles));
-      if (replaced is null)
-        continue;
-      result.Add(
-        scaffold!
-          .Where(x => x.VisitKey != replaced.VisitKey)
-          .Append(zone)
-          .OrderBy(x => x.AlongMiles)
-          .ToList()
-      );
-    }
     foreach (var zone in zones)
     {
       var containing = scenarios.FirstOrDefault(chain =>
