@@ -105,8 +105,13 @@ test('a planned fuel stop is ringed on both maps, firmer in daylight', t => {
   // The planned dot itself keeps the blue rim, heavier in daylight: read
   // while the light map stands, as the layer reads the theme when asked.
   const dot = light.get('fuel-recommendation-points').props;
-  assert.deepEqual(dot.getLineColor(planned), [49, 94, 234]);
+  // In the colour of the road it stands on.
+  assert.deepEqual(dot.getLineColor(planned), [40, 76, 220]);
   assert.equal(dot.getLineWidth(planned), 2.5);
+  assert.deepEqual(
+    light.get('fuel-recommendation-rings').props.getLineColor.slice(0, 3),
+    [40, 76, 220],
+  );
   const dark = ring('dark');
   for (const layers of [light, dark]) {
     assert.ok(layers.get('fuel-recommendation-points'));

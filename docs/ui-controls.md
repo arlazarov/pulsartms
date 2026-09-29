@@ -1316,7 +1316,7 @@ On the light map (September 28, evening) a chosen stop wears the
 selection reticle as a chosen station does, beside its heavier rim; an
 ordinary station is filled with its price colour and edged in a darker
 shade of it, so it has an outline on the pale ground; and a planned fuel
-stop is ringed in the selection blue (2 px, two pixels wider than on the
+stop is ringed in the colour of the current route (2 px, two pixels wider than on the
 dark map) around its blue-rimmed dot, so it can be found on the road. The
 dark map keeps its finer ring and its rim of the price colour.
 

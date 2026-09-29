@@ -4,6 +4,7 @@ import type { LabelFonts } from './sceneMetrics.ts';
 import { memoizeLast } from './layerCache.ts';
 import { isLightMap, lightMarkCore, markCore } from './stopAppearance.ts';
 import { sceneMetrics as metrics, labelSubLayers } from './sceneMetrics.ts';
+import { currentRouteColor } from './routePalette.ts';
 
 // A fuel station as the scene draws it: where it is, what its price makes
 // it, and what the fuel plan has to say about it.
@@ -17,6 +18,11 @@ export type StationMark = {
 };
 
 const selectedBlue = [49, 94, 234];
+// In daylight a planned fuel stop is marked in the colour of the road it
+// stands on, as it was before the redesign: the ring reads as part of the
+// truck's route (the owner, September 28).
+const plannedInk = () =>
+  isLightMap() ? currentRouteColor.slice(0, 3) : selectedBlue;
 // A daylight dot is edged in a darker shade of its own price colour: flat
 // on the pale map it had no edge at all and ran into the ground under it.
 const daylightRim = (color: number[]) =>
@@ -71,11 +77,13 @@ export function createStationLayers({
         d.selected || (d.recommended && isLightMap()) ? 2.5 : 1.75,
       getFillColor: isLightMap() ? (d: StationMark) => d.color : theme().core,
       getLineColor: (d: StationMark) =>
-        d.selected || d.recommended
+        d.selected
           ? selectedBlue
-          : isLightMap()
-            ? daylightRim(d.color)
-            : d.color,
+          : d.recommended
+            ? plannedInk()
+            : isLightMap()
+              ? daylightRim(d.color)
+              : d.color,
       autoHighlight: true,
       highlightColor: [49, 94, 234, 100],
       onHover,
@@ -145,7 +153,7 @@ export function createStationLayers({
       // Finer and quieter on the dark map, where it glows against the
       // ground; firmer in daylight, where a faint ring was lost on the
       // road it stands on.
-      getLineColor: [...selectedBlue, isLightMap() ? 235 : 170],
+      getLineColor: [...plannedInk(), isLightMap() ? 235 : 170],
       getLineWidth: isLightMap() ? 2 : 1.25,
       lineWidthUnits: 'pixels',
       pickable: true,
