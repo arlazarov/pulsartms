@@ -10,6 +10,7 @@ namespace Client.Pages.FleetMap;
 internal sealed class FleetStationLayer(HttpClient http, IJSObjectReference map)
   : IDisposable
 {
+  private readonly IJSObjectReference _map = map;
   private CancellationTokenSource? _request;
   private CancellationTokenSource? _priceRequest;
   private DateOnly? _pricesDate;
@@ -41,7 +42,7 @@ internal sealed class FleetStationLayer(HttpClient http, IJSObjectReference map)
     {
       if (_pricesDate == date && _prices is not null)
       {
-        await map.InvokeVoidAsync(
+        await _map.InvokeVoidAsync(
           "setPriceOverview",
           request.Token,
           _prices,
@@ -52,7 +53,7 @@ internal sealed class FleetStationLayer(HttpClient http, IJSObjectReference map)
           PriceError = null;
         return;
       }
-      await map.InvokeVoidAsync(
+      await _map.InvokeVoidAsync(
         "setPriceOverview",
         request.Token,
         null,
@@ -68,7 +69,7 @@ internal sealed class FleetStationLayer(HttpClient http, IJSObjectReference map)
         return;
       if (result?.Success != true || result.Response is null)
         throw new HttpRequestException("Fuel marker prices are unavailable.");
-      await map.InvokeVoidAsync(
+      await _map.InvokeVoidAsync(
         "setPriceOverview",
         request.Token,
         result.Response,
@@ -98,6 +99,51 @@ internal sealed class FleetStationLayer(HttpClient http, IJSObjectReference map)
       if (ReferenceEquals(_priceRequest, request))
         _priceRequest = null;
     }
+  }
+
+  // The same stations and prices for a map made again in the new theme;
+  // a read still on its way was for the old map and is dropped.
+  public FleetStationLayer MoveTo(IJSObjectReference next)
+  {
+    Cancel();
+    _priceRequest?.Cancel();
+    return new(http, next)
+    {
+      _pricesDate = _pricesDate,
+      _prices = _prices,
+      LoadedDate = LoadedDate,
+      Stations = Stations,
+    };
+  }
+
+  // Draws what was read on the new map; false when the day's prices were
+  // never read, so the page reads them as it would for a new day.
+  public async Task<bool> RedrawAsync(DateOnly date, Func<bool> useIfta)
+  {
+    if (_disposed || _pricesDate != date || _prices is null)
+      return false;
+    var dateText = date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
+    try
+    {
+      await _map.InvokeVoidAsync(
+        "setPriceOverview",
+        _prices,
+        dateText,
+        useIfta()
+      );
+      if (LoadedDate == date && Stations is not null)
+        await _map.InvokeVoidAsync(
+          "setStations",
+          Stations,
+          dateText,
+          useIfta()
+        );
+    }
+    catch (JSException)
+    {
+      return false;
+    }
+    return true;
   }
 
   private bool IsPriceCurrent(CancellationTokenSource request) =>
@@ -135,7 +181,7 @@ internal sealed class FleetStationLayer(HttpClient http, IJSObjectReference map)
         return;
       if (result?.Success != true || result.Response is null)
         throw new HttpRequestException("Fuel stations are unavailable.");
-      await map.InvokeVoidAsync(
+      await _map.InvokeVoidAsync(
         "setStations",
         result.Response,
         dateText,

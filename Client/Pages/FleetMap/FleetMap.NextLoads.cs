@@ -54,6 +54,49 @@ public partial class FleetMap
     ResetInspectedLoad();
   }
 
+  private void DropNextLoadsRequest()
+  {
+    ++_nextLoadsVersion;
+    _nextLoadsRequest?.Cancel();
+  }
+
+  // A map made again for a theme switch starts empty. The next trips it
+  // showed are drawn from the saved answer of the same truck, load, leg and
+  // assignment revision; only without one are they asked for again.
+  private async Task RedrawNextLoadsAsync()
+  {
+    if (
+      _map is null
+      || _disposed
+      || !ShowNextLoads
+      || _activeTruckId is not { } truckId
+    )
+      return;
+    var currentId = SelectedDispatchId;
+    var executionLegId = SelectedExecutionLegId;
+    var assignmentRevision = SelectedAssignmentRevision;
+    if (
+      _nextLoadsIdentity
+        == (truckId, currentId, executionLegId, assignmentRevision)
+      && _nextLoadsRevision is { } revision
+      && currentId is { } dispatchId
+      && _nextLoadsCache.Get(
+        (truckId, dispatchId),
+        Clock.GetUtcNow(),
+        executionLegId,
+        assignmentRevision
+      )
+        is { } saved
+      && saved.Revision == revision
+    )
+    {
+      await _map.InvokeVoidAsync("setNextLoadsBytes", saved.Payload);
+      return;
+    }
+    _nextLoadsIdentity = null;
+    await RefreshNextLoadsAsync();
+  }
+
   private async Task OnNextLoadsChanged()
   {
     ++_nextLoadsVersion;

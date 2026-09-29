@@ -291,15 +291,19 @@ public partial class FleetMap : IAsyncDisposable
     await StartMapAsync();
   }
 
-  private Task StartMapAsync()
+  private Task StartMapAsync() => BeginMapAsync(rebind: false);
+
+  private Task BeginMapAsync(bool rebind)
   {
     if (_disposed || _initializing)
       return Task.CompletedTask;
-    _initializationTask = InitializeMapAsync();
+    _initializationTask = InitializeMapAsync(rebind);
     return _initializationTask;
   }
 
-  private async Task InitializeMapAsync()
+  // A rebind makes the map again for a theme switch: what the page already
+  // read is handed to the new map, not read again.
+  private async Task InitializeMapAsync(bool rebind)
   {
     _initializing = true;
     MapError = null;
@@ -331,12 +335,26 @@ public partial class FleetMap : IAsyncDisposable
       await _map.InvokeVoidAsync("setNextLoadsVisible", ShowNextLoads);
       if (_disposed)
         return;
-      _stations = new(Http, _map);
+      var stations = _stations;
+      _stations =
+        rebind && stations is not null
+          ? stations.MoveTo(_map)
+          : new(Http, _map);
+      if (!ReferenceEquals(stations, _stations))
+        stations?.Dispose();
       _initializing = false;
       await InvokeAsync(StateHasChanged);
       _truckPollingTask ??= PollTrucksAsync(_lifetime.Token);
-      _ = OnDateChanged();
-      _ = ReadFuelPricingBasisAsync();
+      if (!rebind)
+      {
+        _ = OnDateChanged();
+        _ = ReadFuelPricingBasisAsync();
+      }
+      else if (
+        !await _stations.RedrawAsync(SelectedDate, () => UseIfta)
+        || ShowFuelStations && _stations.LoadedDate != SelectedDate
+      )
+        _ = OnDateChanged();
     }
     catch (Exception ex) when (IsLoadError(ex))
     {
@@ -471,17 +489,18 @@ public partial class FleetMap : IAsyncDisposable
       catch (JSException) { }
     var session = _session;
     _session = null;
+    // An answer still on its way was for the old map; the new one is drawn
+    // from what the page kept, so a late answer cannot land between them.
+    DropNextLoadsRequest();
     await session.DisposeAsync();
     if (_disposed)
       return;
-    await StartMapAsync();
+    await BeginMapAsync(rebind: true);
     if (_disposed || _map is null)
       return;
-    try
-    {
-      await RefreshTrucksAsync(_lifetime.Token);
-    }
-    catch (Exception ex) when (IsLoadError(ex)) { }
+    // The trucks, route and next trips already read are drawn again; the
+    // regular poll keeps reading them as before.
+    await UpdateTruckSearchAsync();
     await PushStopCompletionsAsync();
     // The open stop's card comes back once its route is on the new map;
     // the route already read is drawn there at once, without a fit and
@@ -489,6 +508,7 @@ public partial class FleetMap : IAsyncDisposable
     if (openStop is not null && _map is not null)
       await _map.InvokeVoidAsync("restoreRouteStop", openStop);
     await SendMapRouteAsync(false);
+    await RedrawNextLoadsAsync();
     if (
       following
       && truck is { } id
