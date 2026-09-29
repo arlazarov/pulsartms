@@ -94,6 +94,31 @@
       font-weight: 700;
     }
   }
+  // The order number reads as a value and copies on a press.
+  .dispatch-table__order-copy {
+    display: inline-flex;
+    align-items: baseline;
+    gap: ui.pg(micro);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: ui.theme(text);
+    font: inherit;
+    cursor: copy;
+    strong {
+      font-weight: 600;
+    }
+    > span {
+      color: ui.theme(text-muted);
+    }
+    &:hover,
+    &:focus-visible {
+      color: ui.theme(link);
+      > span {
+        color: inherit;
+      }
+    }
+  }
   .dispatch-table__stop-completed {
     display: block;
     margin-top: ui.pg(xs);
