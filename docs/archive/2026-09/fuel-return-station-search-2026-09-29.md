@@ -70,4 +70,27 @@ There is no runtime auditor proving that every cheaper substitution was
 considered: doing so would repeat optimization. Fuel owns this coverage gap;
 completion requires a focused regression and a bounded normal-owner read
 after an authorized release. No exact saving or corrected production plan
-is claimed. The incident remains open; this candidate is not published.
+is claimed. The incident remains open until its normal-owner result is observed.
+
+## Authorized deployment
+
+The user authorized publication without tests or the proposed replay. Root
+performed the deployment directly; no assistant was used for this release.
+
+- Source: `47d61210`, based on frontend release `649530b0`.
+- Before the patch, `Server/` matched deployed API source `a596a667`.
+- Cloud Build: `c1884ab9-213d-4e47-8745-2b77d59511ae`, SUCCESS.
+- Build-only Docker configuration; no Node, .NET or browser tests ran.
+- Image: `sha256:e42b50eecfed11547457edf14f65be5444d0d993ca8c486c1166d4ec782797fc`.
+- Revision: `amftms-api-b-c1884ab9-213d-4e47-8745-2b77d59511ae`.
+- Ready/digest identity confirmed before switching 100% traffic.
+- Requested and observed traffic matched on 2026-09-29 around 02:05 UTC.
+- Previous revision became Active=False/Retired at 02:05:40.914691 UTC;
+  TrafficShutDown=True at 02:05:40.988150 UTC.
+- No schema change, data repair, forced calculation, send or frontend deploy.
+- Existing revision-specific message-send hold was not released.
+- Build/traffic receipts retained in managed `diagnostic-hD7moI`.
+
+Deployment is confirmed; the exact 54777 replacement cost and new saved result
+were not checked, as explicitly requested. No production incident closure or
+minimum-cost guarantee is claimed.
