@@ -4,6 +4,7 @@ import type { LabelFonts } from './sceneMetrics.ts';
 import { memoizeLast } from './layerCache.ts';
 import { isLightMap, lightMarkCore, markCore } from './stopAppearance.ts';
 import { sceneMetrics as metrics, labelSubLayers } from './sceneMetrics.ts';
+import { currentRouteColor } from './routePalette.ts';
 
 // A fuel station as the scene draws it: where it is, what its price makes
 // it, and what the fuel plan has to say about it.
@@ -17,6 +18,15 @@ export type StationMark = {
 };
 
 const selectedBlue = [49, 94, 234];
+// In daylight a planned fuel stop is marked in the colour of the road it
+// stands on, as it was before the redesign: the ring reads as part of the
+// truck's route (the owner, September 28).
+const plannedInk = () =>
+  isLightMap() ? currentRouteColor.slice(0, 3) : selectedBlue;
+// A daylight dot is edged in a darker shade of its own price colour: flat
+// on the pale map it had no edge at all and ran into the ground under it.
+const daylightRim = (color: number[]) =>
+  color.slice(0, 3).map(channel => Math.round(channel * 0.55));
 // Every station is a dot, never a pump icon (the owner, September 27). The plan's numbers are drawn in the ink: bright cyan on the dark
 // map, the deep accent on the light one.
 const darkInk = [34, 211, 238];
@@ -59,13 +69,21 @@ export function createStationLayers({
       lineWidthUnits: 'pixels',
       // On the dark map a fine rim of the price colour on the core; on the
       // pale light map a rim alone did not tell cheap from dear, so the dot
-      // is filled flat with its price colour and edged in the same - no
-      // white backing ring (the owner, September 28). A chosen or planned
-      // station keeps its blue rim.
-      getLineWidth: (d: StationMark) => (d.selected ? 2.5 : 1.75),
+      // is filled flat with its price colour - no white backing ring (the
+      // owner, September 28) - and edged in a darker shade of it, so it
+      // has an outline. A chosen or planned station keeps its blue rim,
+      // and a planned one a heavier one: it is where the truck fuels.
+      getLineWidth: (d: StationMark) =>
+        d.selected || (d.recommended && isLightMap()) ? 2.5 : 1.75,
       getFillColor: isLightMap() ? (d: StationMark) => d.color : theme().core,
       getLineColor: (d: StationMark) =>
-        d.selected || d.recommended ? selectedBlue : d.color,
+        d.selected
+          ? selectedBlue
+          : d.recommended
+            ? plannedInk()
+            : isLightMap()
+              ? daylightRim(d.color)
+              : d.color,
       autoHighlight: true,
       highlightColor: [49, 94, 234, 100],
       onHover,
@@ -132,8 +150,11 @@ export function createStationLayers({
       radiusUnits: 'pixels',
       filled: false,
       stroked: true,
-      getLineColor: [...selectedBlue, 170],
-      getLineWidth: 1.25,
+      // Finer and quieter on the dark map, where it glows against the
+      // ground; firmer in daylight, where a faint ring was lost on the
+      // road it stands on.
+      getLineColor: [...plannedInk(), isLightMap() ? 235 : 170],
+      getLineWidth: isLightMap() ? 2 : 1.25,
       lineWidthUnits: 'pixels',
       pickable: true,
       onHover,
@@ -177,20 +198,19 @@ export function createStationLayers({
           selectStation,
           metrics.recommendationDotRadius * 1.2,
         ),
-        // Daylight: the planned station's own blue rim and its Fuel tag
-        // say it; no second ring around it.
-        ...(isLightMap()
-          ? []
-          : [
-              ring(
-                'fuel-recommendation-rings',
-                data,
-                true,
-                metrics.recommendationRadius,
-                setHover,
-                selectStation,
-              ),
-            ]),
+        // The ring says "the truck fuels here" on both maps. Daylight had
+        // only the dot's blue rim and its Fuel tag, and the owner could
+        // not find the planned stops on the road (September 28, evening).
+        ring(
+          'fuel-recommendation-rings',
+          data,
+          true,
+          isLightMap()
+            ? metrics.recommendationRadius + 2
+            : metrics.recommendationRadius,
+          setHover,
+          selectStation,
+        ),
       ];
     }),
     visitLabels([stationData, setHover, selectStation, fonts.fuelVisit], () =>
