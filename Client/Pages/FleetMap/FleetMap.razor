@@ -434,10 +434,13 @@
                     <ActionIcon Kind="gauge" />
                     <div><dt>Motion</dt><dd>@MotionFact(panelTruck)</dd></div>
                 </div>
+                @* Two by two: Driver | Trailer, Motion | Engine, Fuel |
+                   Duty, Temperature | Location (the owner, September 29). *@
                 <div class="fleet-truck-facts__fact">
-                    <ActionIcon Kind="clock" />
-                    <div><dt>Duty</dt><dd>@DutyFact</dd>@if (DutySince is { } dutySince)
-                        {<span class="fleet-truck-facts__detail">@dutySince</span>}</div>
+                    <ActionIcon Kind="engine" />
+                    <div><dt>Engine</dt><dd>@(string.IsNullOrWhiteSpace(
+                        panelTruck.EngineState) ? "—"
+                        : panelTruck.EngineState)</dd></div>
                 </div>
                 <div class="fleet-truck-facts__fact">
                     <ActionIcon Kind="fuel" />
@@ -445,10 +448,9 @@
                         ? $"{fuel:0}%" : "—")</dd></div>
                 </div>
                 <div class="fleet-truck-facts__fact">
-                    <ActionIcon Kind="engine" />
-                    <div><dt>Engine</dt><dd>@(string.IsNullOrWhiteSpace(
-                        panelTruck.EngineState) ? "—"
-                        : panelTruck.EngineState)</dd></div>
+                    <ActionIcon Kind="clock" />
+                    <div><dt>Duty</dt><dd>@DutyFact</dd>@if (DutySince is { } dutySince)
+                        {<span class="fleet-truck-facts__detail">@dutySince</span>}</div>
                 </div>
                 @* The outside temperature, read by the weather owner. *@
                 <Client.Shared.Trucks.TruckWeather.TruckWeather
