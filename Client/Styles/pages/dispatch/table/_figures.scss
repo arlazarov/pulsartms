@@ -28,9 +28,12 @@
   }
   // The rate, then its loaded and total rates per mile, each named, the
   // values aligned at the right.
+  // Names and values share each row's baseline (the owner, September 29:
+  // the smaller names sat above their numbers).
   .dispatch-table__figures {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
+    align-items: baseline;
     gap: ui.pg(xs) ui.pg(sm);
     margin: 0;
     > div {
@@ -59,6 +62,7 @@
   .dispatch-table__distances {
     display: grid;
     grid-template-columns: max-content minmax(0, 1fr);
+    align-items: baseline;
     gap: ui.pg(xs) ui.pg(sm);
     margin: 0 0 ui.pg(xs);
     > div {
